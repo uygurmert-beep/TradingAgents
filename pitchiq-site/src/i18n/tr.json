@@ -1,0 +1,298 @@
+{
+  "lang": "tr",
+  "ogLocale": "tr_TR",
+  "meta": {
+    "homeTitle": "Pitch IQ — Futbol hafızanı sahaya sür",
+    "homeDescription": "20.000+ futbolcu, 8 oyun modu, her gün yeni bir bulmaca ve kişisel futbol IQ testi. Pitch IQ ile futbol bilgini kanıtla, liderlik tablosunda zirveye çık.",
+    "privacyTitle": "Gizlilik Politikası — Pitch IQ",
+    "privacyDescription": "Pitch IQ gizlilik politikası: kişisel veri toplamıyoruz, reklam ve takip yok. Canlı liderlik açıksa yalnızca takma ad ve skor gönderilir.",
+    "supportTitle": "Destek ve İletişim — Pitch IQ",
+    "supportDescription": "Pitch IQ destek sayfası: sık sorulan sorular, hata bildirimi ve iletişim e-postası.",
+    "playTitle": "Tarayıcıda Oyna — Pitch IQ",
+    "playDescription": "Pitch IQ'yu kurmadan tarayıcında dene.",
+    "notFoundTitle": "Sayfa bulunamadı — Pitch IQ"
+  },
+  "common": {
+    "skip": "İçeriğe geç",
+    "ctaPlay": "Google Play'den İndir",
+    "ctaPlaySmall": "İndir",
+    "ctaPlayOverline": "ŞİMDİ",
+    "ctaBrowser": "Tarayıcıda Dene",
+    "iosSoon": "iOS sürümü yakında.",
+    "themeToggle": "Temayı değiştir",
+    "backHome": "Ana sayfaya dön",
+    "nav": {
+      "modes": "Modlar",
+      "iq": "IQ Testi",
+      "pricing": "Fiyatlar",
+      "faq": "SSS",
+      "support": "Destek"
+    },
+    "a11y": {
+      "highlights": "Öne çıkanlar",
+      "mainNav": "Ana menü",
+      "footerNav": "Alt menü",
+      "iqScale": "0 ile 200 arası ölçek: Çaylak'tan Galaktik Beyin'e uzanan rütbeler"
+    }
+  },
+  "hero": {
+    "eyebrow": "Futbol zekâ oyunu",
+    "title": "Futbol hafızanı sahaya sür.",
+    "subtitle": "20.000+ futbolcu, 8 oyun modu, her gün yeni bir bulmaca. Gerçek futbol beyinleri için.",
+    "note": "Ücretsiz · Günde 5 oyun + Günün Maçı her zaman bedava",
+    "screenshotAlt": "Pitch IQ ana ekranı: oyun modları ve Günün Maçı"
+  },
+  "stats": [
+    {
+      "icon": "👟",
+      "value": "20.000+",
+      "label": "futbolcu"
+    },
+    {
+      "icon": "🎮",
+      "value": "8",
+      "label": "oyun modu"
+    },
+    {
+      "icon": "📅",
+      "value": "Her gün",
+      "label": "yeni bulmaca"
+    },
+    {
+      "icon": "🏆",
+      "value": "Canlı",
+      "label": "liderlik tablosu"
+    }
+  ],
+  "modes": {
+    "eyebrow": "8 oyun modu",
+    "title": "Her futbol beyni için bir mod.",
+    "subtitle": "Hızlı mı düşünürsün, derin mi bilirsin? Hepsini dene, en güçlü olduğun alanı bul.",
+    "items": [
+      {
+        "icon": "🔲",
+        "name": "Izgara",
+        "text": "Satır ve sütundaki iki şartı birden karşılayan futbolcuyu bul, ızgarayı doldur."
+      },
+      {
+        "icon": "❓",
+        "name": "Kariyer",
+        "text": "Kulüp kulüp kariyer yolculuğuna bak, kim olduğunu tahmin et."
+      },
+      {
+        "icon": "⚡",
+        "name": "Şimşek Tur",
+        "text": "Süre akarken art arda sorular. Hızlı düşün, seriyi bozma."
+      },
+      {
+        "icon": "⚔️",
+        "name": "Düello",
+        "text": "Bire bir kapış: aynı sorular, kim daha hızlı ve isabetli?"
+      },
+      {
+        "icon": "🕵️",
+        "name": "Gizli",
+        "text": "İpuçları tek tek açılır. Gizli futbolcuyu en az ipucuyla yakala."
+      },
+      {
+        "icon": "🔗",
+        "name": "Ortak Takım",
+        "text": "İki futbolcunun aynı formayı giydiği takımı bul."
+      },
+      {
+        "icon": "🧩",
+        "name": "Bağlantılar",
+        "text": "İsimleri ortak noktalarına göre gruplara ayır. Tuzaklara dikkat."
+      },
+      {
+        "icon": "🔟",
+        "name": "İlk 10",
+        "text": "Bir listenin ilk 10'unu eksiksiz say. Ne kadar derin biliyorsun?"
+      }
+    ]
+  },
+  "iq": {
+    "eyebrow": "Pitch IQ Testi",
+    "title": "Futbol zekânı ölç: 0–200.",
+    "text": "Farklı dönemlerden, liglerden ve kategorilerden sorularla kişisel futbol IQ'nu hesapla. Puanına göre rütbeni al: Çaylak'tan Galaktik Beyin'e.",
+    "rankLow": "Çaylak",
+    "rankHigh": "Galaktik Beyin",
+    "scoreLabel": "Örnek skor",
+    "screenshotAlt": "Pitch IQ Testi sonuç ekranı ve rütbe"
+  },
+  "daily": {
+    "eyebrow": "Günün Maçı + Liderlik",
+    "title": "Herkese aynı bulmaca. Kim önde?",
+    "text": "Her gün herkes aynı bulmacayı çözer. Sonucunu spoiler vermeden paylaş, arkadaşlarını geç, canlı liderlik tablosunda adını yukarı taşı.",
+    "points": [
+      "Her gün yeni bulmaca, herkese aynı",
+      "Spoiler'sız sonuç paylaşımı",
+      "Canlı liderlik tablosu (isteğe bağlı)"
+    ],
+    "shareTitle": "PITCH IQ · GÜNÜN MAÇI #214"
+  },
+  "how": {
+    "eyebrow": "Nasıl oynanır",
+    "title": "Üç adımda sahadasın.",
+    "steps": [
+      {
+        "title": "İndir",
+        "text": "Pitch IQ'yu Google Play'den ücretsiz indir."
+      },
+      {
+        "title": "Takma ad + takım seç",
+        "text": "Hesap yok, e-posta yok. Bir takma ad ve tuttuğun takımı seç, yeter."
+      },
+      {
+        "title": "Oyna ve paylaş",
+        "text": "Modları dene, Günün Maçı'nı çöz, sonucunu arkadaşlarına at."
+      }
+    ]
+  },
+  "gallery": {
+    "eyebrow": "Ekran görüntüleri",
+    "title": "Oyundan kareler.",
+    "hint": "Kaydırarak göz at",
+    "items": [
+      {
+        "file": "01-home",
+        "alt": "Ana ekran: Günün Maçı ve oyun modları"
+      },
+      {
+        "file": "02-modes",
+        "alt": "Oyun modları listesi"
+      },
+      {
+        "file": "03-grid",
+        "alt": "Izgara modu: satır ve sütun şartları"
+      },
+      {
+        "file": "04-connections",
+        "alt": "Bağlantılar modu: isimleri gruplara ayırma"
+      },
+      {
+        "file": "05-iq-test",
+        "alt": "Pitch IQ Testi sonucu ve rütbe"
+      }
+    ]
+  },
+  "pricing": {
+    "eyebrow": "Fiyatlar",
+    "title": "Ücretsiz başla, istersen Pro'ya geç.",
+    "free": {
+      "name": "Ücretsiz",
+      "price": "0 TL",
+      "period": "",
+      "features": [
+        "Günde 5 oyun",
+        "Günün Maçı her zaman ücretsiz",
+        "Pitch IQ Testi",
+        "Canlı liderlik tablosu"
+      ],
+      "cta": "Ücretsiz İndir"
+    },
+    "monthly": {
+      "name": "Pro Aylık",
+      "period": "/ ay",
+      "features": [
+        "Sınırsız oyun",
+        "Bol ipucu jetonu",
+        "Reklamsız deneyim"
+      ],
+      "cta": "Pro ile Başla"
+    },
+    "yearly": {
+      "name": "Pro Yıllık",
+      "period": "/ yıl",
+      "badge": "En iyi değer",
+      "save": "2 ay bedava",
+      "features": [
+        "Aylık Pro'nun her şeyi",
+        "12 ay, 10 ay fiyatına",
+        "Tek ödeme, bir yıl rahat"
+      ],
+      "cta": "Yıllık Pro'yu Al"
+    },
+    "note": "Pro aboneliği Google Play üzerinden alınır ve dilediğin an Google Play abonelikleri ekranından iptal edilebilir. Fiyatlara vergiler dahildir."
+  },
+  "faq": {
+    "eyebrow": "SSS",
+    "title": "Sık sorulan sorular",
+    "items": [
+      {
+        "q": "Pitch IQ ücretsiz mi?",
+        "a": "Evet. Günde 5 oyun ve Günün Maçı her zaman ücretsiz. Pro ile sınırsız oynarsın."
+      },
+      {
+        "q": "İnternet gerekiyor mu?",
+        "a": "Kurduktan sonra çoğunlukla çevrimdışı çalışır. Canlı liderlik tablosu için internet gerekir."
+      },
+      {
+        "q": "Hangi cihazlarda oynanır?",
+        "a": "Android (Google Play). iOS sürümü yakında. Dilersen tarayıcıda da deneyebilirsin."
+      },
+      {
+        "q": "Kulüp logoları neden yok?",
+        "a": "Lisans nedeniyle jenerik renk-rozet amblemleri kullanıyoruz. Kulüp ve futbolcu isimleri yalnızca bilgi yarışması amacıyla yer alır."
+      },
+      {
+        "q": "Verilerim toplanıyor mu?",
+        "a": "Hayır. Hesap açman gerekmez, reklam ve takip yoktur. Canlı liderliği açarsan yalnızca takma adın ve skorun gönderilir. Ayrıntılar Gizlilik Politikası'nda."
+      },
+      {
+        "q": "Pro'yu nasıl iptal ederim?",
+        "a": "Google Play › Profil › Ödemeler ve abonelikler › Abonelikler yolundan Pitch IQ'yu seçip tek dokunuşla iptal edebilirsin."
+      }
+    ]
+  },
+  "finalCta": {
+    "title": "Futbol beynini kanıtlama zamanı.",
+    "text": "Bugünün maçı seni bekliyor. İndir, oyna, zirveye çık."
+  },
+  "footer": {
+    "tagline": "Gerçek futbol beyinleri için zekâ oyunu.",
+    "privacy": "Gizlilik Politikası",
+    "support": "Destek",
+    "play": "Tarayıcıda Oyna",
+    "contact": "İletişim",
+    "legal": "Pitch IQ bağımsız bir bilgi yarışması oyunudur; hiçbir kulüp, lig veya federasyonla bağlantılı değildir ve onlar tarafından onaylanmamıştır. Google Play ve Google Play logosu Google LLC'nin ticari markalarıdır.",
+    "copyright": "Tüm hakları saklıdır."
+  },
+  "privacy": {
+    "title": "Gizlilik Politikası",
+    "updated": "Yürürlük tarihi",
+    "langSwitch": "English version",
+    "langSwitchTr": "Türkçe sürüm"
+  },
+  "support": {
+    "eyebrow": "Destek",
+    "title": "Yardım lazım mı? Buradayız.",
+    "intro": "Bir sorun mu yaşıyorsun, öneri mi var? Bize e-postayla yaz; genellikle 2 iş günü içinde dönüyoruz.",
+    "emailLabel": "İletişim e-postası",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı ✓",
+    "copyFail": "Kopyalanamadı, adresi elle seç",
+    "mailto": "E-posta uygulamasında aç",
+    "bugTitle": "Hata bildir",
+    "bugIntro": "Hatayı hızla çözebilmemiz için e-postana şunları eklersen çok iyi olur:",
+    "bugItems": [
+      "Telefon modeli ve Android sürümü",
+      "Uygulama sürümü (Ayarlar › Hakkında)",
+      "Ne yaptığında oldu? Adım adım kısaca anlat",
+      "Varsa ekran görüntüsü veya ekran kaydı"
+    ],
+    "bugSubject": "Konu satırına örnek: \"Hata: Izgara modu donuyor\"",
+    "deleteTitle": "Liderlik verimi silmek istiyorum",
+    "deleteText": "Pitch IQ hesap gerektirmez. Canlı liderliğe gönderilen takma adının ve skorunun silinmesini istersen, takma adını yazarak e-posta gönder; 30 gün içinde kaldırırız. Cihazındaki tüm oyun verisini silmek için uygulamayı kaldırman veya uygulama verilerini temizlemen yeterli.",
+    "faqTitle": "Sık sorulan sorular",
+    "privacyLink": "Gizlilik Politikası'nı oku"
+  },
+  "play": {
+    "title": "Tarayıcıda dene",
+    "text": "Pitch IQ'nun web sürümü çok yakında burada. O zamana kadar Android uygulamasını indirebilirsin."
+  },
+  "notFound": {
+    "title": "Ofsayt!",
+    "text": "Aradığın sayfa sahada değil."
+  }
+}

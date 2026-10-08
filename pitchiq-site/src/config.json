@@ -1,0 +1,22 @@
+{
+  "siteUrl": "https://pitchiq.app",
+  "defaultLocale": "tr",
+  "locales": ["tr"],
+  "appName": "Pitch IQ",
+  "packageId": "com.pitchiq.app",
+  "contactEmail": "uygurmert@gmail.com",
+  "links": {
+    "googlePlay": "https://play.google.com/store/apps/details?id=com.pitchiq.app",
+    "appStore": "",
+    "play": "/play/"
+  },
+  "pricing": {
+    "currency": "TRY",
+    "monthly": "49,90",
+    "yearly": "499,90"
+  },
+  "analytics": {
+    "plausibleDomain": ""
+  },
+  "privacyEffectiveDate": "2026-10-08"
+}
