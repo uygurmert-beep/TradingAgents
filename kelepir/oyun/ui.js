@@ -2473,7 +2473,7 @@ function renderNeg(){
       <button class="x" data-act="close" aria-label="Kapat">&times;</button></div>
 
     <section class="sahne">
-      <div class="sahne-arac">${aracGorsel(c,"tam")}</div>
+      <div class="sahne-arac">${aracFoto(c,"tam")}</div>
       <div class="sahne-on">
         <div class="sahne-yuz">${yuzKart(c.seller.k, c.seller.n, c.seller.d, n.mood,
                   clamp(n.pat/Math.max(1,patMax),0,1), MOOD_LBL(n.mood), MOOD_COL(n.mood))}</div>

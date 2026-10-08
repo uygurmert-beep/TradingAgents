@@ -12,6 +12,14 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     args:['--headless=new','--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader']});
   const p=await b.newPage({viewport:{width:420,height:900}});
   const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+  /* Sabit tohum: pazar, arızalar ve alıcılar her koşuda aynı gelsin. Tohumsuz
+     test, denk gelen araca göre farklı kontrollerde kırmızı yanıyordu
+     (kârlı tamiri olmayan araç → "Yaptır" düğmesi yok; akış tavana dayanınca
+     dil farkı ölçülemiyor). Tohumu UX_TOHUM ile değiştirip başka pazar dene. */
+  const TOHUM=+(process.env.UX_TOHUM||20261008);
+  await p.addInitScript(t=>{ let a=t>>>0; Math.random=()=>{ a=(a+0x6D2B79F5)>>>0;
+    let z=a; z=Math.imul(z^(z>>>15),z|1); z^=z+Math.imul(z^(z>>>7),z|61);
+    return ((z^(z>>>14))>>>0)/4294967296; }; }, TOHUM);
   await p.route('**/three.min.js', r=>r.fulfill({path:OYUN+'/three.min.js',contentType:'application/javascript'}));
   await p.goto('file://'+OYUN+'/preloved.html');
   await p.evaluate(()=>{try{localStorage.clear()}catch(e){}});
@@ -101,12 +109,13 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('gün aralığı tutarlı (alt ≤ üst, ikisi de ≥1)', w && w.gunAlt>=1 && w.gunAlt<=w.gunUst);
   const ucuz=await p.evaluate(()=>{
     const c=S.cars.find(x=>x.listPrice);
-    const eski=c.listPrice;
+    const eski=c.listPrice, eskiSatis=S.stats.sold;
+    S.stats.sold=5;   // acemi çarpanında ikisi de "1 gün"e dayanıyordu
     c.listPrice=Math.round(valueOf(c,false)*0.85/500)*500;
     const a=satisPenceresi(c).gunUst;
     c.listPrice=Math.round(valueOf(c,false)*1.35/500)*500;
     const bb=satisPenceresi(c).gunUst;
-    c.listPrice=eski;
+    c.listPrice=eski; S.stats.sold=eskiSatis;
     return {ucuzGun:a, pahaliGun:bb};
   });
   t(`ucuz ilan daha hızlı satıyor (${ucuz.ucuzGun} < ${ucuz.pahaliGun} gün)`,
@@ -346,6 +355,10 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     const c=S.market.find(x=>hiddenIssues(x).length>=1)||S.market[0];
     buyCar(c,c.ask,"pazar"); const m=S.cars[S.cars.length-1];
     m.listPrice=Math.round(valueOf(m,true));
+    /* Acemi çarpanı (×2,4) ve kampanya akışı tavana (%92) dayandırınca üç dil
+       aynı sayıyı veriyordu; karşılaştırma tavandan uzakta yapılmalı. */
+    const eskiSatis=S.stats.sold, eskiKamp=S.marketingDays;
+    S.stats.sold=5; S.marketingDays=0;
     const olc=(dil)=>{ m.ilanDili=dil; m.disclosed=(dil==="durust");
       let akis=0, tek=0, n=0, kacan=0, yakalanan=0;
       for(let i=0;i<2500;i++){ akis+=leadChance(m,S);
@@ -356,6 +369,7 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
       return {akis:akis/2500, teklif:tek/Math.max(1,n),
               kacma:kacan/2500, yakalanma:yakalanan/2500}; };
     const d=olc("durust"), g=olc("muglak"), a=olc("abartili");
+    S.stats.sold=eskiSatis; S.marketingDays=eskiKamp;
     return {id:m.id, akisArtiyor: d.akis<g.akis && g.akis<a.akis,
             // Dürüstlüğün bedeli var (kimse bakmazsa gizlemek daha çok
             // kazandırır); karşılığı güvenlik: asla yakalanmaz, kimse kaçmaz.
@@ -421,7 +435,7 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     if(!s) return {yok:true};
     const f=s.querySelector('.sahne-fiyat b'), y=s.querySelector('.sahne-yuz');
     const fr=f.getBoundingClientRect(), yr=y.getBoundingClientRect();
-    return { var:true, arac:!!s.querySelector('.sahne-arac svg'),
+    return { var:true, arac:!!s.querySelector('.sahne-arac svg, .sahne-arac img.aracfoto'),
              fiyatBuyuk: parseFloat(getComputedStyle(f).fontSize)>=22,
              cakismaYok: fr.bottom<=yr.top+2 || fr.left>=yr.right-2 };
   });
@@ -695,6 +709,23 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('sayfa başında logo ve Kelepir yazısı görünüyor', um.logo && um.ad && um.ustte);
   t('şeritte oyuncunun tabelası', um.tabela);
   t('aşağı kaydırınca logo çıkıyor, kokpit yapışık kalıyor', um.gizli && um.hudUstte);
+
+  console.log('16) fotoğraf yeniden çekilirken titremiyor');
+  /* Ekspertiz/tamir/cila fotoğraf anahtarını değiştiriyor. Yeni çekim bitene
+     dek kart 2B çizime düşüp geri geliyordu; eski fotoğraf yerinde kalmalı. */
+  const ft=await p.evaluate(async()=>{
+    closeSheet(); S.cash=Math.max(S.cash,9e6);
+    const c=S.market.find(x=>x.ask<=S.cash); if(!c) return {yok:true};
+    S.tab="pazar"; render();
+    for(let k=0;k<40 && FOTO.bellek.get(_ftAnahtar(c))===undefined;k++) await new Promise(r=>setTimeout(r,400));
+    if(!FOTO.bellek.get(_ftAnahtar(c))) return {cekilmedi:true};
+    buyCar(c,c.ask,"pazar"); closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render();
+    c.inspected=true; c.cosmetic=true; render();
+    const kart=[...document.querySelectorAll('#screen .card')].find(e=>e.dataset.id==String(c.id));
+    const sahne=kart&&kart.querySelector('.kart-sahne');
+    return {svg:!!(sahne&&sahne.querySelector('svg.aracsvg')), eski:!!(sahne&&sahne.querySelector('img.aracfoto'))};
+  });
+  t('anahtar değişince kart eski fotoğrafı koruyor (2B yok)', ft.eski && !ft.svg);
 
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;

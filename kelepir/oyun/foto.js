@@ -13,7 +13,11 @@
    Anahtar, fotoğrafta görünen her şeyi kapsıyor (renk, yıl, boyalı/değişen,
    ekspertiz, görünen kusurlar); tamir ya da ekspertiz sonrası yeniden çekilir.
    ================================================================== */
-const FOTO={en:960, boy:320, sinir:48, bellek:new Map(), sira:[], ren:null, kapali:false, zamanlayici:null, sonEtkilesim:0};
+const FOTO={en:960, boy:320, sinir:48, bellek:new Map(), son:new Map(), sira:[], ren:null, kapali:false, zamanlayici:null, sonEtkilesim:0};
+/* FOTO.son: aracın (id) en son çekilmiş fotoğrafı. Ekspertiz, tamir, cila
+   anahtarı değiştirince yeni çekim bitene kadar kart 2B çizime düşüp sonra
+   fotoğrafa dönüyordu — oyuncu alıp satarken resim "değişip geri geliyordu".
+   Artık yeni çekim hazır olana dek eski fotoğraf yerinde kalıyor. */
 /* Oyuncu yazarken ya da kaydırırken çekim yapılmaz: bir çekim zayıf cihazda
    bir kareyi aşabiliyor ve arama kutusu takılıyordu. */
 ["input","keydown","touchmove","wheel","scroll"].forEach(t=>
@@ -33,9 +37,16 @@ function _ftHazirMi(){
 function aracFoto(c, ayrinti){
   if(!c || !c.model || !_ftHazirMi()) return aracGorsel(c, ayrinti);
   const k=_ftAnahtar(c), url=FOTO.bellek.get(k);
-  if(url) return `<img class="aracfoto" src="${url}" alt="${c.model.n}" draggable="false">`;
+  if(url){
+    // en son kullanılan sona: sınır aşılınca hep en eskisi düşsün (LRU)
+    FOTO.bellek.delete(k); FOTO.bellek.set(k, url);
+    if(c.id!=null) FOTO.son.set(c.id, url);
+    return `<img class="aracfoto" src="${url}" alt="${c.model.n}" draggable="false">`;
+  }
   _ftSiraya(c, k);
-  return `<span class="fotobekle" data-foto="${encodeURIComponent(k)}">${aracGorsel(c, ayrinti)}</span>`;
+  const eski = c.id!=null ? FOTO.son.get(c.id) : null;
+  const yer = eski ? `<img class="aracfoto" src="${eski}" alt="${c.model.n}" draggable="false">` : aracGorsel(c, ayrinti);
+  return `<span class="fotobekle${eski?" eskifoto":""}" data-foto="${encodeURIComponent(k)}">${yer}</span>`;
 }
 function _ftSiraya(c, k){
   if(FOTO.sira.some(x=>x.k===k)) return;
@@ -93,11 +104,15 @@ function _ftCalis(){
   try{ url=_ftCek(is.c); }catch(e){ FOTO.kapali=true; }
   if(url){
     FOTO.bellek.set(is.k, url);
+    if(is.c.id!=null) FOTO.son.set(is.c.id, url);
+    if(FOTO.son.size>FOTO.sinir*2) FOTO.son.delete(FOTO.son.keys().next().value);
     if(FOTO.bellek.size>FOTO.sinir) FOTO.bellek.delete(FOTO.bellek.keys().next().value);
     const sec=`.fotobekle[data-foto="${CSS.escape(encodeURIComponent(is.k))}"]`;
     document.querySelectorAll(sec).forEach(el=>{
       const img=document.createElement("img");
-      img.className="aracfoto yeni"; img.src=url; img.alt=""; img.draggable=false;
+      // eski fotoğrafın yerine geçen yenisi zıplamadan, yumuşakça gelsin
+      img.className=el.classList.contains("eskifoto")?"aracfoto":"aracfoto yeni";
+      img.src=url; img.alt=""; img.draggable=false;
       el.replaceWith(img);
     });
   }

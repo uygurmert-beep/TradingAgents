@@ -74,7 +74,7 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi (112 kontrol)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto (113 kontrol; UX_TOHUM ile pazar değişir)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
@@ -276,6 +276,10 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   değil: aşağı kaydırınca kendiliğinden çıkıyor. JS ile gizle/göster yapma —
   kokpit boyu değişince içerik zıplıyor. Güvenli alan şeridin üstünde, eksi
   alt pay kokpitin dolgusuyla örtüşüyor.
+- **Fotoğraf anahtarı aracın görünen durumunu içeriyor** (ekspertiz, tamir,
+  cila). Anahtar değişince yeni çekim bitene dek `FOTO.son` (araç id → son
+  fotoğraf) yerinde kalıyor; 2B çizime düşmek "resim değişip geri geliyor"
+  diye görünüyordu. Önbellek LRU: sık görülen aracın fotoğrafı düşmesin.
 - **3B fotoğraf kuyruğu boşta çalışıyor.** `foto.js` oyuncu yazarken/kaydırırken
   çekim yapmıyor (`requestIdleCallback`). Testte ya da mağaza görüntüsünde
   fotoğraf bekleniyorsa `.fotobekle` kalmayana dek yokla, sabit süre bekleme.

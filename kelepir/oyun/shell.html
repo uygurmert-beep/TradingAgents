@@ -1639,7 +1639,10 @@ body{background:var(--bg)}
 /* yer çizgisi: araç havada durmasın */
 .sahne:after{content:"";position:absolute;left:0;right:0;bottom:16px;height:1px;
   background:linear-gradient(90deg,transparent,rgba(20,24,28,0.08) 22%,rgba(20,24,28,0.08) 78%,transparent)}
-.sahne-arac{position:absolute;right:-7%;bottom:4px;width:66%;opacity:.2;pointer-events:none}
+/* Araç sayfasındaki 3B fotoğrafın aynısı: pazarlığa geçince gri 2B silüete
+   dönüp çıkışta fotoğrafa geri gelmesi "resim değişti" diye okunuyordu. */
+.sahne-arac{position:absolute;right:-6%;bottom:2px;width:64%;opacity:.5;pointer-events:none}
+.sahne-arac img.aracfoto,.sahne-arac .fotobekle{width:100%;display:block;aspect-ratio:3/1;object-fit:contain}
 .sahne-arac svg.aracsvg{width:100%;height:auto;display:block;
   filter:drop-shadow(0 10px 16px rgba(20,24,28,0.18))}
 .sahne-on{position:relative;z-index:2;display:flex;flex-direction:column;gap:10px;min-height:124px}
@@ -1698,6 +1701,8 @@ body{background:var(--bg)}
    kart boyu oynamasın. */
 .kart-sahne{aspect-ratio:3/1;display:flex;align-items:center;justify-content:center;padding:4px 10px 0}
 .kart-sahne .fotobekle{width:100%;display:flex;align-items:center;justify-content:center}
+.fotobekle.eskifoto{width:100%;height:100%}
+.fotobekle.eskifoto img.aracfoto{width:100%;height:100%;object-fit:contain;display:block}
 .kart-sahne img.aracfoto{width:100%;height:100%;object-fit:contain;display:block;
   filter:drop-shadow(0 8px 12px rgba(20,24,28,0.105))}
 .aracsahne img.aracfoto{width:100%;aspect-ratio:3/1;object-fit:contain;display:block}
