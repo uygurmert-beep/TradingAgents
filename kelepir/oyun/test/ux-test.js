@@ -550,6 +550,43 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   });
   t('gün raporundan partiye tek dokunuşla gidiliyor', rk===true);
 
+  /* ---------- 10) 3B model profili: 2B ile tek kaynak ---------- */
+  console.log('11) 3B profil');
+  const p3=await p.evaluate(()=>{
+    if(typeof W3D_profil3B!=="function") return {yok:true};
+    const anah=new Set(), segFark={}, eksik=[];
+    for(const m of MODELS){
+      const pr=W3D_profil3B(m), im=W3D_imza3B(m);
+      anah.add([pr.L,pr.roof,pr.hood,pr.rakeF].join(","));
+      if(!pr.L||!pr.roof||!im.far||!im.izgaraTip) eksik.push(m.n);
+      (segFark[m.seg]=segFark[m.seg]||[]).push(pr.L);
+    }
+    const ort=a=>a.reduce((x,y)=>x+y,0)/a.length;
+    return {farkli:anah.size, toplam:MODELS.length, eksik,
+            hatchKisa: ort(segFark.hatch)<ort(segFark.sedan), luxUzun: ort(segFark.lux)>ort(segFark.sedan)};
+  });
+  t(`her modelin kendi 3B gövdesi var (${p3.farkli}/${p3.toplam})`, !p3.yok && p3.farkli>=p3.toplam*0.95);
+  t('her modelin far ve ızgara imzası var', !p3.yok && p3.eksik.length===0);
+  t('segment boyları gerçekçi sırada (hatch < sedan < lüks)', p3.hatchKisa && p3.luxUzun);
+  const tasma=await p.evaluate(async()=>{
+    /* Far/ızgara panelleri burnun 12 cm'den gerisine, iç taban gövdenin
+       dışına taşmasın — çamurluktaki "pençe izi" ve kapı altındaki
+       kahverengi bant bu iki taşmaydı. Sahne yoksa 3B'yi açıp ölç. */
+    if(!window.W3D_buildCar){ toggle3d(true); await new Promise(r=>setTimeout(r,2500)); }
+    const sorun=[];
+    for(const m of MODELS.filter((_,i)=>i%10===0)){
+      const c=genCar(); c.model=m; c.faults=[];
+      const car=W3D_buildCar(c,true), L=car.userData.size.l, xAt=car.userData.xAt;
+      for(const ch of car.children){
+        if(!/^(far|farA|izgara)$/.test(ch.name)) continue;
+        const pz=ch.geometry.attributes.position;
+        for(let i=0;i<pz.count;i++) if(pz.getZ(i)>-L/2+.15){ sorun.push(m.n+" "+ch.name); break; }
+      }
+    }
+    return sorun;
+  });
+  t(`far ve ızgara burnun önünde kalıyor (${tasma.length} sorun)`, tasma.length===0);
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;
   await b.close();

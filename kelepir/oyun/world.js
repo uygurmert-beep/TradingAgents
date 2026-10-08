@@ -128,7 +128,7 @@ const W3D=(()=>{
         g.beginPath(); g.moveTo(6+Math.random()*24, y);
         g.lineTo(64+Math.random()*58, y+(Math.random()-.5)*14); g.stroke();
       }
-      g.fillStyle="rgba(20,22,26,.30)";
+      g.fillStyle="rgba(20,22,26,.08)";
       g.beginPath(); g.ellipse(64,64,44,26,0,0,7); g.fill();
     });
   }
@@ -136,15 +136,15 @@ const W3D=(()=>{
     return tex("gocuk", 128, 128, (g)=>{
       g.clearRect(0,0,128,128);
       const gr=g.createRadialGradient(60,68,3,64,64,58);
-      gr.addColorStop(0,"rgba(6,8,11,.78)");
-      gr.addColorStop(.45,"rgba(12,15,19,.46)");
-      gr.addColorStop(.82,"rgba(16,19,24,.16)");
+      /* Göçük bir gölge çukuru ve üst kenarında ışık yayıdır. Eskiden üstüne
+         iki kalın siyah çizgi çiziliyordu; ön çamurlukta farın yanına düşünce
+         araç pençe izi yemiş gibi görünüyordu. */
+      gr.addColorStop(0,"rgba(6,8,11,.38)");
+      gr.addColorStop(.45,"rgba(12,15,19,.22)");
+      gr.addColorStop(.82,"rgba(16,19,24,.08)");
       gr.addColorStop(1,"rgba(0,0,0,0)");
       g.fillStyle=gr; g.beginPath(); g.ellipse(64,64,58,44,0,0,7); g.fill();
-      g.strokeStyle="rgba(10,12,16,.62)"; g.lineWidth=3.5; g.lineCap="round";
-      g.beginPath(); g.moveTo(30,54); g.lineTo(72,72); g.stroke();
-      g.beginPath(); g.moveTo(38,78); g.lineTo(88,62); g.stroke();
-      g.strokeStyle="rgba(214,222,230,.28)"; g.lineWidth=2;
+      g.strokeStyle="rgba(214,222,230,.30)"; g.lineWidth=2;
       g.beginPath(); g.arc(64,76,30,Math.PI*1.18,Math.PI*1.82); g.stroke();
     });
   }
@@ -413,15 +413,36 @@ const W3D=(()=>{
   function matBoya(hex, parlak){
     const c=new THREE.Color(hex);
     const parlaklik=(c.r*.299+c.g*.587+c.b*.114);          // 0 koyu, 1 açık
-    const yans=0.31-0.11*parlaklik;                         // .20 … .31
+    /* Yansıma eskiden .20–.31'di: ortam dokusundaki çim bandı kavisli
+       panellerde yeşil lekeler halinde yansıyor, düz renkli bir panelvan
+       kamuflaj boyalı gibi görünüyordu. Parlaklık spekülerden geliyor. */
+    const yans=0.17-0.06*parlaklik;                         // .11 … .17
     return new THREE.MeshPhongMaterial({color:hex,
       shininess:parlak===undefined?96:parlak,
       specular:0x5A646E, envMap:ortamTex(),
       reflectivity:yans, combine:THREE.MixOperation});
   }
+  /* Krom için ayrı, nötr bir stüdyo ortamı. Sahne ortamında çim bandı
+     var; .92 yansıtıcılıkla krom ızgara ve tamponlar yeşil görünüyordu. */
+  function kromOrtamTex(){
+    if(texCache.__kromEnv) return texCache.__kromEnv;
+    const W=512, H=256, c=document.createElement("canvas"); c.width=W; c.height=H;
+    const g=c.getContext("2d");
+    const gr=g.createLinearGradient(0,0,0,H);
+    gr.addColorStop(0,"#F4F6F8"); gr.addColorStop(.40,"#C9CFD5"); gr.addColorStop(.49,"#7E868E");
+    gr.addColorStop(.51,"#2A2F35"); gr.addColorStop(.70,"#5A6168"); gr.addColorStop(1,"#3A4046");
+    g.fillStyle=gr; g.fillRect(0,0,W,H);
+    // yumuşak kutu ışıkları: kromda parlak şeritler
+    g.fillStyle="rgba(255,255,255,.85)";
+    for(const x of [.12,.47,.80]) g.fillRect(W*x, H*.10, W*.07, H*.20);
+    const t=new THREE.CanvasTexture(c);
+    t.mapping=THREE.EquirectangularReflectionMapping;
+    if(THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding;
+    return (texCache.__kromEnv=t);
+  }
   function matKrom(){
-    return new THREE.MeshPhongMaterial({color:0xC9D0D6, shininess:180, specular:0xFFFFFF,
-      envMap:ortamTex(), reflectivity:.92, combine:THREE.MixOperation});
+    return new THREE.MeshPhongMaterial({color:0xD3D8DD, shininess:180, specular:0xFFFFFF,
+      envMap:kromOrtamTex(), reflectivity:.80, combine:THREE.MixOperation});
   }
   function matCam(koyu){
     return new THREE.MeshPhongMaterial({color:koyu?0x243038:0x3D5059, transparent:true,
@@ -459,6 +480,146 @@ const W3D=(()=>{
       for(let i=0;i<3;i++){ g.beginPath(); g.arc(24+i*38,32,11,0,7); g.fill(); }
       g.fillStyle="rgba(140,170,195,.55)";
       for(let i=0;i<3;i++){ g.beginPath(); g.arc(24+i*38,32,6,0,7); g.fill(); }
+    });
+  }
+  /* ==================================================================
+     FAR VE IZGARA DOKULARI
+     Eskiden far, koyu bir kutunun içinde açık mavi bir gradyan ve üç beyaz
+     daireydi; ızgara her araçta aynı petek doku üstüne geçirilmiş krom
+     çubuklardı — ön yüz kafes gibi duruyordu. Artık ikisi de modelin 2B
+     kimliğindeki aileye göre çiziliyor (far: dilim / bumerang / L / ince;
+     ızgara: trapez / petek / çubuk / kapalı / yarık + marka ızgaraları),
+     kenarı dokunun saydamlığıyla kesiliyor: far dikdörtgen değil kendi
+     biçiminde. Tek tuval, model başına bir kez; çizim maliyeti yok. */
+  function _yuvarlakYol(g,x,y,w,h,r){
+    g.beginPath(); g.moveTo(x+r,y); g.lineTo(x+w-r,y); g.quadraticCurveTo(x+w,y,x+w,y+r);
+    g.lineTo(x+w,y+h-r); g.quadraticCurveTo(x+w,y+h,x+w-r,y+h); g.lineTo(x+r,y+h);
+    g.quadraticCurveTo(x,y+h,x,y+h-r); g.lineTo(x,y+r); g.quadraticCurveTo(x,y,x+r,y); g.closePath();
+  }
+  function _farSekil(g,tip,W,H){
+    // dış sınır: iç kenar (merkeze bakan) solda, dış kenar sağda
+    g.beginPath();
+    if(tip==="bumerang"){ g.moveTo(W*.02,H*.30); g.lineTo(W*.70,H*.04); g.quadraticCurveTo(W*.99,H*.02,W*.98,H*.40);
+      g.lineTo(W*.94,H*.92); g.lineTo(W*.30,H*.96); g.quadraticCurveTo(W*.04,H*.90,W*.02,H*.30); }
+    else if(tip==="ince"){ g.moveTo(W*.02,H*.30); g.lineTo(W*.86,H*.06); g.quadraticCurveTo(W*.99,H*.06,W*.98,H*.40);
+      g.lineTo(W*.96,H*.86); g.lineTo(W*.10,H*.94); g.quadraticCurveTo(W*.01,H*.90,W*.02,H*.30); }
+    else if(tip==="L"){ _yuvarlakYol(g,W*.02,H*.06,W*.96,H*.88,H*.18); return; }
+    else { _yuvarlakYol(g,W*.02,H*.08,W*.96,H*.84,H*.10); return; }   // dilim
+    g.closePath();
+  }
+  function _projektor(g,x,y,r){
+    const yan=g.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);
+    yan.addColorStop(0,"#F2F7FB"); yan.addColorStop(.35,"#9DB0BF"); yan.addColorStop(.75,"#2B3239"); yan.addColorStop(1,"#C7D0D8");
+    g.fillStyle=yan; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+    g.strokeStyle="rgba(230,236,242,.9)"; g.lineWidth=r*.16; g.beginPath(); g.arc(x,y,r*.92,0,7); g.stroke();
+    g.fillStyle="rgba(255,255,255,.95)"; g.beginPath(); g.ellipse(x-r*.35,y-r*.38,r*.22,r*.12,-.6,0,7); g.fill();
+  }
+  function _reflektor(g,x,y,r){
+    const yan=g.createRadialGradient(x,y,r*.05,x,y,r);
+    yan.addColorStop(0,"#FFFFFF"); yan.addColorStop(.18,"#E6EDF2"); yan.addColorStop(.55,"#9EAAB4"); yan.addColorStop(1,"#D8E0E6");
+    g.fillStyle=yan; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+    g.strokeStyle="rgba(120,132,142,.6)"; g.lineWidth=1.2;
+    for(let k=1;k<4;k++){ g.beginPath(); g.arc(x,y,r*k/4,0,7); g.stroke(); }
+  }
+  function farTex(tip, ayna){
+    tip=tip||"dilim";
+    return tex("far2"+tip+(ayna?"A":""),256,128,(g,W,H)=>{
+      g.clearRect(0,0,W,H);
+      if(ayna){ g.translate(W,0); g.scale(-1,1); }
+      g.save(); _farSekil(g,tip,W,H); g.clip();
+      // gövde içi: koyu krom çanak
+      const ic=g.createLinearGradient(0,0,0,H);
+      ic.addColorStop(0,"#3B434B"); ic.addColorStop(.5,"#161B20"); ic.addColorStop(1,"#2C3339");
+      g.fillStyle=ic; g.fillRect(0,0,W,H);
+      if(tip==="dilim"){
+        _reflektor(g,W*.30,H*.52,H*.30); _reflektor(g,W*.62,H*.52,H*.26);
+        g.fillStyle="#E8A13A"; g.fillRect(W*.82,H*.22,W*.13,H*.58);
+        g.fillStyle="rgba(255,236,190,.55)"; g.fillRect(W*.84,H*.26,W*.03,H*.50);
+      }else if(tip==="bumerang"){
+        _projektor(g,W*.30,H*.58,H*.24); _reflektor(g,W*.62,H*.58,H*.20);
+        // bumerang gündüz farı: üst kenar boyunca, dış köşede aşağı kıvrılıyor
+        g.strokeStyle="#F4FAFF"; g.lineCap="round"; g.lineWidth=H*.07;
+        g.shadowColor="rgba(200,230,255,.9)"; g.shadowBlur=10;
+        g.beginPath(); g.moveTo(W*.10,H*.30); g.lineTo(W*.72,H*.14); g.quadraticCurveTo(W*.92,H*.12,W*.90,H*.42); g.stroke();
+        g.shadowBlur=0; g.fillStyle="#E8A13A"; g.fillRect(W*.80,H*.62,W*.12,H*.16);
+      }else if(tip==="L"){
+        _projektor(g,W*.40,H*.50,H*.25); _projektor(g,W*.66,H*.50,H*.20);
+        g.strokeStyle="#F4FAFF"; g.lineCap="round"; g.lineWidth=H*.075;
+        g.shadowColor="rgba(200,230,255,.9)"; g.shadowBlur=10;
+        g.beginPath(); g.moveTo(W*.12,H*.20); g.lineTo(W*.12,H*.80); g.lineTo(W*.86,H*.80); g.stroke();
+        g.shadowBlur=0; g.fillStyle="#E8A13A"; g.fillRect(W*.84,H*.16,W*.10,H*.14);
+      }else{ // ince
+        for(const x of [.38,.54,.70]){ g.fillStyle="#1E252B"; _yuvarlakYol(g,W*x-H*.13,H*.38,H*.26,H*.30,4); g.fill();
+          _projektor(g,W*x,H*.53,H*.11); }
+        g.strokeStyle="#F6FBFF"; g.lineCap="round"; g.lineWidth=H*.08;
+        g.shadowColor="rgba(205,232,255,.95)"; g.shadowBlur=12;
+        g.beginPath(); g.moveTo(W*.06,H*.30); g.lineTo(W*.90,H*.12); g.stroke();
+        g.shadowBlur=0; g.fillStyle="#E8A13A"; g.fillRect(W*.86,H*.52,W*.09,H*.22);
+      }
+      // dış cam: üstten yumuşak parlama
+      const cam=g.createLinearGradient(0,0,0,H*.5);
+      cam.addColorStop(0,"rgba(255,255,255,.30)"); cam.addColorStop(1,"rgba(255,255,255,0)");
+      g.fillStyle=cam; g.fillRect(0,0,W,H*.5);
+      g.restore();
+      // ince koyu çerçeve
+      g.strokeStyle="rgba(10,12,15,.85)"; g.lineWidth=4; _farSekil(g,tip,W,H); g.stroke();
+    });
+  }
+  /** Izgara yüzü. tip: trapez|petek|cubuk|kapali|yarik|bobrek|yildiz|bar */
+  function izgaraTex(tip, krom){
+    return tex("izg"+tip+(krom?"K":""),256,128,(g,W,H)=>{
+      g.clearRect(0,0,W,H);
+      const kromRenk=(y0,y1)=>{ const k=g.createLinearGradient(0,y0,0,y1);
+        k.addColorStop(0,"#F6F8FA"); k.addColorStop(.45,"#9BA4AC"); k.addColorStop(.55,"#59616A"); k.addColorStop(1,"#DDE2E6"); return k; };
+      const cerceve=krom?kromRenk(0,H):"#20262C";
+      const delik=()=>{ const d=g.createLinearGradient(0,0,0,H); d.addColorStop(0,"#05070A"); d.addColorStop(1,"#14191E"); return d; };
+      const petek=(x,y,w,h,r)=>{
+        g.save(); g.beginPath(); g.rect(x,y,w,h); g.clip(); g.fillStyle=delik(); g.fillRect(x,y,w,h);
+        g.strokeStyle="#3E464E"; g.lineWidth=2;
+        for(let yy=y;yy<y+h+r;yy+=r*1.5) for(let xx=x;xx<x+w+r;xx+=r*1.74){
+          const ox=(Math.round((yy-y)/(r*1.5))%2)?r*.87:0; g.beginPath();
+          for(let k=0;k<6;k++){ const a=Math.PI/3*k+Math.PI/6; const px=xx+ox+Math.cos(a)*r, py=yy+Math.sin(a)*r; k?g.lineTo(px,py):g.moveTo(px,py); }
+          g.closePath(); g.stroke(); }
+        // petek hücrelerinin üst kenarında ışık
+        g.strokeStyle="rgba(170,180,190,.25)"; g.lineWidth=1;
+        for(let yy=y;yy<y+h;yy+=r*1.5){ g.beginPath(); g.moveTo(x,yy+1); g.lineTo(x+w,yy+1); g.stroke(); }
+        g.restore();
+      };
+      const yatayCubuk=(x,y,w,h,n)=>{
+        g.fillStyle=delik(); g.fillRect(x,y,w,h);
+        for(let i=0;i<n;i++){ const yy=y+h*(i+.5)/n-h*.08/2*1; g.fillStyle=krom?kromRenk(yy,yy+h*.10):"#3A4249"; g.fillRect(x,yy,w,h*.10); }
+      };
+      if(tip==="bobrek"){
+        for(const cx of [W*.27,W*.73]){
+          g.save(); _yuvarlakYol(g,cx-W*.21,H*.06,W*.42,H*.88,H*.30); g.clip();
+          g.fillStyle=delik(); g.fillRect(0,0,W,H);
+          for(let i=0;i<9;i++){ const x=cx-W*.19+i*W*.047; g.fillStyle=krom?kromRenk(0,H):"#3A4249"; g.fillRect(x,0,W*.012,H); }
+          g.restore();
+          g.strokeStyle=cerceve; g.lineWidth=7; _yuvarlakYol(g,cx-W*.21,H*.06,W*.42,H*.88,H*.30); g.stroke();
+        }
+        return;
+      }
+      let yol;
+      if(tip==="trapez"||tip==="yildiz") yol=()=>{ g.beginPath(); g.moveTo(W*.12,H*.06); g.lineTo(W*.88,H*.06);
+        g.quadraticCurveTo(W*.97,H*.06,W*.95,H*.30); g.lineTo(W*.86,H*.90); g.quadraticCurveTo(W*.84,H*.96,W*.76,H*.96);
+        g.lineTo(W*.24,H*.96); g.quadraticCurveTo(W*.16,H*.96,W*.14,H*.90); g.lineTo(W*.05,H*.30); g.quadraticCurveTo(W*.03,H*.06,W*.12,H*.06); g.closePath(); };
+      else if(tip==="yarik") yol=()=>_yuvarlakYol(g,W*.04,H*.36,W*.92,H*.28,H*.12);
+      else yol=()=>_yuvarlakYol(g,W*.03,H*.08,W*.94,H*.84,H*.14);
+      g.save(); yol(); g.clip();
+      if(tip==="petek"||tip==="trapez") petek(0,0,W,H,9);
+      else if(tip==="cubuk") yatayCubuk(0,0,W,H,4);
+      else if(tip==="yildiz"){ g.fillStyle=delik(); g.fillRect(0,0,W,H);
+        for(let i=0;i<2;i++){ const yy=H*(.36+i*.30); g.fillStyle=kromRenk(yy,yy+H*.09); g.fillRect(0,yy,W,H*.09); } }
+      else if(tip==="kapali"){ const k=g.createLinearGradient(0,0,0,H); k.addColorStop(0,"#2C3238"); k.addColorStop(.5,"#13171B"); k.addColorStop(1,"#262C31");
+        g.fillStyle=k; g.fillRect(0,0,W,H); g.fillStyle="rgba(255,255,255,.10)"; g.fillRect(0,H*.12,W,H*.06); }
+      else if(tip==="yarik") yatayCubuk(0,0,W,H,1);
+      else { // bar — klasik: ince dikey + yatay krom kafes
+        g.fillStyle=delik(); g.fillRect(0,0,W,H);
+        for(let i=0;i<14;i++){ g.fillStyle=krom?kromRenk(0,H):"#3A4249"; g.fillRect(W*(i+.5)/14,0,W*.008,H); }
+        for(let i=0;i<3;i++){ const yy=H*(i+.5)/3; g.fillStyle=krom?kromRenk(yy,yy+H*.07):"#3A4249"; g.fillRect(0,yy,W,H*.07); }
+      }
+      g.restore();
+      g.strokeStyle=cerceve; g.lineWidth=7; yol(); g.stroke();
     });
   }
   function stopTex(){
@@ -756,49 +917,89 @@ const W3D=(()=>{
   }
 
   /* Her model için yandan profil. Değerler metre; z ekseni uzunluk (ön = eksi). */
-  const SIL={
-    "Hanjo H20":   {L:4.04,W:1.75,cls:"hatch", hood:.88, roof:1.51, rakeF:.60, rearZ:.13, deck:1.30, tail:.82, wr:.315},
-    "Rivelle Rix":    {L:4.05,W:1.75,cls:"hatch", hood:.86, roof:1.46, rakeF:.66, rearZ:.14, deck:1.22, tail:.80, wr:.315},
-    "Dovra Vela HB":   {L:4.37,W:1.80,cls:"hatch", hood:.90, roof:1.51, rakeF:.62, rearZ:.12, deck:1.28, tail:.84, wr:.325},
-    "Orvell Lumen":    {L:4.37,W:1.82,cls:"hatch", hood:.88, roof:1.47, rakeF:.66, rearZ:.15, deck:1.22, tail:.82, wr:.325},
-    "Dovra Vela Sedan":{L:4.53,W:1.80,cls:"sedan", hood:.90, roof:1.49, rakeF:.60, rearZ:.30, deck:1.02, tail:.88, wr:.325},
-    "Perrin 310":    {L:4.44,W:1.77,cls:"sedan", hood:.90, roof:1.51, rakeF:.56, rearZ:.31, deck:1.05, tail:.90, wr:.315},
-    "Harlow Foxa":   {L:4.53,W:1.83,cls:"sedan", hood:.88, roof:1.47, rakeF:.62, rearZ:.30, deck:1.00, tail:.86, wr:.325},
-    "Tanaro Sera":  {L:4.63,W:1.79,cls:"sedan", hood:.88, roof:1.45, rakeF:.64, rearZ:.31, deck:.99,  tail:.86, wr:.325},
-    "Sakuda Vero":   {L:4.65,W:1.81,cls:"sedan", hood:.82, roof:1.39, rakeF:.76, rearZ:.24, deck:.97,  tail:.82, wr:.325, fastback:1},
-    "Oberon Verda":{L:4.77,W:1.84,cls:"sedan",hood:.92, roof:1.47, rakeF:.58, rearZ:.32, deck:1.04, tail:.90, wr:.335, formal:1},
-    "Hessler H3":      {L:4.71,W:1.82,cls:"sedan", hood:.86, roof:1.41, rakeF:.68, rearZ:.28, deck:.98,  tail:.84, wr:.335, uzunKaput:1},
-    "Steinmann S200":   {L:4.92,W:1.86,cls:"sedan", hood:.90, roof:1.46, rakeF:.64, rearZ:.30, deck:1.02, tail:.88, wr:.345, uzunKaput:1, formal:1},
-    "Aureon A40":       {L:4.73,W:1.85,cls:"sedan", hood:.88, roof:1.42, rakeF:.66, rearZ:.29, deck:.98,  tail:.86, wr:.335},
-    "Kestrel Ridge":  {L:4.34,W:1.82,cls:"suv",   hood:1.06,roof:1.71, rakeF:.54, rearZ:.13, deck:1.52, tail:1.04,wr:.375, kaba:1},
-    "Norimo Kite":  {L:4.39,W:1.83,cls:"suv",   hood:1.02,roof:1.63, rakeF:.62, rearZ:.14, deck:1.42, tail:1.00,wr:.365},
-    "Oberon Tora":{L:4.23,W:1.84,cls:"suv",  hood:1.02,roof:1.59, rakeF:.58, rearZ:.13, deck:1.40, tail:1.00,wr:.365},
-    "Harlow Vanta": {L:5.53,W:2.00,cls:"van",   hood:1.22,roof:2.30, rakeF:.50, rearZ:.04, deck:2.24, tail:1.70,wr:.375},
-    "Oberon Haul":{L:4.41,W:1.80,cls:"van",  hood:1.04,roof:1.86, rakeF:.56, rearZ:.05, deck:1.80, tail:1.32,wr:.335},
-    "Brickley Sabre":   {L:4.24,W:1.65,cls:"sedan", hood:.90, roof:1.45, rakeF:.42, rearZ:.30, deck:1.02, tail:.92, wr:.315, dik:1},
-    "Vernon Mk1":     {L:4.07,W:1.60,cls:"sedan", hood:.92, roof:1.47, rakeF:.36, rearZ:.29, deck:1.04, tail:.94, wr:.305, dik:1},
-    "Steinmann 195":   {L:4.42,W:1.70,cls:"sedan", hood:.88, roof:1.43, rakeF:.48, rearZ:.31, deck:1.01, tail:.90, wr:.325, dik:1, formal:1},
-    /* --- ikinci parti --- */
-    "Hanjo Mirren":    {L:3.86,W:1.70,cls:"hatch", hood:.84, roof:1.49, rakeF:.58, rearZ:.12, deck:1.30, tail:.80, wr:.305},
-    "Sakuda Pebble":   {L:3.94,W:1.72,cls:"hatch", hood:.82, roof:1.54, rakeF:.54, rearZ:.11, deck:1.34, tail:.78, wr:.300},
-    "Perrin 275":      {L:4.22,W:1.76,cls:"hatch", hood:.88, roof:1.46, rakeF:.68, rearZ:.14, deck:1.20, tail:.82, wr:.315},
-    "Kestrel Avon":    {L:4.68,W:1.84,cls:"sedan", hood:.90, roof:1.46, rakeF:.62, rearZ:.30, deck:1.00, tail:.88, wr:.330},
-    "Norimo Celis":    {L:4.74,W:1.83,cls:"sedan", hood:.88, roof:1.44, rakeF:.66, rearZ:.29, deck:.98,  tail:.86, wr:.330},
-    "Rivelle Marne":   {L:4.49,W:1.79,cls:"sedan", hood:.90, roof:1.50, rakeF:.56, rearZ:.31, deck:1.04, tail:.90, wr:.320},
-    "Aureon Arden":    {L:4.62,W:1.82,cls:"sedan", hood:.86, roof:1.41, rakeF:.70, rearZ:.26, deck:.98,  tail:.84, wr:.330, fastback:1},
-    "Dovra Tarn":      {L:4.46,W:1.85,cls:"suv",   hood:1.00,roof:1.66, rakeF:.60, rearZ:.13, deck:1.44, tail:1.00,wr:.368},
-    "Tanaro Pine":     {L:4.60,W:1.86,cls:"suv",   hood:1.02,roof:1.70, rakeF:.56, rearZ:.13, deck:1.50, tail:1.04,wr:.372},
-    "Harlow Bluff":    {L:4.80,W:1.92,cls:"suv",   hood:1.08,roof:1.75, rakeF:.52, rearZ:.12, deck:1.56, tail:1.08,wr:.385, kaba:1},
-    "Hanjo Ridgeway":  {L:4.28,W:1.80,cls:"suv",   hood:.98, roof:1.62, rakeF:.60, rearZ:.14, deck:1.40, tail:.98, wr:.360},
-    "Hessler Crest":   {L:4.86,W:1.94,cls:"suv",   hood:1.06,roof:1.70, rakeF:.58, rearZ:.13, deck:1.48, tail:1.02,wr:.382, uzunKaput:1},
-    "Steinmann Sovereign":{L:5.20,W:1.90,cls:"sedan",hood:.94,roof:1.48,rakeF:.62,rearZ:.31, deck:1.04, tail:.90, wr:.350, uzunKaput:1, formal:1},
-    "Oberon Regenta":    {L:4.95,W:1.86,cls:"sedan", hood:.92, roof:1.46, rakeF:.60, rearZ:.31, deck:1.03, tail:.90, wr:.342, formal:1},
-    "Vernon Coupe GT": {L:4.58,W:1.88,cls:"sedan", hood:.94, roof:1.33, rakeF:.80, rearZ:.20, deck:.94,  tail:.80, wr:.340, fastback:1, uzunKaput:1},
-    "Kestrel Hauler":  {L:5.35,W:1.98,cls:"van",   hood:1.18,roof:2.18, rakeF:.52, rearZ:.04, deck:2.12, tail:1.60,wr:.368},
-    "Norimo Dray":     {L:4.72,W:1.86,cls:"van",   hood:1.08,roof:1.96, rakeF:.54, rearZ:.05, deck:1.90, tail:1.42,wr:.348},
-    "Harlow Starling": {L:4.46,W:1.72,cls:"sedan", hood:.94, roof:1.42, rakeF:.40, rearZ:.30, deck:1.00, tail:.94, wr:.320, dik:1},
-    "Tanaro 640":      {L:4.18,W:1.64,cls:"sedan", hood:.88, roof:1.44, rakeF:.44, rearZ:.30, deck:1.02, tail:.90, wr:.310, dik:1}
+  /* ==================================================================
+     MODEL PROFİLİ — 2B ile TEK KAYNAK
+     Burada eskiden model adıyla anahtarlanmış iki elle yazılmış tablo
+     vardı (SIL: gövde ölçüleri, IMZA: ızgara/krom/far). Model tablosu B
+     seviyesi isimlere geçince ("Hanjo H20" → "Hanseul i10 1.0 Benzin")
+     tablolar kimseye eşleşmez oldu; 150 modelin hepsi segmentinin tek
+     varsayılan gövdesine düştü — her hatchback aynı, SUV station gibi,
+     hiçbir markanın ızgarası yok — ve hiçbir test bunu görmedi.
+
+     Artık 3B profil, 2B çizimin kullandığı aracKimlik()'ten türetiliyor:
+     aynı tohum, aynı dönem, aynı oranlar. Model adı değişse de iki görünüm
+     birlikte değişiyor; test/ux-test.js her modelin kendi profilini
+     aldığını ölçüyor. Ölçü bantları metre cinsinden, segmentin gerçek
+     araç aralığından (B hatch 3,85–4,35 m, D sedan 4,40–4,80 m …). */
+  const PROFIL_BANT={
+    hatch: {L:[3.85,4.35],W:[1.70,1.80],hood:[.84,.92],roof:[1.44,1.52],rakeF:[.56,.68],rearZ:[.18,.24],tail:[.78,.86],wr:[.300,.330],kaput:[.28,.31],deckK:.76,cls:"hatch"},
+    sedan: {L:[4.40,4.80],W:[1.76,1.84],hood:[.86,.92],roof:[1.44,1.50],rakeF:[.58,.66],rearZ:[.26,.30],tail:[.84,.90],wr:[.315,.335],kaput:[.30,.32],cls:"sedan"},
+    lux:   {L:[4.75,5.15],W:[1.84,1.90],hood:[.86,.94],roof:[1.44,1.50],rakeF:[.62,.70],rearZ:[.25,.29],tail:[.84,.90],wr:[.335,.355],kaput:[.32,.34],cls:"sedan"},
+    suv:   {L:[4.15,4.85],W:[1.78,1.94],hood:[.98,1.08],roof:[1.60,1.72],rakeF:[.54,.62],rearZ:[.11,.15],tail:[.96,1.04],wr:[.350,.385],kaput:[.29,.32],deckK:.86,cls:"suv"},
+    ticari:{L:[4.35,4.95],W:[1.80,1.94],hood:[1.02,1.12],roof:[1.80,2.04],rakeF:[.50,.58],rearZ:[.03,.06],tail:[1.20,1.50],wr:[.320,.355],cls:"van"},
+    klasik:{L:[3.95,4.45],W:[1.60,1.70],hood:[.84,.92],roof:[1.40,1.48],rakeF:[.40,.50],rearZ:[.27,.31],tail:[.86,.92],wr:[.290,.315],kaput:[.31,.33],cls:"sedan",dik:1}
   };
+  /* Marka karakteri — yalnızca ızgara ailesi ve krom eğilimi. İsimler B
+     seviyesinde ("ailesi belli, kopyası değil"); ızgara da öyle. */
+  const MARKA_IMZA={
+    Hessler:{grille:"yildiz", chrome:.6, led:"cift"},  Steinmann:{grille:"yildiz", chrome:.75, led:"cift"},
+    Bavera:{grille:"bobrek", chrome:.5, led:"cift"},   Aureon:{grille:"genis", chrome:.55, led:"seritli"},
+    Calvetti:{grille:"genis", chrome:.6},             Vernon:{grille:"bar", chrome:.8},
+    Brickley:{grille:"bar", chrome:1},                Halloway:{grille:"bar", chrome:.9}
+  };
+  const _profilBellek={};
+  const _bant=(r,[a,b],t)=>a+(b-a)*(t==null?r():Math.max(0,Math.min(1,t)));
+  const _oran=(v,[a,b])=>(v-a)/Math.max(1e-6,b-a);
+  function profil3B(m){
+    if(!m) return Object.assign({}, SILVAR.sedan);
+    if(_profilBellek[m.n]) return _profilBellek[m.n];
+    const seg=m.seg, b=PROFIL_BANT[seg]||PROFIL_BANT.sedan;
+    const sk=(typeof AC_ISKELET!=="undefined"&&AC_ISKELET[seg])||null;
+    const k=(typeof aracKimlik==="function") ? aracKimlik(m.n, seg, aracDonem(m)) : null;
+    const r=tohum(_tohumAd(m.n+"|3b"));
+    // 2B kimliğin oranlarını kendi bantlarındaki konumuna çevir: uzun 2B
+    // gövde uzun 3B gövde, büyük 2B teker büyük 3B teker olsun.
+    const t=(alan)=> (k&&sk&&sk[alan]) ? _oran(k[alan==="esik"?"esikH":alan], sk[alan]) : null;
+    const L=_bant(r,b.L,t("boy"));
+    const yuk=(k&&sk) ? (_oran(k.govde,sk.govde)+_oran(k.kabin,sk.kabin))/2 : null;
+    const p={cls:b.cls, L:+L.toFixed(3),
+      W:+_bant(r,b.W,(L-b.L[0])/(b.L[1]-b.L[0])*.7+r()*.3).toFixed(3),
+      hood:+_bant(r,b.hood,t("govde")).toFixed(3),
+      roof:+_bant(r,b.roof,yuk).toFixed(3),
+      rakeF:+_bant(r,b.rakeF,k?_oran(k.aRake,[.30,.70]):null).toFixed(3),
+      rearZ:+_bant(r,b.rearZ,(k&&sk)?_oran(k.cRake,sk.cRake):null).toFixed(3),
+      tail:+_bant(r,b.tail).toFixed(3),
+      wr:+_bant(r,b.wr,t("teker")).toFixed(3)};
+    if(b.kaput) p.kaput=+_bant(r,b.kaput,(k&&sk)?_oran(k.onTas,sk.onTas):null).toFixed(3);
+    // arka güverte yüksekliği kuyruk tipinden: bagajlıda kaputa yakın,
+    // hatch/SUV'da tavanın biraz altı, panelvanda tavanla bir.
+    p.deck = b.cls==="sedan" ? +(p.hood+.10+r()*.06).toFixed(3)
+           : b.cls==="van"   ? +(p.roof-.06).toFixed(3)
+           : +(p.roof*(b.deckK||.85)).toFixed(3);
+    if(b.dik || (k && k.donem<.30)) p.dik=1;
+    if(seg==="lux" && r()<.4) p.formal=1;
+    return (_profilBellek[m.n]=p);
+  }
+  /** Marka + 2B kimlikten imza: ızgara, krom, far, kaplama, tavan rayı. */
+  function imza3B(m){
+    if(!m) return {};
+    const marka=String(m.n).split(" ")[0];
+    const k=(typeof aracKimlik==="function") ? aracKimlik(m.n, m.seg, aracDonem(m)) : {};
+    const izg={trapez:"genis", petek:"genis", cubuk:"cubuk", kapali:"cubuk", yarik:"bar"}[k.izgara]||"genis";
+    const im=Object.assign({grille:izg, chrome:k.krom?1:(m.seg==="lux"?.55:.3)}, MARKA_IMZA[marka]||{});
+    if(k.far==="yuvarlak") im.yuvarlakFar=1;
+    im.far = k.far==="yuvarlak" ? "dilim" : (k.far||"dilim");
+    // marka ızgarası (böbrek/yıldız/bar) 2B ailesini geçersiz kılar
+    im.izgaraTip = {bobrek:"bobrek", yildiz:"yildiz", bar:"bar"}[im.grille] || k.izgara || "trapez";
+    if(k.donem<.35 && !MARKA_IMZA[marka]) im.izgaraTip="bar";
+    if(k.krom || m.seg==="klasik") im.tampon=1;
+    if(k.donem>.72 && !im.led) im.led = (k.far==="ince"||k.far==="L") ? "seritli" : "cift";
+    if(k.rayli) im.ray=1;
+    if(k.kaplama) im.kaplama=1;
+    if(m.seg==="lux") im.ic=0x3A332C;
+    if(m.seg==="klasik") im.ic=0x4E4335;
+    return im;
+  }
   const SILVAR={hatch:{L:4.2,W:1.78,cls:"hatch",hood:.88,roof:1.48,rakeF:.64,rearZ:.13,deck:1.26,tail:.82,wr:.315},
                 sedan:{L:4.6,W:1.82,cls:"sedan",hood:.88,roof:1.45,rakeF:.64,rearZ:.30,deck:1.00,tail:.86,wr:.325},
                 suv:  {L:4.4,W:1.84,cls:"suv",  hood:1.02,roof:1.64,rakeF:.58,rearZ:.13,deck:1.44,tail:1.00,wr:.365},
@@ -807,50 +1008,6 @@ const W3D=(()=>{
                 ticari:{L:5.0,W:1.94,cls:"van", hood:1.12,roof:2.06,rakeF:.54,rearZ:.05,deck:2.00,tail:1.50,wr:.355},
                 klasik:{L:4.2,W:1.66,cls:"sedan",hood:.90,roof:1.45,rakeF:.44,rearZ:.30,deck:1.02,tail:.92,wr:.315,dik:1}};
 
-  /* Marka imzaları: ızgara biçimi, krom oranı, özel donanım */
-  const IMZA={
-    "Hessler H3":      {grille:"bobrek", chrome:.55, ic:0x2A2C30, led:"cift"},
-    "Steinmann S200":   {grille:"yildiz", chrome:.75, ic:0x4A4034, led:"cift"},
-    "Steinmann 195":   {grille:"yildiz", chrome:1, tampon:1, ic:0x574C3C, yuvarlakFar:1},
-    "Aureon A40":       {grille:"genis",  chrome:.6,  ic:0x2C2E32, led:"seritli"},
-    "Oberon Verda":{grille:"cubuk", chrome:.5, led:"seritli"},
-    "Oberon Tora":{grille:"cubuk", chrome:.35, kontrastTavan:0x14171B, led:"seritli"},
-    "Oberon Haul":{grille:"cubuk", chrome:.3},
-    "Kestrel Ridge":  {grille:"cubuk", ray:1, kaplama:1, chrome:.25, led:"cift"},
-    "Norimo Kite":  {grille:"genis", ray:1, chrome:.4, led:"seritli"},
-    "Brickley Sabre":   {grille:"bar", chrome:1, tampon:1, ic:0x4E4335, yuvarlakFar:1},
-    "Vernon Mk1":     {grille:"bar", chrome:1, tampon:1, ic:0x53483A, yuvarlakFar:1},
-    "Harlow Vanta": {grille:"cubuk", chrome:.2, ic:0x24262A},
-    "Harlow Foxa":   {grille:"genis", chrome:.3, led:"seritli"},
-    "Tanaro Sera":  {grille:"genis", chrome:.35, led:"seritli"},
-    "Sakuda Vero":   {grille:"cubuk", chrome:.3, led:"seritli"},
-    "Hanjo H20":   {grille:"genis", chrome:.3},
-    "Orvell Lumen":    {grille:"cubuk", chrome:.35},
-    "Rivelle Rix":    {grille:"genis", chrome:.35},
-    "Perrin 310":    {grille:"genis", chrome:.3},
-    "Dovra Vela HB":   {grille:"cubuk", chrome:.3},
-    "Dovra Vela Sedan":{grille:"cubuk", chrome:.3},
-    /* --- ikinci parti --- */
-    "Hanjo Mirren":    {grille:"genis", chrome:.25},
-    "Sakuda Pebble":   {grille:"cubuk", chrome:.22, led:"seritli"},
-    "Perrin 275":      {grille:"genis", chrome:.3},
-    "Kestrel Avon":    {grille:"cubuk", chrome:.3,  led:"cift"},
-    "Norimo Celis":    {grille:"genis", chrome:.38, led:"seritli"},
-    "Rivelle Marne":   {grille:"genis", chrome:.3},
-    "Aureon Arden":    {grille:"genis", chrome:.55, ic:0x2C2E32, led:"seritli"},
-    "Dovra Tarn":      {grille:"cubuk", ray:1, chrome:.3,  led:"seritli"},
-    "Tanaro Pine":     {grille:"genis", ray:1, chrome:.4,  led:"seritli"},
-    "Harlow Bluff":    {grille:"genis", ray:1, kaplama:1, chrome:.35, kontrastTavan:0x14171B, led:"cift"},
-    "Hanjo Ridgeway":  {grille:"genis", ray:1, chrome:.28},
-    "Hessler Crest":   {grille:"bobrek", chrome:.5, ic:0x2A2C30, led:"cift"},
-    "Steinmann Sovereign":{grille:"yildiz", chrome:.85, ic:0x4A4034, led:"cift"},
-    "Oberon Regenta":    {grille:"cubuk", chrome:.6,  ic:0x3A332A, led:"seritli", formal:1},
-    "Vernon Coupe GT": {grille:"bar",   chrome:.7,  ic:0x50453A, led:"cift"},
-    "Kestrel Hauler":  {grille:"cubuk", chrome:.2,  ic:0x24262A},
-    "Norimo Dray":     {grille:"genis", chrome:.22, ic:0x24262A},
-    "Harlow Starling": {grille:"bar", chrome:1, tampon:1, ic:0x4E4335, yuvarlakFar:1},
-    "Tanaro 640":      {grille:"bar", chrome:1, tampon:1, ic:0x51463A, yuvarlakFar:1}
-  };
 
   const geoCache={};
   function kutu(w,h,d){
@@ -925,10 +1082,13 @@ const W3D=(()=>{
     return g;
   }
   /** Açık ızgara yüzey (cam panelleri). fn(u,v) -> [x,y,z] */
+  /* uv eskiden yoktu: bu yüzeylere giydirilen her doku (far, çizik, pas,
+     göçük) tek bir köşe pikselinden örnekleniyordu — far düz siyah bir
+     levha, hasar dokuları ya görünmez ya düz renk lekesiydi. */
   function yuzey(NU,NV,fn){
-    const poz=[], idx=[];
+    const poz=[], idx=[], uv=[];
     for(let i=0;i<=NU;i++) for(let j=0;j<=NV;j++){
-      const p=fn(i/NU, j/NV); poz.push(p[0],p[1],p[2]);
+      const p=fn(i/NU, j/NV); poz.push(p[0],p[1],p[2]); uv.push(i/NU, j/NV);
     }
     const W=NV+1;
     for(let i=0;i<NU;i++) for(let j=0;j<NV;j++){
@@ -937,6 +1097,7 @@ const W3D=(()=>{
     }
     const g=new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(poz,3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv,2));
     g.setIndex(idx); g.computeVertexNormals();
     return g;
   }
@@ -944,7 +1105,10 @@ const W3D=(()=>{
   function silProfil(s){
     const L=s.L, yarim=L/2;
     const dik=!!s.dik;
-    const kaputZ = -yarim + L*(s.uzunKaput?.44:(s.cls==="van"?.20:.36));
+    /* Ön cam dibinin buruna uzaklığı (ön taşma + kaput). Eskiden sabit
+       .36 (uzun kaputta .44) idi; gerçek araçlarda .29–.34. O değerle kabin
+       kısalıyor, her sedan uzun burunlu bir kupeye dönüyordu. */
+    const kaputZ = -yarim + L*(s.kaput || (s.uzunKaput?.36:(s.cls==="van"?.20:.31)));
     const camUst = kaputZ + s.rakeF;
     const tavanArka = yarim - L*s.rearZ;
     const bagajZ = s.cls==="sedan" ? yarim - L*.06 : yarim - L*.02;
@@ -1001,17 +1165,27 @@ const W3D=(()=>{
       if(z<=yarim-L*.02)   return pr.beltR;
       return pr.beltR - (pr.beltR-pr.kuyruk)*((z-(yarim-L*.02))/(L*.02));
     };
-    const altHat=(z)=>{
+    /* Kesitin tabanı (kemersiz). Eskiden davlumbaz, kesitin TAMAMINI
+       yukarı sıkıştırarak açılıyordu: kemer üstündeki yan yüzey içe ve aşağı
+       katlanıyor, ışık almayan bu katlar çamurlukta siyah pençe izi gibi
+       görünüyordu. Artık kesit hep eşikten kuruluyor, kemer yalnızca onun
+       altına düşen noktaları kemer hattına düzleştiriyor (kemerY). */
+    const altHat0=(z)=>{
       let y=pr.sill;
       // ön/arka tampon altı hafif yükselir (yaklaşma açısı)
       const uc=Math.max(0, (Math.abs(z)-(yarim-L*.075))/(L*.075));
       y+=uc*uc*.085;
+      return Math.min(y, ustHat(z)-.10);
+    };
+    const kemerHat=(z)=>{
+      let y=-1;
       for(const zc of [pr.onZ, pr.arkaZ]){
         const d=Math.abs(z-zc);
         if(d<ra) y=Math.max(y, kemerY + Math.sqrt(ra*ra-d*d));
       }
-      return Math.min(y, ustHat(z)-.10);
+      return y;
     };
+    const altHat=(z)=>Math.min(Math.max(altHat0(z), kemerHat(z)), ustHat(z)-.10);
     const genislik=(z)=>{
       const hw=s.W/2;
       let f=1;
@@ -1032,13 +1206,16 @@ const W3D=(()=>{
     for(const zc of [pr.onZ, pr.arkaZ])
       for(let k=-8;k<=8;k++) zs.add(+Math.max(-yarim,Math.min(yarim, zc+ra*k/8)).toFixed(4));
     for(const z of [pr.kaputZ, pr.camAlt, pr.bagajZ, yarim-.02, yarim]) zs.add(+z.toFixed(4));
-    const list=[...zs].sort((a,b)=>a-b);
+    const sirali=[...zs].sort((a,b)=>a-b);
+    const list=[];
+    for(const z of sirali) if(!list.length || z-list[list.length-1]>.012 || z===yarim) list.push(z);
 
     const kut = s.dik?1:(s.cls==="suv"||s.cls==="van"?.5:0);
     const NC=30, nUst=9+7*kut, nAlt=3.6+3.2*kut;
     const kesitler=list.map(z=>{
-      const yT=ustHat(z), yB=altHat(z), hw=genislik(z);
+      const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
       const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
+      const kh=Math.min(kemerHat(z), yT-.10);
       const pts=[];
       for(let j=0;j<NC;j++){
         const th=2*Math.PI*j/NC;
@@ -1048,12 +1225,12 @@ const W3D=(()=>{
         const ey=Math.sign(st)*Math.pow(Math.abs(st),2/n);
         let fx=1-(.055-.030*kut)*Math.pow(Math.max(0,st),2.2); // omuz daralması
         fx+= .013*Math.exp(-Math.pow((st+.02)/.17,2));     // karakter çizgisi
-        pts.push([hw*ex*fx, cy+hh*ey, z]);
+        pts.push([hw*ex*fx, Math.max(cy+hh*ey, kh), z]);
       }
       return pts;
     });
     const xAt=(z,y)=>{
-      const yT=ustHat(z), yB=altHat(z), hw=genislik(z);
+      const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
       const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
       let ey=(y-cy)/hh; ey=Math.max(-.995,Math.min(.995,ey));
       const n=ey>=0?nUst:nAlt;
@@ -1350,9 +1527,8 @@ const W3D=(()=>{
 
   function buildCar(car, detay){
     const ad=car.model.n;
-    const varsayilan=SILVAR[car.model.seg]||SILVAR.sedan;
-    const s=Object.assign({}, varsayilan, SIL[ad]||{});
-    const imza=IMZA[ad]||{};
+    const s=Object.assign({}, profil3B(car.model));
+    const imza=imza3B(car.model);
     const g=new THREE.Group();
     const pr=silProfil(s);
     const L=s.L, yarim=L/2, R=s.wr, HW=s.W/2;
@@ -1439,7 +1615,10 @@ const W3D=(()=>{
       disk:  new THREE.MeshPhongMaterial({color:0x5A6167, shininess:60, specular:0x8A9298}),
       kaliper:new THREE.MeshPhongMaterial({color:car.model.seg==="lux"?0x8E2A24:0x3A4046, shininess:40}),
       petek: new THREE.MeshPhongMaterial({map:petekTex(), shininess:26, specular:0x2A3036}),
-      far:   new THREE.MeshBasicMaterial({map:farTex()}),
+      far:   new THREE.MeshBasicMaterial({map:farTex(imza.far, false), transparent:true, alphaTest:.45}),
+      farA:  new THREE.MeshBasicMaterial({map:farTex(imza.far, true),  transparent:true, alphaTest:.45}),
+      izgara:new THREE.MeshPhongMaterial({map:izgaraTex(imza.izgaraTip, imza.chrome>=.45), transparent:true, alphaTest:.45,
+               shininess:70, specular:0x5A6670}),
       stop:  new THREE.MeshBasicMaterial({map:stopTex()}),
       led:   new THREE.MeshBasicMaterial({color:0xE9F4FF}),
       sinyal:new THREE.MeshBasicMaterial({color:0xE8A63A}),
@@ -1482,10 +1661,33 @@ const W3D=(()=>{
       if(en<=0 || ax<=en) return x;
       return (x<0?-1:1)*en;
     };
+    /* Ön/arka panel noktası burundan en fazla bu kadar geride olabilir.
+       kirp() genişliği burnun 56 cm gerisine kadar arıyordu; farın dış köşesi
+       ön yüzü aşınca nokta çamurluğun yan yüzeyine, yarım metre geriye
+       yapışıyor ve far çerçevesi çamurlukta siyah bir pençe izi gibi
+       uzanıyordu. Şimdi nokta bu derinliği aşarsa içeri çekiliyor. */
+    const PANEL_DERIN=.12;
+    const onNokta=(x,y)=>{
+      let z=zOn(x,y);
+      if(z>-yarim+PANEL_DERIN && Math.abs(x)>.02){
+        x=Math.sign(x)*Math.min(Math.abs(x), xAt(-yarim+PANEL_DERIN*.8, y)*.97);
+        z=Math.min(zOn(x,y), -yarim+PANEL_DERIN);
+      }
+      return [x,z];
+    };
+    const arkaNokta=(x,y)=>{
+      let z=zArka(x,y);
+      if(z<yarim-PANEL_DERIN && Math.abs(x)>.02){
+        x=Math.sign(x)*Math.min(Math.abs(x), xAt(yarim-PANEL_DERIN*.8, y)*.97);
+        z=Math.max(zArka(x,y), yarim-PANEL_DERIN);
+      }
+      return [x,z];
+    };
     const onPanel=(k, xm, ym, w, h, derz, nu, nv)=>{
       const gg=yuzey(nu||5, nv||3, (u,v)=>{
-        const x=kirp(xm-w/2+w*u, ym-h/2+h*v), y=ym-h/2+h*v;
-        return [x, y, zOn(x,y)-(derz||.012)];
+        const y=ym-h/2+h*v;
+        const [x,z]=onNokta(kirp(xm-w/2+w*u, y), y);
+        return [x, y, z-(derz||.012)];
       });
       const mm=new THREE.Mesh(gg, MAT[k]); mm.name=k;
       if(MAT[k]) MAT[k].side=THREE.DoubleSide;
@@ -1494,8 +1696,9 @@ const W3D=(()=>{
     /** Gövdenin arka yüzeyine yapışan panel. */
     const arkaPanel=(k, xm, ym, w, h, derz, nu, nv)=>{
       const gg=yuzey(nu||5, nv||3, (u,v)=>{
-        const x=xm-w/2+w*u, y=ym-h/2+h*v;
-        return [x, y, zArka(x,y)+(derz||.012)];
+        const y=ym-h/2+h*v;
+        const [x,z]=arkaNokta(xm-w/2+w*u, y);
+        return [x, y, z+(derz||.012)];
       });
       const mm=new THREE.Mesh(gg, MAT[k]); mm.name=k;
       if(MAT[k]) MAT[k].side=THREE.DoubleSide;
@@ -1563,25 +1766,32 @@ const W3D=(()=>{
     KUTU("koyuP", hwCam*1.70,.030,.050, [0, camTepe+.004, pr.tavanArka-.03]);
     // silecekler
     for(const sx of [-1,1]){
-      EK("koyuP", kutu(.028,.020,.44), [sx*HW*.32, pr.beltF-.012, pr.kaputZ+.13], [0,sx*.30,0]);
-      EK("koyuP", kutu(.020,.038,.30), [sx*HW*.32, pr.beltF+.02, pr.kaputZ+.24], [.35,sx*.30,0]);
+      // silecek kolu cam genişliğinin içinde kalsın (eskiden A direğinin dışına taşıyordu)
+      EK("koyuP", kutu(.024,.018,Math.min(.40,hwCam*.62)), [sx*hwCam*.30, pr.beltF-.012, pr.kaputZ+.13], [0,sx*.30,0]);
+      EK("koyuP", kutu(.018,.032,.24), [sx*hwCam*.30, pr.beltF+.02, pr.kaputZ+.22], [.35,sx*.30,0]);
     }
-    if(!car.model.cl) EK(tavanKey, kutu(.052,.070,.19), [0, s.roof+.028, pr.tavanArka-.16]);
+    // köpekbalığı anten: kutu değil, arkaya yatık alçak bir kama
+    if(!car.model.cl) EK("koyuP", new THREE.ConeGeometry(.032,.15,4,1), [0, s.roof+.022, pr.tavanArka-.14], [-Math.PI/2+.35,Math.PI/4,0], [1,1,.55]);
 
     /* ================= İÇ MEKÂN ================= */
     const kabinZ0=pr.kaputZ, kabinZ1=pr.camAlt, kabinUz=Math.max(.5,kabinZ1-kabinZ0);
     const belOrt=(pr.beltF+pr.beltR)/2;
     const tabanY=pr.sill+.04;   // eşik hizası — kuşak yüksekliğinden bağımsız
+    /* İç parçalar gövdenin O YÜKSEKLİKTEKİ genişliğine göre. Eskiden araç
+       genişliğine (s.W, HW) göre konuyordu; gövde eşik hizasında daralırken
+       taban ve iç etek yanlardan dışarı taşıyor, iç rengi açık lüks/klasik
+       araçta kapıların altında kahverengi bir bant çiziyordu. */
+    const kabOrtZ=(kabinZ0+kabinZ1)/2;
+    const icX=(y)=>Math.min(xAt(kabinZ0+.15,y), xAt(kabOrtZ,y), xAt(kabinZ1-.15,y));
     // taban + halı
-    KUTU("ic", s.W*.96,.09,kabinUz+.34, [0, tabanY-.02, (kabinZ0+kabinZ1)/2+.02]);
-    KUTU("hali", s.W*.84,.012,kabinUz*.95, [0, tabanY+.035, (kabinZ0+kabinZ1)/2]);
-    // kabinin iki yanını kapatan iç etek
+    KUTU("ic", icX(tabanY-.06)*2-.06,.09,kabinUz+.34, [0, tabanY-.02, kabOrtZ+.02]);
+    KUTU("hali", Math.min(s.W*.84, icX(tabanY+.03)*2-.10),.012,kabinUz*.95, [0, tabanY+.035, kabOrtZ]);
     for(const sx of [-1,1])
-      KUTU("ic", .06,.34,kabinUz+.30, [sx*(HW-.045), tabanY+.14, (kabinZ0+kabinZ1)/2+.02]);
+      KUTU("ic", .06,.34,kabinUz+.30, [sx*(icX(tabanY+.02)-.06), tabanY+.14, kabOrtZ+.02]);
     // kapı içleri: plastik gövde + döşeme dolgusu + kolçak
     for(const sx of [-1,1]){
       KUTU("ic", .055, Math.max(.12,belOrt-tabanY), kabinUz*.98,
-        [sx*(HW-.085), (tabanY+belOrt)/2, (kabinZ0+kabinZ1)/2]);
+        [sx*(icX(tabanY+.04)-.07), (tabanY+belOrt)/2, kabOrtZ]);
       KUTU("doseme", .022, Math.max(.08,(belOrt-tabanY)*.46), kabinUz*.52,
         [sx*(HW-.108), (tabanY+belOrt)/2+.02, kabinZ0+kabinUz*.36]);
       KUTU("ic", .075,.10, kabinUz*.42, [sx*(HW-.115), belOrt-.16, kabinZ0+.62]);
@@ -1619,7 +1829,9 @@ const W3D=(()=>{
       const gz=kabinZ0+.30, gy=tUst+.045, a=bak(gy,gz);
       KUTU("plastik", .48,.030,.20, [dX, gy, gz], [a,0,0]);
       EK("gosterge", new THREE.PlaneGeometry(.43,.135), [dX, gy+.018, gz+.014], [a,0,0]);
-      KUTU("plastik", .50,.042,.17, [dX, tUst+.165, gz-.045], [a-.16,0,0]);   // kaşlık
+      // kaşlık: göstergenin hemen üstünde. Eskiden 12 cm yukarıda havada
+      // duruyor, dışarıdan ön camın arkasında siyah bir levha gibi görünüyordu.
+      KUTU("plastik", .44,.030,.14, [dX, tUst+.090, gz-.030], [a-.16,0,0]);
     }
     // orta ekran + menfezler + düğme sırası
     {
@@ -1776,46 +1988,27 @@ const W3D=(()=>{
           [fx, farY, zOn(fx,farY)-.012], [Math.PI/2,0,0], [1,.30,1]);
       }
     }else{
+      // Far: biçimi dokunun saydamlığından gelen tek panel. Eskiden koyu kutu
+      // + iki küre + ayrı LED şeritleri üst üste biniyordu.
+      const FAR_OLCU={dilim:[.40,.16], bumerang:[.44,.15], L:[.40,.15], ince:[.46,.085]};
+      const [fw0,fh]=FAR_OLCU[imza.far]||FAR_OLCU.dilim;
       for(const sx of [-1,1]){
-        const fx=sx*(hwOn-.20), fw=.40, fh=.155;
-        onPanel("koyuP", fx, farY, fw+.045, fh+.05, .006, 5,3);      // çerçeve/gölgelik
-        onPanel("far",   fx, farY, fw, fh, .016, 5,3);               // reflektör
-        for(const dx of [-.10,.10]){
-          const px=fx+dx;
-          EK("lens", new THREE.SphereGeometry(.042,10,7),
-            [px, farY+.010, zOn(px,farY)-.020], [0,0,0], [1,1,.55]);
-        }
-        onPanel("lens", fx, farY, fw+.01, fh+.012, .028, 5,3);       // şeffaf kapak
-        if(imza.led==="seritli"){
-          onPanel("led", fx, farY-.070, fw-.03,.024, .034, 5,1);
-          onPanel("led", fx-sx*.175, farY-.046, .024,.054, .034, 1,2);
-        }else if(imza.led==="cift"){
-          for(const dy of [.046,-.046]) onPanel("led", fx, farY+dy, fw-.10,.020, .034, 4,1);
-        }
-        onPanel("sinyal", fx+sx*.115, farY+.052, .11,.022, .034, 2,1);
+        const fw=Math.min(fw0, hwOn*.48), fx=sx*(hwOn-fw/2-.05);
+        onPanel(sx>0?"far":"farA", fx, farY+(imza.far==="ince"?.03:0), fw, fh, .010, 6,3);
+        onPanel("lens", fx, farY+(imza.far==="ince"?.03:0), fw*.98, fh*.94, .018, 6,3);
       }
     }
-    // ızgara: içeri kaçık boşluk + çerçeve
+    // ızgara: tek panel, biçimi dokudan
     const izgaraY=farY-.045;
-    const izgara=(w,h)=>{
-      onPanel("petek", 0, izgaraY, w, h, .010, 7,3);
-      for(const sy of [-1,1]) onPanel(kromKey, 0, izgaraY+sy*(h/2+.012), w+.05,.026, .018, 7,1);
-      for(const sx of [-1,1]) onPanel(kromKey, sx*(w/2+.012), izgaraY, .026, h+.05, .018, 1,3);
-    };
-    if(imza.grille==="bobrek"){
-      for(const sx of [-1,1]){
-        onPanel("petek", sx*.19, izgaraY, .28,.26, .010, 4,3);
-        for(const sy of [-1,1]) onPanel(kromKey, sx*.19, izgaraY+sy*.142, .33,.024, .018, 4,1);
-        for(const sx2 of [-1,1]) onPanel(kromKey, sx*.19+sx2*.152, izgaraY, .024,.30, .018, 1,3);
-      }
-    }else if(imza.grille==="genis") izgara(hwOn*.80,.24);
-    else if(imza.grille==="yildiz") izgara(hwOn*.72,.30);
-    else if(imza.grille==="bar"){
-      izgara(hwOn*.84,.22);
-      for(let i=0;i<3;i++) onPanel(kromKey, 0, izgaraY+.070-i*.070, hwOn*.96,.026, .020, 7,1);
-    }else izgara(hwOn*.78,.18);
-    if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(.082,18),
-      [0, izgaraY+.01, zOn(0, izgaraY+.01)-.024], [0,Math.PI,0]);
+    const IZG={trapez:[.80,.27], petek:[.82,.24], cubuk:[.80,.22], kapali:[.70,.11],
+               yarik:[.96,.12], bobrek:[.62,.27], yildiz:[.78,.30], bar:[.88,.24]};
+    const [gwK,gh]=IZG[imza.izgaraTip]||IZG.trapez;
+    const gY=imza.izgaraTip==="yarik"?farY-.02:izgaraY;
+    onPanel("izgara", 0, gY, hwOn*2*gwK*(imza.yuvarlakFar?.62:.55), gh, .012, 9,4);
+    if(imza.izgaraTip==="yarik"||imza.izgaraTip==="kapali")   // alt hava girişi daha büyük
+      onPanel("petek", 0, pr.sill+.20, hwAlt*1.20,.13, .010, 6,2);
+    if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(.075,20),
+      [0, gY+.01, zOn(0, gY+.01)-.026], [0,Math.PI,0]);
     // tampon / hava girişi
     if(imza.tampon){
       for(const z of [zF-.030, yarim+.030]){
@@ -1865,10 +2058,14 @@ const W3D=(()=>{
 
     /* ================= YAN DETAY ================= */
     for(const sx of [-1,1]){
-      KUTU("koyuP", .075,.030,.035, [sx*(HW+.03), pr.beltF+.045, pr.kaputZ+.16]);
-      EK(boyaKey, kutu(.078,.088,.150), [sx*(HW+.088), pr.beltF+.055, pr.kaputZ+.17], [0,sx*.12,0]);
-      EK("lens", new THREE.PlaneGeometry(.115,.062), [sx*(HW+.096), pr.beltF+.055, pr.kaputZ+.245]);
-      KUTU("sinyal", .050,.012,.05, [sx*(HW+.090), pr.beltF+.022, pr.kaputZ+.20]);
+      /* Ayna kapı yüzeyine oturuyor: eskiden en geniş yarı genişliğin (HW)
+         dışına konuyordu, kuşak hizasında gövde daha dar olduğu için ayna
+         havada asılı bir tuğla gibi duruyordu. Kafa da artık yuvarlatılmış. */
+      const az=pr.kaputZ+.17, ay=pr.beltF+.05, ax=xAt(az, pr.beltF-.03);
+      KUTU("koyuP", .10,.028,.045, [sx*(ax+.04), ay-.02, az]);
+      EK(boyaKey, new THREE.SphereGeometry(.1,12,8), [sx*(ax+.12), ay, az+.01], [0,sx*.15,0], [.55,.48,.80]);
+      EK("koyuP", new THREE.CircleGeometry(.05,14), [sx*(ax+.125), ay, az+.087], [0,0,0], [1.05,.85,1]);
+      KUTU("sinyal", .050,.010,.04, [sx*(ax+.135), ay-.040, az+.02]);
       const kapiZ=[onZ+.62, (onZ+arkaZ)/2+.18].filter(z=>z<pr.camAlt-.20);
       for(const kz of kapiZ){
         const yk=Math.min(pr.beltF,pr.beltR)-.13;
@@ -1955,7 +2152,10 @@ const W3D=(()=>{
     if(boyaliSay+degisenSay>0){
       const hsl={}; c0.getHSL(hsl);
       const yon = hsl.l>.5 ? -1 : 1;
-      const fark = (car.inspected ? .130 : .055)*yon;
+      /* Fark eskiden .130'du: boyalı kapı gövdeden başka bir araba gibi
+         duruyordu (yeşil gövdede gri kapı). Gerçekte boyalı panel ancak
+         ışığa göre fark edilen bir ton kaymasıdır; ekspertiz onu belirginleştirir. */
+      const fark = (car.inspected ? .060 : .028)*yon;
       const sinir=[-yarim+L*.07, onZ+.52, (onZ+arkaZ)/2+.10, arkaZ-.30,
                    Math.min(pr.camAlt, yarim-L*.05)];
       const secim=[];
@@ -1968,7 +2168,7 @@ const W3D=(()=>{
       const n=Math.min(secim.length, boyaliSay+degisenSay);
       for(let i=0;i<n;i++){
         const agir=i<degisenSay;
-        const c2=c0.clone().offsetHSL(agir?.010:.005, agir?-.045:-.022, agir?fark*1.35:fark);
+        const c2=c0.clone().offsetHSL(agir?.006:.003, agir?-.025:-.012, agir?fark*1.30:fark);
         const pm=matBoya(c2.getHex(), 60);
         const it=secim[i];
         if(it.ust==="kaput") ustKaplama((pr.kaputZ+(-yarim+L*.09))/2, s.W*.66,
@@ -1981,7 +2181,7 @@ const W3D=(()=>{
         }
         else yanKaplama(it.sx, it.z, it.uz||.78, yanH+.10, pm, .03);
         if(agir && !it.ust){
-          const gm=new THREE.MeshBasicMaterial({color:0x05070A, transparent:true, opacity:.45, side:THREE.DoubleSide});
+          const gm=new THREE.MeshBasicMaterial({color:0x05070A, transparent:true, opacity:.22, side:THREE.DoubleSide});
           const zk=it.z+(it.uz||.78)/2;
           const lg=yuzey(1,6,(u,v)=>{
             const yT=ustHat(zk)-.030, yB=altHat(zk)+.050;
@@ -2383,29 +2583,6 @@ const W3D=(()=>{
     return g;
   }
 
-  /** Sahayı gezen müşteri figürü (düşük poligon, renkli). */
-  const MUS_RENK=[0xD94F45,0x2F7FC4,0x3E9E62,0xE0A33A,0x8A5FB0,0xCFCFCF,0x3A4550];
-  function musteri(x, z, ry, tip){
-    const g=new THREE.Group();
-    const ten=new THREE.MeshLambertMaterial({color:0xD9A883});
-    const ust=new THREE.MeshLambertMaterial({color:MUS_RENK[tip%MUS_RENK.length]});
-    const alt=new THREE.MeshLambertMaterial({color:(tip%2)?0x2E3A4A:0x4A4F57});
-    const bacak=new THREE.Mesh(new THREE.BoxGeometry(.30,.78,.24), alt);
-    bacak.position.y=.39; bacak.castShadow=true; g.add(bacak);
-    const govde=new THREE.Mesh(new THREE.BoxGeometry(.40,.62,.26), ust);
-    govde.position.y=1.06; govde.castShadow=true; g.add(govde);
-    for(const sx of [-1,1]){
-      const kol=new THREE.Mesh(new THREE.BoxGeometry(.11,.56,.13), ust);
-      kol.position.set(sx*.255,1.04,0); kol.rotation.z=sx*.10; kol.castShadow=true; g.add(kol);
-    }
-    const bas=new THREE.Mesh(new THREE.BoxGeometry(.25,.27,.25), ten);
-    bas.position.y=1.52; bas.castShadow=true; g.add(bas);
-    const sac=new THREE.Mesh(new THREE.BoxGeometry(.27,.09,.27),
-      new THREE.MeshLambertMaterial({color:(tip%3)?0x2A2320:0x5B4632}));
-    sac.position.y=1.655; g.add(sac);
-    g.position.set(x,0,z); g.rotation.y=ry;
-    return g;
-  }
   /** Giriş balonu kümesi. */
   function balonlar(x, z){
     const g=new THREE.Group();
@@ -2628,28 +2805,10 @@ const W3D=(()=>{
     for(let z=z1+6; z<z0-2; z+=11) for(const sx of [-1,1]) D.add(agac(sx*(en+3.2), z, 1+((z|0)%3)*.12));
     for(const z of direkZ) for(const sx of [-1,1]) D.add(saksi(sx*(en-.75), z+2.6));
 
-    /* --- müşteriler ve balonlar --- */
-    // Müşteriler koridorda durur: araçlar |x| ≈ 3.4–7.6 bandını kaplıyor,
-    // bu yüzden figürler |x| ≤ 2.9 ile sınırlı — araç gövdesine girmezler.
-    const mkonum=[[-2.55, z0-15.5, 1.25, 0],[ 2.70, z0-21.0,-1.62, 3],
-                  [-2.35, z0-28.0, 2.30, 5],[ 2.60, z1+6.5,-2.45, 6]];
-    // Müşteriler koridorda ileri geri yürür — statik dekora KATILMAZLAR.
-    for(const [mx,mz2,mr,mt] of mkonum){
-      if(!(mz2>z1+2.2 && mz2<z0-4.5)) continue;
-      const fig=musteri(mx, mz2, mr, mt);
-      scene.add(fig);
-      const menzil=3.2+Math.random()*2.6, hiz=0.46+Math.random()*0.26;
-      const faz=Math.random()*Math.PI*2, z00=mz2;
-      let yon=1;
-      CANLI.push((dt,t2)=>{
-        const s=Math.sin(t2*hiz*0.001+faz);
-        fig.position.z=z00+s*menzil;
-        const yeniYon=Math.cos(t2*hiz*0.001+faz)>=0?1:-1;
-        if(yeniYon!==yon){ yon=yeniYon; }
-        fig.rotation.y = yon>0 ? Math.PI : 0;
-        fig.position.y = Math.abs(Math.sin(t2*0.006+faz))*0.035;  // adım sekmesi
-      });
-    }
+    /* --- balonlar ---
+       Koridorda yürüyen blok müşteri figürleri kaldırıldı: araçlarla aynı
+       dünyadan değillerdi (kutu kafa, kutu gövde) ve sahneyi oyun oyuncağı
+       gibi gösteriyorlardı. Pazar kalabalığını bayraklar ve balonlar taşıyor. */
     for(const sx of [-1,1]) D.add(balonlar(sx*(en-1.5), z0-1.4));
     dekorBirle(D);
   }
@@ -2732,7 +2891,7 @@ const W3D=(()=>{
       obj.rotation.y=ry;
       golgeAyarla(obj);
       scene.add(obj);
-      const sil=SIL[car.model.n]||{L:4.4,W:1.8};
+      const sil=profil3B(car.model);
       const yns=yerYansimasi(car, sil.L, sil.W);
       yns.position.set(x, 0.013, z); yns.rotation.z=ry;
       scene.add(yns);
@@ -3184,7 +3343,7 @@ const W3D=(()=>{
   function refresh(){ if(ready){ const m=mode; open(m, true); } }
 
   window.W3D_buildCar=buildCar;
-  window.W3D_SIL=SIL; window.W3D_SILVAR=SILVAR; window.W3D_IMZA=IMZA; window.W3D_AMB=AMBLEM;
+  window.W3D_profil3B=profil3B; window.W3D_imza3B=imza3B; window.W3D_SILVAR=SILVAR; window.W3D_AMB=AMBLEM;
   window.W3D_profil=silProfil; window.W3D_govde=govdeGeo;
   window.W3D_dbg=()=>({scene, cam, ren});
   function tp(x,z,y,pi){ px=x; pz=z; yaw=y; pitch=pi; }
