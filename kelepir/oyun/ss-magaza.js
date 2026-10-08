@@ -62,7 +62,15 @@ const cek=async(p, ad, klasor)=>{
     const t=document.getElementById('toasts'); if(t) t.innerHTML='';
     const o=document.getElementById('ogret'); if(o) o.innerHTML='';
   });
-  await p.waitForTimeout(120);
+  // Kasa sayacı değişince kısa süre yeşil/kırmızı yanıyor; görselde o anı
+  // değil, kasanın olağan (altın) hâlini göster.
+  for(let k=0;k<12;k++){
+    const pop=await p.evaluate(()=>{ const h=document.getElementById('hudCash');
+      return !!h && (h.classList.contains('pop-art')||h.classList.contains('pop-eks')); });
+    if(!pop) break;
+    await p.waitForTimeout(250);
+  }
+  await p.waitForTimeout(800);
   await p.screenshot({path:`${klasor}/${ad}.png`});
   console.log('   ', klasor.split('/').pop()+'/'+ad+'.png');
 };

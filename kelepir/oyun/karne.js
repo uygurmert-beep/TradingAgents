@@ -120,7 +120,7 @@ function openKarne(){
         :`<div class="sec-note">Bu hafta satış olmadı.</div>`}
     </div>
 
-    <div class="block" style="border-color:rgba(229,84,78,.26)"><h4>EN B&Uuml;Y&Uuml;K HATA</h4>
+    <div class="block" style="border-color:rgba(200,50,60,.24)"><h4>EN B&Uuml;Y&Uuml;K HATA</h4>
       ${k.hata?`<div style="font-size:13px;line-height:1.5"><b>${k.hata.t}</b>
         <div class="sec-note" style="margin-top:3px">${k.hata.d}</div></div>`
         :`<div class="sec-note">Temiz hafta — g&ouml;ze &ccedil;arpan bir hata yok.</div>`}

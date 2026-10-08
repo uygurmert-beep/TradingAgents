@@ -474,7 +474,7 @@ function openEnding(){
       <div class="sn" style="color:var(--sodium)">Kapandı</div>
     </div>
     <div class="block">
-      <div style="font-size:13.5px;line-height:1.6;color:#C3CBD1">
+      <div style="font-size:13.5px;line-height:1.6;color:var(--label-2)">
         Bir k&ouml;şedeki d&ouml;rt araba sığan otoparktan başladın. Şimdi bu şehirde ikinci el fiyatını sen belirliyorsun.
         Bu şehirde kaç tabela varsa indi.</div>
     </div>
@@ -931,7 +931,7 @@ function renderHud(){
   const faiz=S.debt>0?Math.round(S.debt*(perk("banka")?0.0018:0.0035)):0;
   const kira=gunlukKira();
   const yakim=park+maas+faiz+kira;
-  const parts=[[park,"var(--zarar)"],[maas,"#7A4B49"],[faiz,"#5E3B3A"],[kira,"#46383A"]];
+  const parts=[[park,"var(--zarar)"],[maas,"#D98C8F"],[faiz,"#E6AFB1"],[kira,"#F0CFD0"]];
   const dolu=clamp(yakim/Math.max(S.cash,1)*2000,3,100);   // nakdinin %5'i = tam çubuk
   const bar=parts.map(([v,c])=>v?`<i style="width:${(v/yakim*dolu).toFixed(1)}%;background:${c}"></i>`:"").join("");
   const ticks=Array.from({length:SEASON_LEN},(_,k)=>
@@ -1539,7 +1539,7 @@ function viewGaleri(){
             <b style="font-size:13.5px">${c.n}</b>
             <div class="sec-note" style="line-height:1.4">${c.d}</div>
             <div class="clvl">${[1,2,3].map(i=>`<i class="${i<=lvl?"on":""}"></i>`).join("")}</div>
-            <div class="sec-note" style="margin-top:5px;color:${lvl?"#6FD3AB":"var(--muted-2)"}">${c.perLbl(lvl)}</div>
+            <div class="sec-note" style="margin-top:5px;color:${lvl?"var(--green)":"var(--muted-2)"}">${c.perLbl(lvl)}</div>
             ${lvl<3?`<div class="sec-note" style="color:var(--muted-2)">${xp}/${next} — ${c.xpLbl}</div>`:""}
             ${lvl>=2?`<button class="btn ${favorHazir?"":"ghost"}" data-act="favor" data-k="${c.k}"
                style="margin-top:8px;padding:7px 11px;font-size:12px" ${favorHazir?"disabled":""}>
@@ -1649,7 +1649,7 @@ function viewRapor(){
       ${S.receivables.map(r=>`<div class="kv"><span>${r.n}<br><small style="color:var(--muted-2)">${r.who} · ${r.due}. gün · risk %${Math.round(r.risk*100)}</small></span>
       <b>${tl(r.amount)}</b></div>`).join("")}</div>`:""}
     <div class="block"><h4>PİYASADAKİ GALERİLER</h4>
-      ${standings().map((r,i)=>`<div class="kv" style="${r.me?'background:rgba(242,160,7,.07);margin:0 -6px;padding:6px;border-radius:6px':''}">
+      ${standings().map((r,i)=>`<div class="kv" style="${r.me?'background:var(--gold-soft);margin:0 -6px;padding:6px;border-radius:6px':''}">
         <span><b style="color:${r.me?'var(--sodium)':'var(--text)'}">${i+1}. ${r.n}</b>
         <br><small style="color:var(--muted-2)">${r.d||`${r.sold} satış`} · stokta ${r.stock}</small></span>
         <b>${tlk(r.w)}</b></div>`).join("")}
@@ -1949,10 +1949,10 @@ function valueBlock(c){
 function openMarketCar(c){
   c.gorulen=true;           // bu ilana baktın: rakip kaparsa haberin olsun
   const hikaye = c.story ? (()=>{const st=STORIES.find(s=>s.k===c.story);
-    return `<div class="block" style="border-color:rgba(242,160,7,.35)">
+    return `<div class="block" style="border-color:rgba(168,106,0,.30)">
       <h4>${st.t.toLocaleUpperCase("tr")}</h4>
-      <div style="font-size:13px;line-height:1.55;color:#D9CDB4">${st.d}</div>
-      ${st.riskli?`<div class="sec-note" style="color:#F08B86;margin-top:7px">Bu hik&acirc;ye riskli — g&ouml;r&uuml;nmeyeni ekspertizsiz anlayamazsın.</div>`
+      <div style="font-size:13px;line-height:1.55;color:var(--label-2)">${st.d}</div>
+      ${st.riskli?`<div class="sec-note" style="color:var(--red);margin-top:7px">Bu hik&acirc;ye riskli — g&ouml;r&uuml;nmeyeni ekspertizsiz anlayamazsın.</div>`
                  :`<div class="sec-note" style="margin-top:7px">Meraklı alıcılar b&ouml;yle ara&ccedil;lara prim &ouml;der.</div>`}
     </div>`;})() : "";
   const claims=`<div class="block"><h4>İLAN METNİ</h4>
@@ -2104,7 +2104,7 @@ function openOwnCar(c){
     </section>
     <div class="block"><h4>FİYAT</h4>
       <div class="sec-note" style="margin-bottom:8px">Fiyatı ne kadar yükseltirsen alıcı o kadar seyrelir.</div>
-      ${press?`<div class="sec-note" style="color:#F5BC4C;margin-bottom:8px">Aynı segmentte ${press} rakip ilanı var — alıcı akışın %${Math.round((1-1/(1+.13*press))*100)} daha yavaş.</div>`:""}
+      ${press?`<div class="sec-note" style="color:var(--gold);margin-bottom:8px">Aynı segmentte ${press} rakip ilanı var — alıcı akışın %${Math.round((1-1/(1+.13*press))*100)} daha yavaş.</div>`:""}
       <div style="text-align:center;font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--sodium)"
            id="lpLabel">${tl(c.inspected?tv:av)}</div>
       <input type="range" id="lpRange" min="70" max="140" value="100" step="1"
@@ -2120,7 +2120,7 @@ function openOwnCar(c){
   }
 
   const bekTeklif=offerOf(c.id);
-  const teklifKarti = bekTeklif ? `<div class="block" style="border-color:rgba(242,160,7,.45)">
+  const teklifKarti = bekTeklif ? `<div class="block" style="border-color:rgba(168,106,0,.38)">
       <h4>BEKLEYEN TEKLİF</h4>
       <div class="pricerow" style="border:none;padding:0 0 6px">
         <span class="plabel">${bekTeklif.type?bekTeklif.type.n:"Alıcı"}</span>
@@ -2486,7 +2486,7 @@ function renderNeg(){
           <div class="gmeter"><i style="width:${clamp(n.pat/patMax*100,0,100)}%;background:${n.pat>1?"var(--sodium)":"var(--zarar)"}"></i></div>
         </div>
       </div>
-      ${n.distrust?`<div class="sec-note" style="color:#F08B86;margin-top:8px">Sana g&uuml;venmiyor &mdash; kozların yarı etkili.</div>`:""}
+      ${n.distrust?`<div class="sec-note" style="color:var(--red);margin-top:8px">Sana g&uuml;venmiyor &mdash; kozların yarı etkili.</div>`:""}
     </div>
 
     <div class="talk" id="talkKutu">${n.log.map(m=>`<div class="bub ${m.who}">${m.t}</div>`).join("")}</div>
@@ -2547,7 +2547,7 @@ function offerCard(o){
   const cost=carCost(c);
   const p=o.amount-cost;
   const note = o.caught
-    ? `<div class="sec-note" style="color:#F08B86;margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;: "${o.issues[0].t}". Teklifini kırdı.</div>`
+    ? `<div class="sec-note" style="color:var(--red);margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;: "${o.issues[0].t}". Teklifini kırdı.</div>`
     : (o.inspects?`<div class="sec-note" style="margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;, temiz &ccedil;ıktı.</div>`:"");
   let extra="";
   if(o.takas){
@@ -2760,7 +2760,7 @@ function openCarFile(carId, geri){
 
     ${atolyeBlok(c,"repairfile")}
 
-    ${o?`<div class="block" style="border-color:rgba(242,160,7,.4)">
+    ${o?`<div class="block" style="border-color:rgba(168,106,0,.34)">
       <h4>BEKLEYEN TEKLİF</h4>
       <div class="pricerow" style="margin-bottom:6px">
         <span class="plabel">${o.type?o.type.n:"Alıcı"}</span>
@@ -3222,7 +3222,7 @@ function openDealSummary(d){
       <div class="kv"><span>Elde tuttuğun g&uuml;n</span><b>${d.days}</b></div>
     </div>
     ${d.lesson?`<div class="block" style="border-color:var(--sodium-dim)">
-      <div style="font-size:12.5px;line-height:1.55;color:#D9CDB4">${d.lesson}</div></div>`:""}
+      <div style="font-size:12.5px;line-height:1.55;color:var(--label-2)">${d.lesson}</div></div>`:""}
     <button class="btn primary full" data-act="dealdone">Devam</button>`);
 }
 
@@ -3265,7 +3265,7 @@ function resolveAuction(){
       if(my>S.cash){ results.push(`<div class="block"><b>${c.model.n} ${c.year}</b><div class="sec-note">Kazandın ama nakit yetmedi — ceza olarak ${tl(450)} kesildi.</div></div>`); S.cash-=450; continue; }
       buyCar(c,my,"müzayede"); S.wonAuction=true;
       const tv=valueOf(c,false);
-      results.push(`<div class="block" style="border-color:rgba(67,192,138,.3)"><b>${c.model.n} ${c.year}</b>
+      results.push(`<div class="block" style="border-color:rgba(19,138,78,.28)"><b>${c.model.n} ${c.year}</b>
         <div class="sec-note">Senin oldu · ${tl(my)} · en yakın rakip ${winner||"—"} ${tl(best)}</div>
         <div class="kv" style="margin-top:6px"><span>Gerçek değeri</span><b class="${tv>my?"pos":"neg"}">${tl(tv)}</b></div></div>`);
     }else{

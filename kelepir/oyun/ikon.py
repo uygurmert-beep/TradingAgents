@@ -4,8 +4,8 @@
 İşaret: eğik bir fiyat etiketi, içinde ₺. Gerekçe — "kelepir" kelimesinin
 görsel karşılığı fiyattır, ev değil. Etiket silueti 48 px'te bile tanınıyor,
 ₺ ise pazarı tek bakışta Türkiye'ye çiviliyor. Altın etiket = para (oyunun
-renk disiplininde kehribar yalnızca paraya ayrılmıştı), arkasındaki petrol
-halkası marka rengi.
+renk disiplininde kehribar yalnızca paraya ayrılmıştı). Zemin Showroom
+paletinin yarış yeşili (--tint); halka zeminin krem tonu.
 
 Üretilenler:
   magaza/ikon/play-512.png        Play mağaza listesi (32-bit, alfa)
@@ -18,12 +18,12 @@ import os, io
 import cairosvg
 from PIL import Image
 
-ZEMIN  = "#0B1012"
-ZEMIN2 = "#16252A"
-PETROL = "#16B8AE"
+ZEMIN  = "#0A4A3B"
+ZEMIN2 = "#178065"
+PETROL = "#F3F1EC"
 ALTIN  = "#F0B452"
 ALTIN2 = "#D99A3C"
-KOYU   = "#0A1416"
+KOYU   = "#0B2E25"
 
 KOK     = os.path.dirname(os.path.abspath(__file__))
 KELEPIR = os.path.join(KOK, "..", "kabuk")
@@ -114,6 +114,15 @@ for klasor, boy in (("drawable",480), ("drawable-port-mdpi",480),
                     ("drawable-port-hdpi",800), ("drawable-port-xhdpi",1280),
                     ("drawable-port-xxhdpi",1600), ("drawable-port-xxxhdpi",1920)):
     yaz(f"{RES}/{klasor}/splash.png", splash, boy, alfa=False)
+# Yatay açılışlar da üretiliyor: oyun dikey kilitli ama tablet ilk karede
+# yatay başlayabiliyor ve eski (koyu) görsel paletle çelişiyordu.
+for klasor, (en, boy) in (("drawable-land-mdpi",(480,320)), ("drawable-land-hdpi",(800,480)),
+                          ("drawable-land-xhdpi",(1280,720)), ("drawable-land-xxhdpi",(1600,960)),
+                          ("drawable-land-xxxhdpi",(1920,1280))):
+    gecici = f"{RES}/{klasor}/splash.png"
+    yaz(gecici, svg(olcek=0.30*boy/en, zemin=True, hale=True), en, alfa=False)
+    im = Image.open(gecici); ust = (en - boy) // 2
+    im.crop((0, ust, en, ust + boy)).save(gecici, "PNG")
 
 # ================= iOS =================
 IOS = f"{KELEPIR}/ios/App/App/Assets.xcassets"

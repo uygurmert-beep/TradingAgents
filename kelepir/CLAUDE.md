@@ -103,8 +103,9 @@ Playwright Chromium yolu: `/opt/pw-browsers/chromium`.
 ## 4. Değiştirilemez kurallar
 
 1. **Dış kaynak yok.** CDN, web fontu, analitik, uzak görsel — hiçbiri.
-   İmza yazı tipi Saira (OFL) `oyun/font/` altında; `yazitipi.py` onu iki
-   derleyicide de base64 olarak `/*FONT*/` yerine gömüyor.
+   Yazı tipi Space Grotesk (OFL) `oyun/font/` altında; `yazitipi.py` onu iki
+   derleyicide de base64 olarak `/*FONT*/` yerine gömüyor. Tek aile bütün
+   arayüzü taşıyor (`--sf`); `--imza-font` eski kurallar için takma ad.
    `appbuild.py` içinde `assert 'cdnjs' not in govde` var; ihlal derlemeyi
    durdurur. Oyun ilk açılıştan itibaren tamamen çevrimdışı çalışıyor.
 2. **Reklam ve uygulama içi satın alma yok.** Mağaza metni bunu vaat ediyor.
@@ -117,10 +118,13 @@ Playwright Chromium yolu: `/opt/pw-browsers/chromium`.
    artır ve `kayit.js` içine göç kodu yaz; `test/goc-test.js` bunu denetliyor.
    Geçici arayüz durumunu `S`'ye KOYMA (kayda yazılır) — modül düzeyinde
    değişken kullan. Örnek: `SON_TAMIR`.
-5. **Renk.** Palet "Gece Galerisi": gece mavisi zemin, **turuncu (`--tint`)
-   yalnızca eylem ve seçim**, altın (`--gold`) yalnızca para, yeşil/kırmızı
-   yalnızca sonuç. Sabit renk yazma; `--surface-tepe` gibi değişken kullan,
-   yoksa kâğıt (`.belge`) dünyasında koyu kalır.
+5. **Renk.** Palet "Showroom" (açık): taş zemin, beyaz kart, **yarış yeşili
+   (`--tint`) yalnızca eylem ve seçim**, koyu altın (`--gold`) yalnızca para,
+   yeşil/kırmızı yalnızca sonuç. Sabit renk yazma; `--surface-tepe`, `--fill`
+   gibi değişken kullan. Koyu temadan kalma `rgba(255,255,255,…)` dolgular açık
+   zeminde görünmez, `rgba(0,0,0,…)` zeminler kirli gri yapar. 3B saha (`#world`)
+   koyu bir sahne: orada `--label`, `--gold` vb. kendi parlak değerlerini alıyor,
+   saha üstü katmana yeni öğe eklersen bu kapsamın içine koy.
 6. **Dil.** Kod, değişken adları, yorumlar ve arayüz Türkçe. Yeni kullanıcıya
    görünen metin eklersen `en.js` sözlüğüne de karşılığını ekle.
 7. **Türkçe büyük harf:** `toLocaleUpperCase("tr")` — aksi hâlde "i" → "I".
@@ -290,7 +294,7 @@ Testler kırmızıyken iş bitmiş sayılmaz.
 ```
 oyun/            kaynak + derleyiciler + üreticiler
 oyun/test/       bütün testler ve denge simülasyonu
-oyun/font/       Saira woff2 + OFL lisansı (derlemede gömülür)
+oyun/font/       Space Grotesk woff2 + OFL lisansı (derlemede gömülür)
 kabuk/           Capacitor projesi (android + ios)
 kabuk/android/   kelepir-upload.jks + keystore.properties  ← GİZLİ, kaybetme
 magaza/          mağaza metinleri, ikonlar, ekran görüntüleri, gizlilik

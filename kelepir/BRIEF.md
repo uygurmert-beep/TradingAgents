@@ -30,11 +30,14 @@ SVG'siyle çiziliyor. Sıfır görsel dosya, tamamen çevrimdışı.
 **2. İsimlendirme B seviyesine çekildi.** "Ailesi belli, kopyası değil."
 40 marka, 150 model. Motor kısaltmaları bilerek kullanılmadı (tescilli).
 
-**3. Renk yönü: Gece Galerisi + evrak.** Önce gri asfalt + krem düğme vardı;
-ekip ve oyuncu "banka uygulaması gibi, bağlayıcı değil" dedi. Artık gece mavisi
-zemin, galeri tabelasının neon turuncusu imza rengi (yalnız eylem ve seçim),
-altın yalnız para, yeşil/kırmızı yalnız sonuç. Belgelerin krem kâğıt dünyası
-(`.belge`) korunuyor. Başlık ve rakamlarda gömülü Saira yazı tipi.
+**3. Renk yönü: Showroom + evrak.** Önce gri asfalt + krem düğme vardı
+("banka uygulaması gibi"), sonra koyu "Gece Galerisi" denendi; oyuncu onu da
+sevmedi. Ekip oylamasıyla (4–2) açık **Showroom** paleti seçildi: sıcak taş
+zemin `#F3F1EC`, beyaz kartlar, **yarış yeşili** `#0E5E4B` imza rengi (yalnız
+eylem ve seçim), koyu altın yalnız para, yeşil/kırmızı yalnız sonuç. Belgelerin
+kâğıt dünyası (`.belge`) korunuyor. 3B saha koyu kaldığı için `#world` kendi
+parlak tonlarını taşıyor. Yazı tipi tek aile: gömülü **Space Grotesk** (OFL),
+gövde dahil bütün arayüz. İkon ve açılış ekranı yarış yeşili zeminde.
 
 **4. Uzmanlık birikiyor.** Oyunun en büyük eksiği buydu: 10. günde öğrenilen
 hiçbir şey 50. günde işe yaramıyordu. Üç parça çözdü:
@@ -128,6 +131,11 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
 - **Test düzeltmesi:** `ux-test.js` "ertesi gün rakip o aracı alıyor"
   pazarın rastgeleliğine göre kırmızı yanıyordu (sayaç geç okunuyordu).
 
+- **Showroom paleti + Space Grotesk** bütün oyuna; mevsim tonu (zemini
+  griye boyuyordu) kaldırıldı; paylaşım kartları, ikon, açılış ekranı ve durum
+  çubuğu stili (`LIGHT`) yeni palette. Kasa sayacının alım sonrası kırmızı
+  kalması düzeldi; 3B vitrinde uzun model adı iki satıra kırılıyor.
+
 ### Sırada
 
 - **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da
@@ -137,6 +145,7 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   tanıdığı hızlandırıyor. BUGÜN rayına bir kart olarak oturur.
 - **Çerçeveli mağaza görselleri yeniden üretilmeli.** Ham ekranlar
   (`magaza/ss/{play,ios}`) yeni arayüzle üretildi, `06-filo` yerine `06-emanet`.
+  Yeni palette `node ss-magaza.js` ile ham ekranlar da yeniden çekilmeli.
   Çerçeveli olanlar (`magaza/ss-cerceve`) ve özellik grafiği Poppins fontu
   gerektiriyor; bu ortamda font yoktu. Fontun olduğu makinede
   `pip install cairosvg && python3 magaza-gorsel.py`. Eski `ss-cerceve/*/06-filo.png`

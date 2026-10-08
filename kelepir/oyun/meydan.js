@@ -94,7 +94,7 @@ function openMeydan(){
         :`<div class="sec-note">A&ccedil;ık arıza yok.</div>`}
       <div class="kv" style="margin-top:6px"><span>Tramer</span><b class="${c.tramer?"neg":""}">${c.tramer?tl(c.tramer):"kayıt yok"}</b></div>
       <div class="kv"><span>Değişen / boyalı</span><b>${c.degisen} / ${c.boyali}</b></div>
-      ${c.kmOynama?`<div class="sec-note" style="color:#F08B86">Km'de oynama ş&uuml;phesi var.</div>`:""}
+      ${c.kmOynama?`<div class="sec-note" style="color:var(--red)">Km'de oynama ş&uuml;phesi var.</div>`:""}
       ${c.story?`<div class="sec-note" style="margin-top:5px">Hik&acirc;ye: ${(STORIES.find(s=>s.k===c.story)||{}).t||""}</div>`:""}
     </div>
 

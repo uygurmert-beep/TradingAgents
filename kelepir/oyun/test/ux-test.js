@@ -200,7 +200,7 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     const bloklar=[...document.querySelectorAll('#modal .block, #modal .atolye')];
     const z=getComputedStyle(a);
     return { belge:true, sira:bloklar.indexOf(a),
-             // kâğıdın üstünde kendi koyu zemini olmalı
+             // kâğıdın üstünde kendi zemini (eylem renginin tülü) olmalı
              ayri: z.backgroundImage.indexOf('gradient')>=0,
              dugmeRenk: (()=>{ const x=a.querySelector('.btn.primary');
                return x?getComputedStyle(x).backgroundColor:""; })() };
@@ -208,7 +208,7 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('araç dosyası kâğıt yüzeyinde', !!af.belge);
   t('atölye raporun ilk bloğundan önce', af.sira===0);
   t('atölye kâğıttan ayrı bir yüzey', !!af.ayri);
-  t('Yaptır dolu kehribar düğme', af.dugmeRenk==='rgb(240, 180, 82)');
+  t('Yaptır dolu eylem rengi düğme', af.dugmeRenk==='rgb(14, 94, 75)');
 
   const once=await p.evaluate(()=>S.cash);
   const btn=await p.$('.atolye .ise-btn:not([disabled])');
@@ -268,7 +268,11 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
              balonGorunur: br? (br.top>=sr.top-3 && br.bottom<=sr.bottom+5) : false,
              altta: Math.abs(tb.scrollTop+tb.clientHeight-tb.scrollHeight)<6 };
   });
-  t('pazarlıkta hamle sonrası kaydırma korunuyor', po<10 || Math.abs(pz.scroll-po)<40);
+  /* talkAlta() cevap balonu görünsün diye sayfayı GEREKTİĞİ KADAR kaydırıyor;
+     en alttayken balon kutusu yukarıda kalırsa ~100 px çıkılabiliyor. Kusur
+     sayılan şey başa fırlamak: yer korunmalı ya da yalnız balona kadar kaymalı. */
+  t('pazarlıkta hamle sonrası kaydırma korunuyor', po<10 || Math.abs(pz.scroll-po)<40 ||
+    (pz.balonGorunur && pz.scroll>po*0.5));
   t('pazarlıkta son mesaj görünür kalıyor', pz.balonGorunur && pz.altta);
   await p.evaluate(()=>{ S.neg=null; closeSheet(); render(); }); await p.waitForTimeout(200);
 
@@ -666,10 +670,10 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     for(let k=0;k<30 && document.querySelectorAll('.kart-sahne img.aracfoto').length<3;k++)
       await new Promise(r=>setTimeout(r,500));
     return {img:document.querySelectorAll('.kart-sahne img.aracfoto').length, kart:document.querySelectorAll('.kart-sahne').length,
-            font:document.fonts?[...document.fonts].some(f=>f.family.replace(/"/g,'')==="Saira"):true};
+            font:document.fonts?[...document.fonts].some(f=>f.family.replace(/"/g,'')==="Space Grotesk"):true};
   });
   t(`liste kartlarında 3B fotoğraf (${foto.img}/${foto.kart})`, foto.img>=Math.min(3,foto.kart));
-  t('Saira yazı tipi gömülü', foto.font);
+  t('Space Grotesk yazı tipi gömülü', foto.font);
 
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;

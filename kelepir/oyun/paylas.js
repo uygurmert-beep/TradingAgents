@@ -11,15 +11,16 @@
    oyun çevrimdışı çalışmaya devam ediyor.
    ================================================================== */
 const KART={ G:1080, Y:1920 };
+/* Showroom paleti: paylaşılan kart oyunun kendisiyle aynı görünsün. */
 const KART_RENK={
-  zemin:"#0B1012", zemin2:"#16252A", petrol:"#16B8AE", altin:"#F0B452",
-  yazi:"#ECF2F1", yazi2:"#93A5A4", yazi3:"#647775",
-  yesil:"#3DD68C", kirmizi:"#FF6B5E", koyu:"#0A1416"
+  zemin:"#F3F1EC", zemin2:"#FFFFFF", petrol:"#0E5E4B", altin:"#A86A00",
+  yazi:"#16181B", yazi2:"#5C6168", yazi3:"#80858C",
+  yesil:"#138A4E", kirmizi:"#C8323C", koyu:"#16181B", etiket:"#D9A03A"
 };
 const KART_SITE="kelepiroyunu.com";
 
 function _kf(boy, agirlik=600){
-  return `${agirlik} ${boy}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif`;
+  return `${Math.min(agirlik,700)} ${boy}px "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif`;
 }
 /** Metni genişliğe sığdırarak satırlara böl. */
 function _sar(ctx, metin, genislik){
@@ -46,7 +47,7 @@ function _kartIsaret(ctx, x, y, boy){
   ctx.translate(50,50); ctx.rotate(-10*Math.PI/180); ctx.scale(.84,.84); ctx.translate(-50,-50);
   const etiket=new Path2D("M14,50 L46,17 A9,9 0 0 1 53,14 L82,14 A8,8 0 0 1 90,22 L90,51 "+
                           "A9,9 0 0 1 87,58 L55,90 A8,8 0 0 1 43,90 L14,61 A8,8 0 0 1 14,50 Z");
-  ctx.fillStyle=KART_RENK.altin; ctx.fill(etiket);
+  ctx.fillStyle=KART_RENK.etiket; ctx.fill(etiket);
   ctx.fillStyle=KART_RENK.koyu;
   ctx.beginPath(); ctx.arc(34,32,8.5,0,Math.PI*2); ctx.fill();
   ctx.save();
@@ -63,11 +64,11 @@ function _kartIsaret(ctx, x, y, boy){
 function _kartZemin(ctx){
   const g=ctx.createLinearGradient(0,0,KART.G,KART.Y);
   g.addColorStop(0,KART_RENK.zemin2); g.addColorStop(.55,KART_RENK.zemin);
-  g.addColorStop(1,"#070B0C");
+  g.addColorStop(1,"#E9E6DF");
   ctx.fillStyle=g; ctx.fillRect(0,0,KART.G,KART.Y);
   // sol üstte petrol ışıması
   const h=ctx.createRadialGradient(150,120,20,150,120,900);
-  h.addColorStop(0,"rgba(22,184,174,.16)"); h.addColorStop(1,"rgba(22,184,174,0)");
+  h.addColorStop(0,"rgba(14,94,75,.08)"); h.addColorStop(1,"rgba(14,94,75,0)");
   ctx.fillStyle=h; ctx.fillRect(0,0,KART.G,KART.Y);
   // alt kenarda petrol çizgi
   ctx.fillStyle=KART_RENK.petrol; ctx.fillRect(0,KART.Y-10,KART.G,10);
@@ -95,8 +96,8 @@ function _kartCipler(ctx, ciplar, x, y, maxG){
   for(const [metin,renk] of ciplar){
     const g=ctx.measureText(metin).width+46;
     if(cx+g>x+maxG){ cx=x; cy+=72; }
-    ctx.fillStyle=renk==="altin"?"rgba(240,180,82,.14)"
-                 :renk==="kirmizi"?"rgba(255,107,94,.15)":"rgba(150,200,198,.09)";
+    ctx.fillStyle=renk==="altin"?"rgba(168,106,0,.10)"
+                 :renk==="kirmizi"?"rgba(200,50,60,.09)":"rgba(20,24,28,.05)";
     _yuvarlakYol(ctx,cx,cy-27,g,54,27); ctx.fill();
     ctx.fillStyle=renk==="altin"?KART_RENK.altin
                  :renk==="kirmizi"?KART_RENK.kirmizi:KART_RENK.yazi2;
@@ -121,7 +122,7 @@ function _kartDurum(ctx, c, x, y, genislik){
     ctx.fillStyle=KART_RENK.yazi2; ctx.font=_kf(30,500);
     ctx.textAlign="left"; ctx.fillText(COMPLBL[k], x, cy+30);
     const bx=x+230, bg=genislik-300, by=cy+18;
-    ctx.fillStyle="rgba(0,0,0,.42)";
+    ctx.fillStyle="rgba(20,24,28,.08)";
     _yuvarlakYol(ctx,bx,by,bg,16,8); ctx.fill();
     const renk = v>=75?KART_RENK.yesil : v>=48?KART_RENK.altin : KART_RENK.kirmizi;
     ctx.fillStyle=renk;
@@ -140,7 +141,7 @@ function _kartDurum(ctx, c, x, y, genislik){
 function _kartMuhur(ctx, c, x, y){
   const h = (typeof muhurHukmu==="function") ? muhurHukmu(c)
           : (c.tramer? {s:"tramer", t:"TRAMERLİ"} : {s:"temiz", t:"TEMİZ"});
-  const renk = h.s==="agir" ? "#FF6B5E" : h.s==="tramer" ? "#F0B452" : "#3DD68C";
+  const renk = h.s==="agir" ? KART_RENK.kirmizi : h.s==="tramer" ? KART_RENK.altin : KART_RENK.yesil;
   const metin = h.t.replace(/&Uuml;/g,"Ü");
   ctx.save();
   ctx.translate(x,y); ctx.rotate(-9*Math.PI/180);
@@ -215,9 +216,9 @@ function kartSoru(c, gun){
 
   // soru bloğu — her zaman altta, sabit yerde
   const by=KART.Y-470;
-  ctx.fillStyle="rgba(22,184,174,.12)";
+  ctx.fillStyle="rgba(14,94,75,.07)";
   _yuvarlakYol(ctx,80,by,KART.G-160,250,28); ctx.fill();
-  ctx.strokeStyle="rgba(22,184,174,.45)"; ctx.lineWidth=3;
+  ctx.strokeStyle="rgba(14,94,75,.35)"; ctx.lineWidth=3;
   _yuvarlakYol(ctx,80,by,KART.G-160,250,28); ctx.stroke();
   ctx.textAlign="center";
   ctx.fillStyle=KART_RENK.petrol; ctx.font=_kf(26,700);
@@ -262,7 +263,7 @@ function kartSonuc(s, gun){
     ["Sapma", (s.sap>0?"+":"")+String(s.sap).replace(".",",")+"%",
       Math.abs(s.sap)<=3?KART_RENK.yesil:KART_RENK.kirmizi]
   ];
-  ctx.fillStyle="rgba(20,27,29,.72)";
+  ctx.fillStyle="#FFFFFF";
   _yuvarlakYol(ctx,80,ky-34,KART.G-160,satirlar.length*86+28,28); ctx.fill();
   for(const [et,deg,c2] of satirlar){
     ctx.textAlign="left"; ctx.fillStyle=KART_RENK.yazi2; ctx.font=_kf(34,500);
@@ -278,9 +279,9 @@ function kartSonuc(s, gun){
 
   // davet: izleyen de denesin
   const dy=KART.Y-330;
-  ctx.fillStyle="rgba(22,184,174,.12)";
+  ctx.fillStyle="rgba(14,94,75,.07)";
   _yuvarlakYol(ctx,80,dy,KART.G-160,180,28); ctx.fill();
-  ctx.strokeStyle="rgba(22,184,174,.42)"; ctx.lineWidth=3;
+  ctx.strokeStyle="rgba(14,94,75,.35)"; ctx.lineWidth=3;
   _yuvarlakYol(ctx,80,dy,KART.G-160,180,28); ctx.stroke();
   ctx.textAlign="center"; ctx.fillStyle=KART_RENK.yazi; ctx.font=_kf(58,800);
   ctx.fillText("SEN KAÇ VERİRDİN?", KART.G/2, dy+88);

@@ -17,13 +17,13 @@
   },
   "plugins": {
     "SystemBars": {
-      "style": "dark",
+      "style": "light",
       "insetsHandling": "css"
     },
     "SplashScreen": {
       "launchShowDuration": 1200,
       "launchAutoHide": true,
-      "backgroundColor": "#0A0E1A",
+      "backgroundColor": "#0E5E4B",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,

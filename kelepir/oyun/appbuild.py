@@ -6,7 +6,7 @@ import json, shutil, os, re
 
 AD      = "Kelepir"
 AD_UZUN = "Kelepir — Galeri Simülasyonu"
-ZEMIN   = "#0A0E1A"
+ZEMIN   = "#F3F1EC"
 
 
 def cakismaKontrol(dosyalar):

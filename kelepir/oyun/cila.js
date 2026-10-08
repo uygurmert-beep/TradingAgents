@@ -35,7 +35,12 @@ function nakitYaz(el, yeni){
     const e=1-Math.pow(1-u,3);                       // easeOutCubic
     el.textContent=tl(Math.round(eski+(yeni-eski)*e));
     if(u<1) CILA.sayac=requestAnimationFrame(adim);
-    else { CILA.sayac=null; el.textContent=tl(yeni); }
+    else {
+      CILA.sayac=null; el.textContent=tl(yeni);
+      /* Renk sınıfı kalıcı kalıyordu: bir alımdan sonra kasa saatlerce
+         kırmızı durup "zarardasın" diyordu. Sayaç bitince altına döner. */
+      setTimeout(()=>el.classList.remove("pop-art","pop-eks"), 450);
+    }
   };
   CILA.sayac=requestAnimationFrame(adim);
 }

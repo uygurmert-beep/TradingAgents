@@ -26,17 +26,17 @@ const APP = (function(){
      açıyor: setBackgroundColor ve setOverlaysWebView artık etkisiz, hatta
      setOverlaysWebView(false) çağırmak düzeni bozuyor. Doğrusu çubuğun
      ardını gövde rengiyle doldurup dolguyu güvenli alandan almak — CSS
-     tarafı bunu yapıyor. Burada yalnızca yazı/ikon rengini koyu temaya
-     ayarlıyoruz. Capacitor 8'de bu çekirdekteki SystemBars; eski
+     tarafı bunu yapıyor. Burada yalnızca yazı/ikon rengini ayarlıyoruz:
+     zemin açık (Showroom), ikonlar koyu — "LIGHT" stil koyu içerik demek. Capacitor 8'de bu çekirdekteki SystemBars; eski
      kabuklarda StatusBar eklentisi. İkisini de deniyoruz. */
   async function sistemCubuklari(){
     const sys=eklenti("SystemBars");
     if(sys && sys.setStyle){
-      try{ await sys.setStyle({style:"dark"}); return; }catch(e){}
+      try{ await sys.setStyle({style:"LIGHT"}); return; }catch(e){}
     }
     const sb=eklenti("StatusBar");
     if(!sb) return;
-    try{ if(sb.setStyle) await sb.setStyle({style:"DARK"}); }catch(e){}
+    try{ if(sb.setStyle) await sb.setStyle({style:"LIGHT"}); }catch(e){}
   }
 
   /* ---- açılış ekranı: sahne hazır olunca kapat ---- */
