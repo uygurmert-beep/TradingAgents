@@ -1,0 +1,65 @@
+# Netlify: set "Base directory" to pitchiq-site in the site settings
+# (this repo also contains other projects at its root).
+[build]
+  command = "node build.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Android TWA (Digital Asset Links) — must be plain JSON at this exact path.
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "interest-cohort=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Icons/screenshots keep stable names, so don't cache them forever.
+[[headers]]
+  for = "/assets/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+[[headers]]
+  for = "/assets/screenshots/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Turkish aliases and .html variants that stores/users may type.
+[[redirects]]
+  from = "/iletisim"
+  to = "/support/"
+  status = 301
+[[redirects]]
+  from = "/destek"
+  to = "/support/"
+  status = 301
+[[redirects]]
+  from = "/gizlilik"
+  to = "/privacy/"
+  status = 301
+[[redirects]]
+  from = "/privacy.html"
+  to = "/privacy/"
+  status = 301
+[[redirects]]
+  from = "/support.html"
+  to = "/support/"
+  status = 301
+[[redirects]]
+  from = "/app"
+  to = "/play/"
+  status = 301

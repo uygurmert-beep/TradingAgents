@@ -1,0 +1,21 @@
+// Small sample for tests and the demo. The game's own 20.000-player database replaces this.
+export const SAMPLE_PLAYERS = [
+  { id: "ozil", name: "Mesut Özil", born: 1988, pos: "Ofansif orta saha", nation: "Almanya", aliases: ["Özil"], clubs: ["Schalke 04", "Werder Bremen", "Real Madrid", "Arsenal", "Fenerbahçe", "Başakşehir"] },
+  { id: "hagi", name: "Gheorghe Hagi", born: 1965, pos: "Ofansif orta saha", nation: "Romanya", aliases: ["Hagi", "Comandante"], clubs: ["Sportul Studențesc", "Steaua Bükreş", "Real Madrid", "Brescia", "Barcelona", "Galatasaray"] },
+  { id: "alex", name: "Alex de Souza", born: 1977, pos: "Ofansif orta saha", nation: "Brezilya", aliases: ["Alex"], clubs: ["Coritiba", "Palmeiras", "Cruzeiro", "Fenerbahçe", "Coritiba"] },
+  { id: "r9", name: "Ronaldo Nazário", born: 1976, pos: "Forvet", nation: "Brezilya", aliases: ["Ronaldo", "R9"], clubs: ["Cruzeiro", "PSV", "Barcelona", "Inter", "Real Madrid", "Milan", "Corinthians"] },
+  { id: "cr7", name: "Cristiano Ronaldo", born: 1985, pos: "Forvet", nation: "Portekiz", aliases: ["Ronaldo", "CR7"], clubs: ["Sporting CP", "Manchester United", "Real Madrid", "Juventus", "Al Nassr"] },
+  { id: "hakan", name: "Hakan Şükür", born: 1971, pos: "Forvet", nation: "Türkiye", aliases: ["Kral"], clubs: ["Sakaryaspor", "Bursaspor", "Galatasaray", "Torino", "Inter", "Parma", "Blackburn Rovers", "Galatasaray"] },
+  { id: "rustu", name: "Rüştü Reçber", born: 1973, pos: "Kaleci", nation: "Türkiye", aliases: ["Rüştü"], clubs: ["Antalyaspor", "Fenerbahçe", "Barcelona", "Beşiktaş"] },
+  { id: "arda", name: "Arda Turan", born: 1987, pos: "Kanat", nation: "Türkiye", aliases: ["Arda"], clubs: ["Galatasaray", "Atlético Madrid", "Barcelona", "Başakşehir", "Galatasaray"] },
+  { id: "tugay", name: "Tugay Kerimoğlu", born: 1970, pos: "Orta saha", nation: "Türkiye", aliases: ["Tugay"], clubs: ["Galatasaray", "Rangers", "Blackburn Rovers"] },
+  { id: "drogba", name: "Didier Drogba", born: 1978, pos: "Forvet", nation: "Fildişi Sahili", aliases: ["Drogba"], clubs: ["Le Mans", "Guingamp", "Marsilya", "Chelsea", "Shanghai Shenhua", "Galatasaray"] },
+  { id: "sneijder", name: "Wesley Sneijder", born: 1984, pos: "Ofansif orta saha", nation: "Hollanda", aliases: ["Sneijder"], clubs: ["Ajax", "Real Madrid", "Inter", "Galatasaray", "Nice"] },
+  { id: "vanhooijdonk", name: "Pierre van Hooijdonk", born: 1969, pos: "Forvet", nation: "Hollanda", aliases: ["Van Hooijdonk"], clubs: ["Celtic", "Nottingham Forest", "Vitesse", "Benfica", "Feyenoord", "Fenerbahçe"] },
+  { id: "messi", name: "Lionel Messi", born: 1987, pos: "Forvet", nation: "Arjantin", aliases: ["Messi", "Leo Messi"], clubs: ["Barcelona", "PSG", "Inter Miami"] },
+  { id: "zlatan", name: "Zlatan İbrahimović", born: 1981, pos: "Forvet", nation: "İsveç", aliases: ["Zlatan", "Ibrahimovic"], clubs: ["Malmö", "Ajax", "Juventus", "Inter", "Barcelona", "Milan", "PSG", "Manchester United", "LA Galaxy", "Milan"] },
+  { id: "emre", name: "Emre Belözoğlu", born: 1980, pos: "Orta saha", nation: "Türkiye", aliases: ["Emre"], clubs: ["Galatasaray", "Inter", "Newcastle United", "Fenerbahçe", "Atlético Madrid", "Başakşehir"] },
+  { id: "nihat", name: "Nihat Kahveci", born: 1979, pos: "Forvet", nation: "Türkiye", aliases: ["Nihat"], clubs: ["Beşiktaş", "Real Sociedad", "Villarreal", "Beşiktaş"] },
+  { id: "ronaldinho", name: "Ronaldinho", born: 1980, pos: "Ofansif orta saha", nation: "Brezilya", aliases: ["Ronaldinho Gaúcho", "R10"], clubs: ["Grêmio", "PSG", "Barcelona", "Milan", "Flamengo", "Atlético Mineiro"] },
+  { id: "quaresma", name: "Ricardo Quaresma", born: 1983, pos: "Kanat", nation: "Portekiz", aliases: ["Quaresma"], clubs: ["Sporting CP", "Barcelona", "Porto", "Inter", "Beşiktaş"] },
+];
