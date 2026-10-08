@@ -35,15 +35,26 @@ python3 -m http.server -d dist    # http://localhost:8000
 ### İngilizce eklemek
 `src/i18n/tr.json`'u `en.json` olarak kopyalayıp çevir, `config.json`'da `"locales": ["tr", "en"]` yap. Site `/en/...` altında üretilir, sitemap ve `hreflang` etiketleri otomatik eklenir.
 
-## Varlıklar (mağaza paketinden)
+## Marka ve logo
 
-Şu an **yer tutucu** görseller var; gerçekleri aynı adla değiştir:
+Logo: **Yön A · Orta Saha**. "IQ"daki Q sahanın orta yuvarlağı, altın nokta başlama noktası.
+Kaynak dosyalar `brand/` klasöründe (SVG), mağaza dosyaları `brand/export/` içinde:
 
-| Dosya | Kaynak |
+| Dosya | Nereye |
 |---|---|
-| `static/assets/icons/icon-512.png`, `icon-1024.png`, `apple-touch-icon.png` | paket `icons/` |
-| `static/assets/icons/feature-graphic.png` (1024×500, OG görseli) | paket `icons/` |
-| `static/assets/screenshots/01-home.webp` … `05-iq-test.webp` | paket `screenshots/` |
+| `play-store-icon-512.png` | Google Play › Uygulama simgesi (512×512, köşeleri Google yuvarlatır) |
+| `play-feature-graphic-1024x500.png` | Google Play › Öne çıkan grafik |
+| `app-store-icon-1024.png` | App Store Connect (şeffaflık yok) |
+| `android-adaptive-foreground/background/monochrome-432.png` | Android Studio / Bubblewrap uyarlanabilir ikon katmanları |
+| `pwa-icon-192/512.png`, `pwa-maskable-192/512.png` | Oyunun PWA `manifest.json`'ı (PWABuilder bunları ister) |
+| `logo-horizontal-dark/light.png` | Basın, sosyal medya, sunum |
+
+SVG'leri değiştirirsen PNG'leri yeniden üret: `node tools/render-brand.cjs` (Playwright + Chromium ve
+Anton / Barlow Condensed fontlarının yerelde kurulu olması gerekir). Bu komut sitenin
+`static/assets/icons/` dosyalarını da günceller.
+
+Ekran görüntüleri hâlâ **yer tutucu**: `static/assets/screenshots/01-home.webp` … `05-iq-test.webp`
+dosyalarını paketteki gerçek görsellerle değiştir.
 
 Ekran görüntülerini WebP'ye çevirip doğru adlarla kaydetmek için:
 

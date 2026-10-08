@@ -61,7 +61,8 @@ export function layout(ctx, { title, description, body, jsonLd, noindex = false,
   <meta name="theme-color" content="#0F5132" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#041A10" media="(prefers-color-scheme: dark)">
   <meta name="color-scheme" content="light dark">
-  <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
+  <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/favicon-48.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 
   <meta property="og:type" content="website">
@@ -92,7 +93,7 @@ export function layout(ctx, { title, description, body, jsonLd, noindex = false,
   <header class="site-header">
     <div class="wrap site-header__inner">
       <a class="brand" href="${home}" aria-label="${esc(config.appName)} — ${esc(t.common.backHome)}">
-        <img src="/assets/icons/apple-touch-icon.png" alt="" width="36" height="36">
+        <img src="/assets/icons/brand-96.png" alt="" width="36" height="36">
         <span>PITCH <b>IQ</b></span>
       </a>
       <nav class="site-nav" aria-label="${esc(t.common.a11y.mainNav)}">
@@ -118,7 +119,7 @@ ${body}
   <footer class="site-footer">
     <div class="wrap site-footer__grid">
       <div>
-        <a class="brand brand--footer" href="${home}"><img src="/assets/icons/apple-touch-icon.png" alt="" width="40" height="40" loading="lazy"><span>PITCH <b>IQ</b></span></a>
+        <a class="brand brand--footer" href="${home}"><img src="/assets/icons/brand-96.png" alt="" width="40" height="40" loading="lazy"><span>PITCH <b>IQ</b></span></a>
         <p>${esc(t.footer.tagline)}</p>
         ${footerCta ? playButton(ctx, { event: "Download+Footer" }) : ""}
       </div>
