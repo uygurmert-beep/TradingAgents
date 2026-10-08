@@ -23,7 +23,19 @@ const YUZ_IMZA={
   genc:        {kep:1, gozluk:0, biyik:0, sakal:0, yaka:"#7A4A8C", ten:3, sac:5, genc:1, kupe:1},
   esnaf:       {kep:0, gozluk:0, biyik:1, sakal:1, yaka:"#7A6038", ten:5, sac:0, onluk:1},
   merakli:     {kep:1, gozluk:1, biyik:0, sakal:1, yaka:"#4A4A52", ten:0, sac:3},
-  uzak:        {kep:0, gozluk:0, biyik:1, sakal:0, yaka:"#55606B", ten:2, sac:2}
+  uzak:        {kep:0, gozluk:0, biyik:1, sakal:0, yaka:"#55606B", ten:2, sac:2},
+  /* --- tanıdıklar: galeri ekranında harf yerine yüz --- */
+  nuri:        {kep:1, gozluk:0, biyik:1, sakal:0, yaka:"#3D5A7A", ten:1, sac:0, onluk:1},
+  hakan:       {kep:0, gozluk:1, biyik:0, sakal:0, yaka:"#2E5B57", ten:3, sac:1},
+  selim:       {kep:1, gozluk:0, biyik:0, sakal:1, yaka:"#8A5A1E", ten:5, sac:4},
+  yilmaz:      {kep:0, gozluk:1, biyik:1, sakal:0, yaka:"#2A2F3A", ten:0, sac:3, kravat:1},
+  vedat:       {kep:0, gozluk:1, biyik:1, sakal:0, yaka:"#1F2A33", ten:2, sac:4, zincir:1},
+  /* --- emanet sahipleri --- */
+  tasinan:     {kep:0, gozluk:0, biyik:0, sakal:0, yaka:"#6A4F7A", ten:3, sac:5, genc:1, kupe:1},
+  miras:       {kep:0, gozluk:0, biyik:0, sakal:1, yaka:"#4E5A4A", ten:2, sac:1},
+  emekli:      {kep:0, gozluk:1, biyik:1, sakal:0, yaka:"#5B4E3E", ten:0, sac:3, papyon:1},
+  sirket:      {kep:0, gozluk:1, biyik:0, sakal:0, yaka:"#2F3C49", ten:3, sac:2, kravat:1}
+  /* "acil" (borcu sıkışan Erkan) satıcılardaki acil imzasını paylaşıyor */
 };
 /** Ruh hâli (0–100) ve sabır oranından (0–1) yüz üret. */
 let _yuzNo=0;

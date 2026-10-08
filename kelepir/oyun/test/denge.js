@@ -18,7 +18,17 @@ const {chromium}=require('playwright');
     S.tutorial=false;
     const iz=[]; let teklif=0; const oran=[]; const alim=[];
     const net=()=>netWorth();
+    const yeni={buyume:0, emanet:0, parti:0, hedef:0};
     for(let gun=1; gun<=120; gun++){
+      /* 0) Gerçek oyuncu gibi davran: yer dolunca ve kasa rahatsa büyü,
+         kârlı görünen emaneti ve partiyi al. Bot eskiden kontenjan hiç
+         almıyordu; kira baskısını oyuncu gibi yaşamıyor, simülasyon
+         ekonomiyi olduğundan rahat gösteriyordu. */
+      if(S.cars.length>=S.slots && S.slots<10 && S.cash>slotFiyat()*3){ S.cash-=slotFiyat(); S.slots++; yeni.buyume++; }
+      if(S.konsTeklif && S.cars.length<S.slots){
+        const t=S.konsTeklif; if(valueOf(t.car,true)>t.net*1.12){ if(konsKabul()) yeni.emanet++; } else konsRed();
+      }
+      if(S.parti && S.slots-S.cars.length>=S.parti.cars.length && S.cash>S.parti.fiyat*1.6){ if(partiAl()) yeni.parti++; }
       // 1) boş yer varsa, iyi fiyatlı aracı al (sorulan fiyat tahmini değerin %88 altıysa)
       for(const c of [...S.market]){
         if(S.cars.length>=S.slots) break;
@@ -42,7 +52,8 @@ const {chromium}=require('playwright');
         for(const f of (c.faults||[])){
           if(!f.fixed && f.cost<=S.cash*0.5){ const k=repairCost(f); S.cash-=k; c.spent+=k; f.fixed=true; }
         }
-        if(!c.listPrice){ c.listPrice=Math.round(Math.max(carCost(c)*1.08, valueOf(c,false)*1.02)/500)*500; c.disclosed=true; }
+        if(!c.listPrice){ if(c.konsinye) c.inspected=true;
+          c.listPrice=Math.round(Math.max(carCost(c)*1.08, valueOf(c,false)*1.02)/500)*500; c.disclosed=true; }
       }
       // 3) gelen teklifleri değerlendir: maliyetin üstündeyse kabul
       for(const o of [...(S.offers||[])]){
@@ -57,11 +68,14 @@ const {chromium}=require('playwright');
         c.listPrice=Math.round(c.listPrice*0.97/500)*500;
 
       nextDay();
+      // Arayüzdeki "sezonu kapat" düğmesinin yaptığı sıfırlama; bot düğmeye basmıyor.
+      if(S.report&&S.report.season){ S.seasonGross=0; S.seasonSales=0; S.seasonProfit=0; S.report.seasonSeen=true; }
       if(gun%15===0) iz.push({gun:S.day, nakit:Math.round(S.cash), net:Math.round(net()),
         stok:S.cars.length, satildi:S.stats.sold||0, borc:Math.round(S.debt), rep:Math.round(S.rep),
         lv:level(), xp:Math.round(S.xp)});
     }
-    return {iz, son:{nakit:Math.round(S.cash), net:Math.round(netWorth()),
+    yeni.hedef=S.stats.hedefTuttu||0; yeni.konsSatis=S.stats.konsSatis||0; yeni.konsIade=S.stats.konsIade||0;
+    return {iz, yeni, son:{slot:S.slots, nakit:Math.round(S.cash), net:Math.round(netWorth()),
       satildi:S.stats.sold||0, alindi:S.stats.bought||0, teklif, alim, oranOrt:+(oran.reduce((a,b)=>a+b,0)/(oran.length||1)).toFixed(3), oranMax:Math.max(...oran), tas:Object.keys(S.milestones||{}).length}};
   });
   console.log(JSON.stringify(r,null,1));

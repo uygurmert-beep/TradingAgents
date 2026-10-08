@@ -175,6 +175,22 @@ Object.assign(I18N.TAM, {
 "İlkbahara başla":"Start spring","Kapanışa 15 gün · 6 ilan":"15 days to close · 6 listings",
 "Gizli arızaları, tramer kaydını ve km oynamasını açığa çıkarır. Bulduğun her kusur pazarlıkta koz olur.":
   "Reveals hidden faults, accident records and clocked odometers. Every fault you find is leverage.",
+
+/* --- konsinye, yan görevler, BUGÜN rayı --- */
+"BUGÜN":"TODAY","İLANLAR":"LISTINGS","Emanet teklifi":"Consignment offer","Emanete al":"Take on consignment",
+"Geri çevir":"Decline","Sahibine iade et":"Return to owner","EMANET":"CONSIGNED",
+"Toptan parti":"Job lot","Partiyi al":"Buy the lot","Tek tek istenen":"Asked one by one",
+"Parti fiyatı":"Lot price","Görünen indirim":"Apparent discount","Gereken boş yer":"Free spaces needed",
+"Günün vakası":"Case of the day","Günün görevleri":"Today's tasks","Sezon hedefi":"Season target",
+"Sanayi günü":"Workshop day","Sanayi günü yaklaşıyor":"Workshop day coming","Tamirler %30 ucuz":"Repairs 30% off",
+"Piyasa olayı":"Market event","Dönen müşteri":"Returning customer","dönen":"returning","uyan var":"match in stock",
+"Sahibine ödenecek net":"Net owed to owner","Kalan süre":"Time left","Sahibinin istediği net":"Owner's net ask",
+"Görünen değer":"Apparent value","Görünen pay":"Apparent margin","Bekleme süresi":"Owner waits",
+"Mal sahibinin hedefi":"Landlord's target","Bu sezonki kârın":"Profit this season",
+"Emanet sahiplerine borç":"Owed to consignors","Tamam":"OK","Pazara git":"Go to market",
+"Hepsi tamam":"All done","Yurt dışına taşınan Selin":"Selin, moving abroad","Miras kalan araba":"Inherited car",
+"Emekli öğretmen Nail Bey":"Retired teacher Mr Nail","Muhasebeci Ferda Hanım":"Ms Ferda, accountant",
+"Borcu sıkışan Erkan":"Erkan, short on cash",
 });
 
 /* ---- sayı taşıyan kalıplar (uzun olanlar önce) ---- */

@@ -246,44 +246,153 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('medyan hatchback 700bin–1,3 milyon bandında',
     mm.med.hatch>700000 && mm.med.hatch<1300000);
 
-  console.log('13) filo — kiraya verme');
-  const fl=await p.evaluate(()=>{
-    closeSheet(); S.cash=9000000; S.slots=8; S.cars=[]; S.tutorial=false;
-    const c=genCar(); c.owned=true; c.boughtFor=valueOf(c,false); c.boughtDay=S.day;
-    c.daysListed=0; c.leadsSeen=0; S.cars=[c];
-    const ekspersiz=kiraUygunMu(c).ok;
-    c.inspected=true;
-    const arizali = c.faults.some(f=>!f.fixed) ? !kiraUygunMu(c).ok : true;
-    c.faults.forEach(f=>f.fixed=true);
-    const uygun=kiraUygunMu(c).ok;
-    const gelir=kiraGelir(c);
-    kirayaVer(c);
-    const km0=c.km;
-    KIRA.arizaGun=0;
-    const rep={costs:[],events:[]}; const nakit0=S.cash;
-    for(let i=0;i<5;i++) kiraGun(rep);
-    const sonuc={ekspersiz, arizali, uygun, gelir, kirada:!!c.kira,
-      gun:c.kira?c.kira.gun:0, toplam:c.kira?c.kira.toplam:0,
-      nakitArtis:Math.round(S.cash-nakit0), kmArtis:c.km-km0};
-    // ilandaki araç kiraya verilemez
-    c.kira=null; c.listPrice=999999;
-    sonuc.ilandaOlan=!kiraUygunMu(c).ok;
-    c.listPrice=null;
-    // en az süre dolmadan çıkarılamaz
-    kirayaVer(c); sonuc.erkenCikis=!kiradanAl(c);
-    c.kira.gun=5; sonuc.gecCikis=kiradanAl(c);
+  console.log('13) konsinye — emanet araç');
+  const ks=await p.evaluate(()=>{
+    closeSheet(); S.cash=2000000; S.slots=4; S.cars=[]; S.offers=[]; S.tutorial=false; S.rep=60;
+    S.stats.konsMemnun=0;
+    const t=konsTeklifUret(); S.konsTeklif=t;
+    const nakit0=S.cash, nw0=netWorth();
+    const kabul=konsKabul();
+    const c=S.cars[0];
+    const sonuc={kabul, nakitAyni:S.cash===nakit0, yerKapliyor:S.cars.length===1,
+      netDogru:c.konsinye.net===t.net && c.boughtFor===t.net, teklifKapandi:!S.konsTeklif,
+      /* emanet aracın değeri bizim değil: net değer neredeyse değişmemeli */
+      nwFark:Math.abs(netWorth()-nw0) < valueOf(c,false)*0.2};
+    // satış: sahibine net ödenir, kâr = fiyat − net − masraf
+    c.inspected=false; c.disclosed=true;
+    const fiyat=t.net+300000, once=S.cash;
+    sellCar(c, fiyat);
+    sonuc.sahibineOdendi = S.cash-once === Math.round(fiyat*prestijSatisCarpani())-t.net;
+    sonuc.karDogru = S.lastDeal.profit === Math.round(fiyat*prestijSatisCarpani())-t.net;
+    sonuc.memnun = S.stats.konsMemnun===1;
+    // süre dolunca sahibi geri alır, tamir yarısı ödenir
+    S.konsTeklif=konsTeklifUret(); konsKabul();
+    const d=S.cars[0]; d.spent=40000; d.konsinye.bitis=S.day-1;
+    const n2=S.cash, rep={events:[],costs:[]};
+    konsinyeGun(rep);
+    sonuc.geriAldi = !S.cars.includes(d);
+    sonuc.tamirPayi = S.cash-n2===20000;
+    // yer doluyken teklif kabul edilmez
+    S.slots=1; S.cars=[genCar()]; S.konsTeklif=konsTeklifUret();
+    sonuc.yerYok = !konsKabul() && !!S.konsTeklif;
+    // erken iade yer açar
+    S.slots=4; S.cars=[]; konsKabul(); const e=S.cars[0];
+    sonuc.iade = konsIade(e) && S.cars.length===0;
+    sonuc.filoYok = typeof kirayaVer==="undefined";
+    // eski kayıttaki kiradaki araç normal stoğa döner, emanet teklifi kayıttan sağ çıkar
+    const k=genCar(); k.owned=true; k.boughtFor=1; k.spent=0; k.daysListed=0; S.cars=[k];
+    S.konsTeklif=konsTeklifUret();
+    const ham=JSON.parse(JSON.stringify(serialize())); ham.cars[0].kira={gun:3, gelirGun:500};
+    const geri=deserialize(ham);
+    sonuc.kiraSilindi = !geri.cars[0].kira;
+    sonuc.teklifModel = MODELS.includes(geri.konsTeklif.car.model);
+    S.cars=[]; S.konsTeklif=null;
     return sonuc;
   });
-  t('ekspertizsiz araç kiraya verilemez', fl.ekspersiz===false);
-  t('açık arızalı araç kiraya verilemez', fl.arizali===true);
-  t('hazır araç kiraya verilebilir', fl.uygun===true);
-  t('günlük gelir hesaplanıyor', fl.gelir>0);
-  t('5 günde gelir kasaya yazıldı', fl.nakitArtis===fl.gelir*5);
-  t('toplam birikiyor', fl.toplam===fl.gelir*5);
-  t('km biniyor', fl.kmArtis>=5*180 && fl.kmArtis<=5*420);
-  t('ilandaki araç kiraya verilemez', fl.ilandaOlan===true);
-  t('sözleşme süresi dolmadan çıkarılamaz', fl.erkenCikis===true);
-  t('süre dolunca çıkarılabilir', fl.gecCikis===true);
+  t('emanet kabul edilince araç geliyor, nakit çıkmıyor', ks.kabul && ks.nakitAyni && ks.yerKapliyor);
+  t('net ve maliyet sahibin istediği tutar', ks.netDogru && ks.teklifKapandi);
+  t('emanet net değeri şişirmiyor', ks.nwFark);
+  t('satışta sahibine net ödeniyor', ks.sahibineOdendi);
+  t('kâr = satış − net', ks.karDogru);
+  t('temiz satış memnun sahip sayılıyor', ks.memnun);
+  t('süre dolunca sahibi aracı geri alıyor', ks.geriAldi);
+  t('geri alırken tamirin yarısını ödüyor', ks.tamirPayi);
+  t('yer doluyken emanet alınamıyor', ks.yerYok);
+  t('erken iade yer açıyor', ks.iade);
+  t('filo kaldırıldı', ks.filoYok);
+  t('eski kayıttaki kiradaki araç stoğa döner', ks.kiraSilindi);
+  t('emanet teklifindeki araç kayıttan doğru modelle döner', ks.teklifModel);
+
+  console.log('13b) toptan parti');
+  const pt=await p.evaluate(()=>{
+    closeSheet(); S.cash=20000000; S.slots=4; S.cars=[genCar()]; S.cars[0].owned=true;
+    S.parti=partiUret(); const pr=S.parti;
+    const sonuc={adet:pr.cars.length===3, indirim:(1-pr.fiyat/pr.tekTek)>0.11 && (1-pr.fiyat/pr.tekTek)<0.19,
+      kotuVar:pr.cars.some(c=>c.faults.some(f=>!f.visible && f.cost>=40000*.5))};
+    S.slots=3; sonuc.yerYok = !partiAl() && !!S.parti; // 3-1=2 boş yer: alınamaz
+    S.slots=4; const n0=S.cash;
+    sonuc.alindi = partiAl() && S.cars.length===4 && !S.parti;
+    sonuc.odendi = n0-S.cash===pr.fiyat;
+    const top=S.cars.slice(1).reduce((a,c)=>a+c.boughtFor,0);
+    sonuc.maliyetDagildi = Math.abs(top-pr.fiyat)<=1500;
+    sonuc.ekspertizsiz = S.cars.slice(1).every(c=>!c.inspected);
+    return sonuc;
+  });
+  t('parti üç araç', pt.adet);
+  t('parti indirimi %13–17 bandında', pt.indirim);
+  t('partide bir ağır gizli kusur var', pt.kotuVar);
+  t('yeterli boş yer yoksa parti alınmıyor', pt.yerYok);
+  t('parti alınınca üç araç garaja giriyor', pt.alindi);
+  t('parti fiyatı kasadan çıkıyor', pt.odendi);
+  t('parti fiyatı araçlara dağıtılıyor', pt.maliyetDagildi);
+  t('parti araçları ekspertizsiz geliyor', pt.ekspertizsiz);
+
+  console.log('13c) dönen müşteri');
+  const dm=await p.evaluate(()=>{
+    closeSheet(); S.orders=[]; S.donecek=[]; S.musteriler={};
+    const cust=ORDER_CUSTOMERS[0];
+    const o=genOrder(S.day, level(), cust);
+    musteriMemnun(o);
+    const plan=S.donecek[0];
+    const sonuc={planli:!!plan && plan.gun>S.day+9};
+    // gün gelince sipariş daha büyük bütçeyle döner
+    plan.gun=S.day; const rep={events:[],costs:[]};
+    const eskiSans=PARTI.sans; PARTI.sans=0;
+    yanGorevGun(rep);
+    PARTI.sans=eskiSans;
+    const d=S.orders.find(x=>x.who===cust.n);
+    sonuc.dondu=!!d && !!d.donen;
+    sonuc.olay=rep.events.some(e=>/geri d/.test(e.t));
+    // aynı müşteri iki kez memnun → bütçe çarpanı büyüyor
+    S.musteriler[cust.n].memnun=3;
+    const toplam=[], tek=[];
+    for(let i=0;i<40;i++){ toplam.push(donusSiparisi({who:cust.n}).butce); tek.push(genOrder(S.day,level(),cust).butce); }
+    const ort=a=>a.reduce((x,y)=>x+y,0)/a.length;
+    sonuc.buyuk = ort(toplam) > ort(tek)*1.6;
+    musteriKustu(d);
+    sonuc.kustu = S.musteriler[cust.n].memnun===0 && !(S.donecek||[]).some(x=>x.who===cust.n);
+    return sonuc;
+  });
+  t('memnun müşteri iki hafta sonrasına planlanıyor', dm.planli);
+  t('gün gelince dönen sipariş açılıyor', dm.dondu && dm.olay);
+  t('üç memnun teslimden sonra bütçe belirgin büyük', dm.buyuk);
+  t('küsen müşteri dönmüyor', dm.kustu);
+
+  console.log('13d) sanayi günü');
+  const sy=await p.evaluate(()=>{
+    const f={cost:40000}; const gun0=S.day;
+    S.day=19; const normal=repairCost(f);
+    S.day=20; const sanayi=repairCost(f), bugun=sanayiGunu();
+    S.day=18; const kalan=sanayiyeKalan();
+    S.day=gun0;
+    return {normal, sanayi, bugun, kalan};
+  });
+  t('sanayi günü on günde bir', sy.bugun && sy.kalan===2);
+  t('sanayi gününde tamir %30 ucuz', Math.abs(sy.sanayi-sy.normal*0.7)<=250);
+
+  console.log('13e) sezon hedefi');
+  const hd=await p.evaluate(()=>{
+    S.hedef=null; S.kiraDonuk=null; S.seasonProfit=0;
+    const h=hedef();
+    const sonuc={makul:h.tutar>=HEDEF.taban && h.tutar>=sezonKirasi()*3};
+    S.seasonProfit=h.tutar+1;
+    const r1={events:[],costs:[]}; const kira1=kapanisKirasi(r1);
+    sonuc.normalKira = kira1===sezonKirasi();
+    sonuc.dondu = !!S.kiraDonuk;
+    // seviye atlasa da kira donuk ve indirimli
+    const xp0=S.xp; S.xp=XP_LEVELS[Math.min(XP_LEVELS.length-1, level()+1)];
+    const donuk=S.kiraDonuk;
+    S.hedef=null; S.seasonProfit=0; hedef();
+    const r2={events:[],costs:[]}; const kira2=kapanisKirasi(r2);
+    sonuc.indirimli = kira2===Math.round(Math.min(sezonKirasi(),donuk)*(1-HEDEF.indirim)/500)*500 && kira2<sezonKirasi();
+    sonuc.kacti = !S.kiraDonuk && r2.events.some(e=>e.bad);
+    S.xp=xp0;
+    return sonuc;
+  });
+  t('hedef kiraya göre ölçekleniyor', hd.makul);
+  t('hedef tutunca o sezon kira normal, sonraki donuyor', hd.normalKira && hd.dondu);
+  t('donuk kira seviye atlasa da indirimli', hd.indirimli);
+  t('hedef kaçınca indirim yok', hd.kacti);
 
   console.log('14) senetli alım');
   const sn=await p.evaluate(()=>{

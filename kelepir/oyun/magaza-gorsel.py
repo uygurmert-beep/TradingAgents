@@ -27,9 +27,11 @@ BEYAZ  = (236, 242, 241)
 GRI    = (147, 165, 164)
 
 KOK    = os.path.dirname(os.path.abspath(__file__))
-SS     = KOK + "/magaza/ss"
-CIK    = KOK + "/magaza/ss-cerceve"
-MAGAZA = KOK + "/magaza"
+# Mağaza klasörü oyun/'un bir üstünde; eskiden KOK altında aranıyordu.
+UST    = os.path.dirname(KOK)
+SS     = UST + "/magaza/ss"
+CIK    = UST + "/magaza/ss-cerceve"
+MAGAZA = UST + "/magaza"
 
 # ---------- yardımcılar ----------
 def degrade(w, h):
@@ -131,7 +133,7 @@ BASLIK = {
   "03-arac":     ("Ekspertiz ₺2.500", "Ödemezsen kusuru satarken öğrenirsin."),
   "04-pazarlik": ("Karşındaki insan", "Yüzünü oku, sabrını ölç, fiyatı kır."),
   "05-garaj":    ("Kârını gör, sonra sat", "Maliyet, tamir, başabaş — hepsi kartın üstünde."),
-  "06-filo":     ("Satmak zorunda değilsin", "Kiraya ver, her gün para kazansın."),
+  "06-emanet":   ("Cebinden para çıkmadan", "Emanet aracı sat, netin üstü senin."),
   "07-sirala":   ("Türkiye sıralaması", "61 galeri arasında kaçıncısın?"),
   "08-3b":       ("Galerini gez", "Listeden çık, mekânı yürüyerek dolaş."),
 }

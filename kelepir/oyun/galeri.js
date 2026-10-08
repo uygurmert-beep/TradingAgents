@@ -104,6 +104,13 @@ function yerBlok(){
       <b>${tl(sezonKirasi())}</b></div>
     <div class="yer-satir"><span>G&uuml;nl&uuml;k payı</span>
       <b>${tl(gunlukKira())}</b></div>
+    ${(()=>{ const h=hedef(), il=hedefIlerleme();
+      return `<div class="yer-hedef" data-act="hedefac" role="button">
+        <div class="yh-ust"><span>Sezon hedefi</span><b>${tlk(S.seasonProfit||0)} / ${tlk(h.tutar)}</b></div>
+        <div class="hedefcubuk"><i style="width:${Math.round(il*100)}%"></i></div>
+        <div class="yh-alt">${il>=1?"Tuttu &mdash; gelecek sezon kira donuk ve indirimli."
+          :S.kiraDonuk?"Bu sezon kiran donuk. Yeni hedefi de tut, indirim s&uuml;rs&uuml;n."
+          :"Tutarsa gelecek sezonun kirası donar ve indirilir."}</div></div>`; })()}
     <div class="yer-not">${a.n} olarak kiran ${a.kiraKat>1?"y&uuml;ksek":(a.kiraKat<1?"ucuz":"ortalama")},
       b&uuml;y&uuml;men ${a.slotKat>1?"pahalı":(a.slotKat<1?"ucuz":"ortalama")}. Seviye atladık&ccedil;a kira basamak atlıyor.</div>
     ${d?`<div class="yer-teklif">

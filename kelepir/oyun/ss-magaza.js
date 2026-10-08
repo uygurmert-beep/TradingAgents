@@ -8,7 +8,9 @@
 const {chromium}=require('playwright');
 const fs=require('fs');
 const KOK=require('path').resolve(__dirname);
-const CIK=KOK+'/magaza/ss';
+// Mağaza klasörü oyun/'un bir üstünde (kelepir/magaza). Eskiden KOK+'/magaza'
+// yazıyordu; görseller oyun/magaza altına, kimsenin bakmadığı yere düşüyordu.
+const CIK=require('path').resolve(__dirname,'..')+'/magaza/ss';
 
 const BOY=[
   {ad:'play',   w:360, h:640, dsf:3},   // → 1080×1920
@@ -23,7 +25,7 @@ async function hazirla(p){
   await p.waitForTimeout(400);
 }
 
-/* Oyunu belli bir noktaya getir: para, araçlar, filo, satış geçmişi.
+/* Oyunu belli bir noktaya getir: para, araçlar, emanet, satış geçmişi.
    Hepsi oyunun kendi fonksiyonlarıyla — elle state yazıp tutarsız ekran
    üretmemek için. */
 async function oyna(p){
@@ -33,15 +35,12 @@ async function oyna(p){
     const m=S.cars.slice(-3);
     if(m[0]){ m[0].inspected=true; m[0].faults.forEach(f=>f.fixed=true);
               m[0].listPrice=Math.round(valueOf(m[0],false)*1.12); }
-    if(m[1]){
-      m[1].inspected=true; m[1].listPrice=0;
-      m[1].faults.forEach(f=>f.fixed=true);
-      m[1].kira={bas:S.day, gelirGun:kiraGelir(m[1]), toplam:0, gun:0};
-      m[1].kira.gun=11; m[1].kira.toplam=m[1].kira.gelirGun*11;
-    }
+    // Filo yerine emanet: bir sahibin bıraktığı araç, oyunun kendi akışıyla.
+    if(S.cars.length<S.slots){ S.konsTeklif=konsTeklifUret(); konsKabul();
+      const e=S.cars.find(x=>x.konsinye); if(e){ e.inspected=true; } }
     render(); save();
-    const f=S.cars.find(x=>x.kira);
-    return f ? (f.model.n+" · "+tl(f.kira.gelirGun)+"/gün") : "YOK";
+    const f=S.cars.find(x=>x.konsinye);
+    return f ? (f.model.n+" · net "+tl(f.konsinye.net)) : "YOK";
   });
 }
 
@@ -109,22 +108,22 @@ const cek=async(p, ad, klasor)=>{
     await p.evaluate(()=>{ S.neg=null; closeSheet(); render(); });
     await p.waitForTimeout(250);
 
-    // şimdi stok kur: ilanda bir araç, filoda bir araç
-    const filo=await oyna(p);
-    console.log('     filo aracı:', filo);
+    // şimdi stok kur: ilanda bir araç, bir de emanet
+    const emanet=await oyna(p);
+    console.log('     emanet aracı:', emanet);
 
-    await p.evaluate(()=>{ S.tab="garaj"; S.garajAlt="filo"; render(); });
+    await p.evaluate(()=>{ S.tab="garaj"; S.garajTab="hazir"; render(); });
     await cek(p,'05-garaj',klasor);
 
-    // Filo bloğu araç SAYFASINDA (openOwnCar), "araç dosyası" sayfasında değil.
-    await p.evaluate(()=>{ const c=S.cars.find(x=>x.kira); if(c) openOwnCar(c); });
+    // Emanet bloğu araç SAYFASINDA (openOwnCar), "araç dosyası" sayfasında değil.
+    await p.evaluate(()=>{ const c=S.cars.find(x=>x.konsinye); if(c) openOwnCar(c); });
     await p.waitForTimeout(650);
     await p.evaluate(()=>{
-      const h=[...document.querySelectorAll('#modal h4')].find(x=>/FİLODA/.test(x.textContent));
-      if(h) h.closest('.block').scrollIntoView({block:'center'});
+      const b=document.querySelector('#modal .block.emanet');
+      if(b) b.scrollIntoView({block:'center'});
     });
     await p.waitForTimeout(400);
-    await cek(p,'06-filo',klasor);
+    await cek(p,'06-emanet',klasor);
     await p.evaluate(()=>{ closeSheet(); render(); }); await p.waitForTimeout(250);
 
     await p.evaluate(()=>{ S.tab="rapor"; S.defterAlt="lig"; render(); });

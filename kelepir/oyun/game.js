@@ -630,8 +630,8 @@ const ORDER_CUSTOMERS=[
  {n:"&Ccedil;iftlik sahibi",     segs:["suv","ticari"],     line:"K&ouml;y yolu &ccedil;ok bozuk, sağlam olsun."},
  {n:"Yeni evli &ccedil;ift",     segs:["hatch","sedan"],    line:"İlk arabamız, b&uuml;t&ccedil;emiz belli."}
 ];
-function genOrder(day, seviye){
-  const cust=pick(ORDER_CUSTOMERS);
+function genOrder(day, seviye, ozel){
+  const cust=ozel||pick(ORDER_CUSTOMERS);
   const seg=pick(cust.segs);
   const havuz=MODELS.filter(m=>m.seg===seg);
   const m=pick(havuz);
@@ -663,7 +663,7 @@ function orderMatches(o, car){
 /* ============ tanıdıklar ============ */
 const CONTACTS=[
  {k:"nuri",  n:"Kaportacı Nuri",  d:"Sanayide k&ouml;şe başı. Tamirlerde eli a&ccedil;ık.",
-  xpLbl:"her tamirde +1", per:[0,8,15,22], perLbl:l=>`Tamirler %${[0,8,15,22][l]} ucuz`,
+  xpLbl:"her tamirde +1", per:[0,8,15,22], perLbl:l=>l?`Tamirler %${[0,8,15,22][l]} ucuz`:"Henüz indirim yok · sanayi gününde %30",
   favor:"Bir tamiri bedava yapar"},
  {k:"hakan", n:"Ekspertizci Hakan", d:"Rampanın altında ne varsa g&ouml;r&uuml;r.",
   xpLbl:"her ekspertizde +1", per:[2500,2000,1600,1200], perLbl:l=>`Ekspertiz ${["₺2.500","₺2.000","₺1.600","₺1.200"][l]}`,

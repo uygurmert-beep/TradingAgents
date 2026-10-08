@@ -8,10 +8,11 @@ söylüyor; bu dosya **ne yapılacağını**.
 
 ## 1. Tek cümlede durum
 
-Oyun mağazaya yüklenebilir durumda: imzalı `.aab` üretiliyor, 221 otomatik
-kontrol geçiyor, mağaza metni ve görselleri hazır. Eksik olan tek şey oyunun
-kendisinde değil, **derinliğinde**: uzun oyunda baskı az, satış sonrası yaşam
-yok, ve bazı sistemler (filo) yeni kurduğumuz kıtlık mantığıyla çelişiyor.
+Oyun mağazaya yüklenebilir durumda ve önceki brief'teki derinlik eksikleri
+kapandı: filo konsinyeye çevrildi, toptan parti, dönen müşteri, sanayi günü ve
+sezon hedefi eklendi; Pazar ekranı yeniden düzenlendi (BUGÜN rayı). 296
+otomatik kontrol geçiyor (3B ped testi dahil). Sırada **yalanın uzun vadeli faturası**
+(tüketici şikâyeti) ve **satış sonrası evrak** (noter) var.
 
 ---
 
@@ -48,6 +49,19 @@ abartılı → akış 0,92, teklif ₺611K, alıcıların %61'i kaçıyor.
 arketipe göre değişiyor, ve yer doluyken kaçırdığın kelepiri ertesi gün bir
 rakip alıp fiyatını yüzüne söylüyor.
 
+**7. Filo konsinyeye döndü.** Kiradaki araç yer kaplayıp satılamıyordu, kıtlıkla
+çelişiyordu. Artık biri aracını bırakıyor: sahibi net ister, üstü senin, nakit
+çıkmaz ama yer kaplar ve sahibin sabrı sınırlı. Sahip tipleri (acelesi olan,
+titiz, kusur saklayan) ekspertizi yeniden anlamlı kılıyor.
+
+**8. Günün işleri tek rayda.** Pazar ekranı dikey bir yığınla açılıyordu, araç
+listesi ikinci ekrana düşüyordu. Vaka, görevler, siparişler, emanet, parti,
+sanayi ve hedef artık yatay BUGÜN rayında birer kart; liste ilk ekranda.
+
+**9. Sezon hedefi kendini yükseltiyor.** Hedef = max(kira × 3,2, geçen sezon
+kârı × 1,10). Sabit kat denendi; bot bile 8 sezonun 7'sini tutturuyordu.
+Şimdi ~yarısı tutuyor. Tutunca gelecek sezon kirası donuyor ve %25 iniyor.
+
 ---
 
 ## 3. Sayılarla bugün
@@ -55,10 +69,14 @@ rakip alıp fiyatını yüzüne söylüyor.
 | | |
 |---|---:|
 | Model | 150 (40 marka) |
-| Kod | ~12.800 satır, 22 modül |
-| Çıktı | tek HTML, 665 KB (+ three.js 608 KB) |
-| Otomatik kontrol | 221 (95 kural + 78 arayüz + 26 mağaza + diğerleri) |
-| Denge (121 gün) | net değer ₺3,2M → ₺19,7M, borç 0, 127 satış |
+| Kod | ~13.300 satır, 23 modül |
+| Çıktı | tek HTML, ~690 KB (+ three.js 608 KB) |
+| Otomatik kontrol | 296 (108 kural + 91 arayüz + 26 mağaza + diğerleri) |
+| Denge (121 gün, 3 koşu) | net değer ₺3,2M → ₺7,4M / ₺18,2M / ₺24,9M, borç 0, 99–154 satış |
+
+Denge botu artık gerçek oyuncu gibi büyüyor (yer dolunca ve kasa rahatsa
+kontenjan alıyor), kârlı görünen emaneti ve partiyi alıyor. Sonuçların
+dağılması bilinçli: parti ve emanet risk taşıyor, kötü koşu mümkün.
 
 Mağaza: `com.kelepiroyunu.kelepir`, targetSdk 36, minSdk 24, iOS 15.0,
 imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
@@ -67,62 +85,62 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
 
 ## 4. Birikmiş iş — öncelik sırasıyla
 
-### A. Filo yeniden değerlendirilmeli (çelişki)
+### Yapıldı (bu oturum)
 
-`filo.js` bugün aracı kiraya verip günlük gelir üretiyor. **Yeni yer kıtlığıyla
-çelişiyor:** kiradaki araç park yerini işgal ediyor ama satılamıyor, yani
-oyuncuyu kelepir kaçırmaya mahkûm ediyor. Mevcut hâliyle cezalandıran bir
-özellik.
+- **A. Filo → konsinye** (`konsinye.js`). Eski kayıttaki kiradaki araçlar
+  yüklenirken normal stoğa döner.
+- **B. Toptan parti + dönen müşteri** (`yangorev.js`). Partide bir ağır gizli
+  kusurlu araç var, ekspertiz ancak aldıktan sonra. Memnun teslim edilen
+  sipariş müşterisi 11–16 gün sonra ×1,28 bütçeyle döner, gizli kusur onu kaybettirir.
+- **C'den ikisi: sanayi günü** (her 10. gün tamir %30 ucuz) ve **sezon hedefi**.
+- **D'den: denge botu büyüyor.**
+- **Arayüz:** BUGÜN rayı, kompakt ilan başlığı, seviye çubuğu (son seviyede
+  "5000/4000" taşması bitti), boş garaj/müzayede sahneleri, tanıdıklara yüz,
+  emanet sahibine yüz, sayfa eylem çubuğunun altından içerik görünmesi düzeldi,
+  rapordaki parti/emanet olayından tek dokunuşla teklife gidiş.
+- **Test düzeltmesi:** `ux-test.js` "ertesi gün rakip o aracı alıyor"
+  pazarın rastgeleliğine göre kırmızı yanıyordu (sayaç geç okunuyordu).
 
-İki yol:
-- **Kaldır.** Oyun alım-satıma odaklanır, kimse aramaz.
-- **Konsinyeye çevir** (önerilen). Biri aracını sana bırakıyor; cebinden para
-  çıkmıyor, satarsan komisyon alıyorsun, ama **yer kaplıyor**. Aynı kod
-  iskeleti, ters yönde bir ekonomi — ve yer kıtlığını güçlendiriyor.
+### Sırada
 
-### B. İki yan görev (en yüksek getiri)
-
-**Toptan parti.** Bir galerici üç aracı tek fiyata veriyor, tanesi %15 ucuz;
-üç boş yer gerekiyor. Büyütme baskısını doğrudan paraya çeviren en net mekanik.
-
-**Dönen müşteri.** Sipariş sistemi var ama müşteriler anonim. İsim ver,
-memnun ayrılanı bir ay sonra daha büyük bütçeyle geri getir. İtibarın ilk
-somut karşılığı olur.
-
-### C. Daha sonra
-
-- **Sanayi günü** — Nuri ayda bir toplu tamirde %30 iniyor; arızalı aracı o
-  güne saklamak strateji olur (stok tutmanın ilk olumlu sebebi).
 - **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da
-  bir sezon itibar kaybı. Yalanın uzun vadeli faturası.
+  bir sezon itibar kaybı. Yalanın uzun vadeli faturası. Dönen müşterinin
+  karşılığı: itibar artık hem kazandırıyor hem de kaybettiriyor olmalı.
 - **Noterde iş** — satış sonrası evrak N gün içinde bitmezse ceza; Noter Yılmaz
-  tanıdığı hızlandırıyor.
-- **Sezon hedefi** — mal sahibi hedef koyuyor, tutturursan gelecek sezon kirası
-  donuyor. Kirayı cezadan yarışa çevirir.
+  tanıdığı hızlandırıyor. BUGÜN rayına bir kart olarak oturur.
+- **Çerçeveli mağaza görselleri yeniden üretilmeli.** Ham ekranlar
+  (`magaza/ss/{play,ios}`) yeni arayüzle üretildi, `06-filo` yerine `06-emanet`.
+  Çerçeveli olanlar (`magaza/ss-cerceve`) ve özellik grafiği Poppins fontu
+  gerektiriyor; bu ortamda font yoktu. Fontun olduğu makinede
+  `pip install cairosvg && python3 magaza-gorsel.py`. Eski `ss-cerceve/*/06-filo.png`
+  o zaman silinmeli. (İki üreticideki `magaza/` yol hatası düzeltildi: görseller
+  `oyun/magaza` altına düşüyordu.)
+- **Android/iOS paketi yeniden üretilmeli.** Kabuktaki `public/` klasörleri
+  git'e girmiyor; `python3 appbuild.py && cd ../kabuk && npx cap sync` ve
+  `./gradlew bundleRelease` imza anahtarının olduğu makinede çalıştırılmalı.
 
-### D. Teknik borç
+### Teknik borç
 
-- `ui.js` 3.725 satır. Bölmek cazip ama modüller tek kapsamda birleşiyor;
+- `ui.js` 3.881 satır. Bölmek cazip ama modüller tek kapsamda birleşiyor;
   bölme kazancı risk kadar değil. Böleceksen `cakismaKontrol()`'e güven.
 - `world.js` 3.195 satır, 3B. Testi yalnızca `pad-test.js` (kontroller).
-  Sahne içeriği için otomatik kontrol yok.
+  Sahne içeriği için otomatik kontrol yok. Emanet aracı 3B'de ayrı işaretlenmiyor.
 - **İngilizce sözlük bakımsız.** `TEK_DIL="tr"` olduğu için fark edilmiyor.
-  Global sürüm düşünülürse `en.js` baştan gözden geçirilmeli.
+  Yeni ekranların başlıkları eklendi, uzun cümleler eklenmedi.
 - **Artifact önizlemesinde paylaşım kartı indirilemiyor** (tarayıcı katmanı
   izin vermiyor). Uygulamada Filesystem eklentisiyle çalışıyor.
-- Denge simülasyonundaki bot kontenjan satın almıyor; kira baskısını gerçek
-  oyuncu gibi yaşamıyor. Bot'a "yer dolunca büyü" davranışı eklenirse
-  simülasyon daha dürüst olur.
 
 ---
 
 ## 5. Yapılmayacaklar (bilinçli kararlar)
 
 - **Reklam, uygulama içi satın alma, enerji/bekleme mekaniği.** Mağaza vaadi bu.
-- **Filoyu derinleştirmek** (bakım paketi, sigorta, yedek araç, HGS/MTV).
-  Değerlendirildi; oyunu alım-satımdan uzaklaştırıyor.
+- **Filoyu geri getirmek ya da derinleştirmek** (kiralama, bakım paketi,
+  sigorta, yedek araç, HGS/MTV). Filo kaldırıldı; oyunu alım-satımdan
+  uzaklaştırıyor ve yer kıtlığıyla çelişiyordu.
 - **Gerçek marka adları.** B seviyesinin ötesine geçilmeyecek.
-- **Yeni sekme.** Altı sekme zaten sınırda.
+- **Yeni sekme.** Altı sekme zaten sınırda. Yeni bir yan görev BUGÜN rayına
+  kart olarak girer, sekme olarak değil.
 - **Liste/geçiş animasyonları.** Üç an için mikro hareket var (kasa sayıyor,
   gün basamak atlıyor, tamir çubuğu doluyor); ötesi telefonda yavaşlık.
 
@@ -133,9 +151,9 @@ somut karşılığı olur.
 ```bash
 cd oyun
 python3 build.py && python3 appbuild.py     # derlendiğini gör
-node test/ux-test.js                        # 78 kontrol geçmeli
+node test/yeni-test.js && node test/ux-test.js
 open preloved.html                          # oyunu aç, 10 dakika oyna
 ```
 
-Sonra `A` maddesini (filo kararı) ver — çünkü o karar verilmeden `B` yapılırsa
-yer ekonomisi iki yönden çekiştirilir.
+Sonra **tüketici şikâyeti**ni yap: dönen müşterinin aynası. İkisi birlikte
+itibarı soyut bir sayıdan, oyuncunun hesabına giren bir şeye çeviriyor.

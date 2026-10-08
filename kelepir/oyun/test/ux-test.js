@@ -66,6 +66,10 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     render();
   });
   await p.waitForTimeout(300);
+  // Siparişler artık BUGÜN rayında birer kart; filtre düğmesi kartın sayfasında.
+  t('sipariş BUGÜN rayında kart olarak duruyor', !!(await p.$('.ray [data-act="sipac"]')));
+  await p.evaluate(()=>document.querySelector('.ray [data-act="sipac"]').click());
+  await p.waitForTimeout(350);
   const sipBtn=await p.$('[data-act="sipfiltre"]');
   if(sipBtn){ await sipBtn.click(); await p.waitForTimeout(350); }
   const filtreAktif=await p.evaluate(()=>!!S.siparisFiltre);
@@ -110,9 +114,9 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
 
   /* ---------- 5) garajda arama ve boş durum ---------- */
   console.log('5) garaj');
-  await p.evaluate(()=>{ S.garajTab="filo"; S.araGaraj=""; render(); });
+  await p.evaluate(()=>{ S.garajTab="teklif"; S.offers=[]; S.araGaraj=""; render(); });
   await p.waitForTimeout(300);
-  t('boş filo bölümünde eylem düğmesi var',
+  t('boş teklif bölümünde eylem düğmesi var',
     await p.evaluate(()=>!!document.querySelector('#listeKap .bosbtn .btn')));
   await p.evaluate(()=>{ S.garajTab="satis"; render(); }); await p.waitForTimeout(250);
 
@@ -465,10 +469,14 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     const kacan=S.kacan;
     const r2={events:[],costs:[]}; yerGun(r2);
     const alindi=!!kacan && !S.market.find(c=>c.id===kacan.id);
+    /* Sayaç burada okunuyor: aşağıdaki döngü dükkân açılana dek yeni
+       kaçan fırsatlar üretip sayacı artırıyor, sonda okumak pazarın
+       rastgeleliğine göre 1 ya da 2 veriyordu. */
+    const sayac=S.stats.kacanFirsat;
     for(let i=0;i<6 && !S.dukkan;i++){ kelepir(); yerGun({events:[],costs:[]}); }
     GALERI.firsatSans=eskiSans;
     return {dolu:yerDolu(), kacanVar:!!kacan, kacanKar:kacan&&kacan.kar>0,
-            rakipAldi:alindi, sayac:S.stats.kacanFirsat, dukkan:!!S.dukkan,
+            rakipAldi:alindi, sayac, dukkan:!!S.dukkan,
             dukkanSlot:S.dukkan&&S.dukkan.slot, sure:S.dukkan&&S.dukkan.bitis>S.day};
   });
   t('yer dolunca kaçan kelepir işaretleniyor', yer.dolu && yer.kacanVar && yer.kacanKar);
@@ -496,6 +504,51 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('panelvanda dik stop lambası', stop.van);
   t('otomobilde yatay stop lambası', stop.oto);
 
+
+  /* ---------- 9) BUGÜN rayı, boş sahneler, sayfa eylem çubuğu ---------- */
+  console.log('9) bugün rayı ve cila');
+  const ray=await p.evaluate(()=>{
+    closeSheet(); S.tab="pazar"; S.parti=partiUret(); S.konsTeklif=konsTeklifUret(); render();
+    const kartlar=[...document.querySelectorAll('.ray .ajkart')].map(b=>b.dataset.act);
+    const ray=document.querySelector('.ray').getBoundingClientRect();
+    const ilk=document.querySelector('#listeKap .card');
+    return {kartlar, rayH:ray.height, listeUst:ilk?ilk.getBoundingClientRect().top:9999};
+  });
+  t('rayda parti, emanet, görev, vaka ve hedef kartı var',
+    ['partiac','konsac','gorevac','meydanac','hedefac'].every(k=>ray.kartlar.includes(k)));
+  t(`ray tek satır (${Math.round(ray.rayH)}px)`, ray.rayH<140);
+  t(`ilk ilan ilk ekranın içinde başlıyor (${Math.round(ray.listeUst)}px)`, ray.listeUst<620);
+  for(const k of ['partiac','konsac','gorevac','hedefac']){
+    await p.evaluate(k=>{ closeSheet(); document.querySelector(`.ray [data-act="${k}"]`).click(); },k);
+    await p.waitForTimeout(250);
+    t(`"${k}" kartı kendi sayfasını açıyor`, await p.evaluate(()=>!document.getElementById('modal').classList.contains('hidden')));
+  }
+  const gap=await p.evaluate(()=>{
+    closeSheet(); openMarketCar(S.market[0]);
+    const sh=document.querySelector('.sheet'), ab=sh.querySelector('.actionbar');
+    return Math.round(sh.getBoundingClientRect().bottom-ab.getBoundingClientRect().bottom);
+  });
+  t(`sayfa eylem çubuğu dibe oturuyor (aralık ${gap}px)`, Math.abs(gap)<=1);
+  const bos=await p.evaluate(()=>{
+    closeSheet(); const eski=S.cars; S.cars=[]; S.tab="garaj"; render();
+    const g=!!document.querySelector('.bossahne'); S.cars=eski;
+    S.auction=[]; S.xp=Math.max(S.xp,400); S.tab="muzayede"; render();
+    const m=document.querySelector('.bosdurum .bd-bas');
+    return {g, m:m?m.textContent:""};
+  });
+  t('boş garajda park sahnesi çiziliyor', bos.g);
+  t('boş müzayede bir sonraki kuruluşu söylüyor', /m(ü|&uuml;)zayede/i.test(bos.m));
+  const yuz=await p.evaluate(()=>{ S.xp=4200; S.tab="galeri"; render();
+    return document.querySelectorAll('.contact .cav.yuzlu svg').length; });
+  t('tanıdıklar harf yerine yüzle çiziliyor', yuz>=5);
+  const rk=await p.evaluate(()=>{
+    closeSheet(); S.parti=null; S.partiSon=-99; S.karne=null;
+    const eski=PARTI.sans; PARTI.sans=1; nextDay(); PARTI.sans=eski;
+    S.karne=null; if(S.report) S.report.seasonSeen=true; openReport();
+    const g=document.querySelector('.olaygit[data-act="partiac"]'); if(!g) return null;
+    g.click(); return document.querySelector('#modal .partiler')?true:false;
+  });
+  t('gün raporundan partiye tek dokunuşla gidiliyor', rk===true);
 
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;

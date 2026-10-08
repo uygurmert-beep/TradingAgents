@@ -38,9 +38,11 @@ NE YAPIYORSUN
 • Alıcıyla karşılıklı pazarlık: yüzünü oku, sabrını ölç, ne zaman
   susacağını bil.
 
-SATMAK ZORUNDA DEĞİLSİN
-Elindeki aracı filoya alıp kiraya verebilirsin. Her gün para getirir ama
-her gün km ve aşınma biner. Çevirmek mi, çalıştırmak mı — karar senin.
+CEBİNDEN PARA ÇIKMADAN
+Biri aracını galerine emanet bırakıyor: sahibi net bir rakam istiyor,
+üstü senin. Ama araç park yeri kaplıyor ve sahibinin sabrı sınırlı.
+Galericiler toptan parti teklif ediyor, memnun müşterin daha büyük
+bütçeyle geri dönüyor, mal sahibi her sezon bir hedef koyuyor.
 
 TÜRKİYE PİYASASI
 40 marka, 150 model. Fiyatlar Türkiye ikinci el piyasasına göre normalize
@@ -133,7 +135,7 @@ istiyor. İkisine de aynısını yaz:
 
 ```
 İlk sürüm. 40 marka, 150 model, Türkiye ikinci el fiyatlarıyla.
-Pazarlık, ekspertiz, tamir, ilan, filo kiralama, 3B galeri ve
+Pazarlık, ekspertiz, tamir, ilan, emanet satış, 3B galeri ve
 Türkiye sıralaması. Reklam yok, uygulama içi satın alma yok,
 internet gerekmiyor.
 ```

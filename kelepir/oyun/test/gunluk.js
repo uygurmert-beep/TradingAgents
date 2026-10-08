@@ -19,7 +19,7 @@ const ok=(k,v)=>console.log((v?'  ok   ':'  FAIL ')+k);
 
   const d=await p.evaluate(()=>({say:S.gunluk.gorevler.length,
     tekil:new Set(S.gunluk.gorevler.map(g=>g.sayac)).size,
-    serit:!!document.querySelector(".gunluk"),
+    serit:!!document.querySelector(".gunluk-kart"),
     firsat:S.market.filter(c=>c.gunun).length,
     seri:S.seri.n}));
   ok('3 görev üretildi', d.say===3);

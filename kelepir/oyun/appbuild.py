@@ -28,7 +28,7 @@ def cakismaKontrol(dosyalar):
 shell = open('shell.html', encoding='utf-8').read()
 MODULLER = (
           'hata.js','aracciz.js','kayit.js','i18n.js','ses.js','game.js','world.js','rehber.js',
-          'gunlukritim.js','koleksiyon.js','galeri.js','filo.js','sirala.js','cila.js','yuz.js',
+          'gunlukritim.js','koleksiyon.js','galeri.js','konsinye.js','yangorev.js','sirala.js','cila.js','yuz.js',
           'kisisel.js','karne.js','meydan.js','paylas.js','demo.js','ui.js','app.js')
 parcalar=[open(f,encoding='utf-8').read() for f in MODULLER]
 cakismaKontrol(MODULLER)
