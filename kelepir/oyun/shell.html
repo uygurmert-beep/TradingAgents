@@ -45,14 +45,17 @@
 
   --label:#16181B;
   --label-2:#5C6168;
-  --label-3:#80858C;
+  /* Gri, altın ve kâr yeşili 11–13 px metinde de AA (4,5:1) geçsin diye
+     koyulaştırıldı; ilk açık palette #80858C / #A86A00 / #138A4E 3,3–3,9 idi. Belgedeki
+     --murekkep-3 de aynı sebeple aynı tona çekildi. */
+  --label-3:#666B72;
 
   /* ---- KÂĞIT: belgelerin dünyası ---- */
   --kagit:#FFFDF8;
   --kagit-2:#F4F1EA;
   --murekkep:#15181A;
   --murekkep-2:#4E545C;
-  --murekkep-3:#878E96;
+  --murekkep-3:#666B72;
   --plaka:#0E5E4B;           /* belge üstünde etkileşim rengi */
 
   /* İMZA RENGİ — yarış yeşili. Kâr yeşilinden (#138A4E) koyu ve maviye
@@ -65,12 +68,12 @@
   --imza-isik:0 6px 16px -10px rgba(14,94,75,.65);
 
   /* para */
-  --gold:#A86A00;
+  --gold:#9A6200;
   --gold-2:#8A5600;
   --gold-soft:rgba(168,106,0,.10);
 
   /* anlamsal */
-  --green:#138A4E;
+  --green:#0F7F3F;
   --green-soft:rgba(19,138,78,.10);
   --red:#C8323C;
   --red-soft:rgba(200,50,60,.09);
@@ -128,6 +131,28 @@ input,select{font:inherit;color:inherit;font-family:var(--sf)}
   padding-left:var(--sal);padding-right:var(--sar);
   display:flex;flex-direction:column;background:var(--bg);position:relative;
 }
+
+/* ---------- ÜST MARKA ŞERİDİ ----------
+   Logo yalnız giriş ekranında görünüyordu; oyuna girince marka kayboluyordu.
+   Şerit kokpitin ÜSTÜNDE, akışın içinde duruyor (yapışkan değil): sayfanın
+   başında hep görünür, aşağı kaydırınca kendiliğinden yukarı çıkıp gider,
+   kokpit yapışık kalır. JS ile gizle/göster yapılmadı — kokpit boyu değişince
+   içerik zıplıyordu. Güvenli alan şeridin üstünde; alttaki eksi pay kokpitin
+   kendi güvenli alan dolgusunu örtüştürüyor, başta çift boşluk kalmıyor. */
+.ustmarka{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(12px + var(--sat)) var(--pad) calc(2px + var(--sat));
+  margin-bottom:calc(-1 * var(--sat));background:var(--bg);position:relative;z-index:29}
+.ustmarka .glogo{width:28px;height:28px}
+.ustmarka .marka span{font-size:20px;font-weight:700;letter-spacing:-.02em}
+/* Sağda oyuncunun kendi tabelası: 3B sahadaki levhayla aynı — koyu zemin,
+   seçtiği tabela rengi. Kelepir markası solda, oyuncunun galerisi sağda. */
+.um-tabela{flex:none;max-width:52%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--h,#F2A007);
+  border:none;border-radius:8px;padding:0 12px;min-height:32px;background:#1F2226}
+/* Tabela adı metin içinde de levha gibi: açık zeminde sarı yazı okunmuyordu. */
+.tabelayazi,.kv b.tabelayazi{background:#1F2226;color:var(--h,#F2A007);padding:1px 7px;border-radius:5px;
+  letter-spacing:.06em;font-weight:700}
+#app.in3d .ustmarka{display:none}
 
 /* ---------- üst kokpit ---------- */
 #hud{
@@ -510,7 +535,7 @@ body.ogret-ac main{padding-bottom:218px}
 .sheet-sub{font-size:15px;color:var(--label-2);margin-top:3px;font-variant-numeric:tabular-nums;
   font-family:var(--sf)}
 .x{font-size:17px;line-height:1;color:var(--label-2);background:var(--fill);
-  width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;padding:0}
+  width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;padding:0}
 
 /* ---------- gruplu bloklar ---------- */
 .block{background:var(--surface);border:none;border-radius:var(--r);padding:14px 16px;
@@ -1043,6 +1068,9 @@ button.card:active{transform:scale(.985);box-shadow:var(--shadow-lift)}
   padding:14px 0 12px;border-bottom:1px solid var(--sep-soft)}
 .marka{display:flex;align-items:center;gap:9px;min-width:0}
 .glogo{width:30px;height:30px;flex:none;color:var(--label-2);display:block}
+/* Logodaki etiket marka altını (ikonla aynı), para altını değil: koyu
+   --gold küçük boyda kahverengiye kaçıyordu. */
+.glogo>g>path{fill:#E0A53C}
 .marka span{font-size:21px;font-weight:700;letter-spacing:-.025em;color:var(--label)}
 .markaalt{font-size:11px;color:var(--label-3);letter-spacing:.06em;text-transform:uppercase;
   text-align:right;flex:none}
@@ -1211,7 +1239,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 .krnot.f b{color:var(--red);border-color:rgba(200,50,60,.40);background:rgba(200,50,60,.09)}
 .krdort{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px;margin-bottom:12px}
 .krdort>div{background:rgba(20,24,28,0.04);border-radius:9px;padding:7px 9px}
-.krdort span{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+.krdort span{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--muted-2);margin-bottom:2px}
 .krdort b{font-size:15px;font-variant-numeric:tabular-nums}
 .krgraf{display:flex;align-items:flex-end;gap:4px;height:74px;padding:0 2px}
@@ -1621,7 +1649,7 @@ body{background:var(--bg)}
 .sahne-yuz{max-width:82%}
 .sahne-yuz .sec-note{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
   overflow:hidden}
-.sahne-fiyat span{display:block;font-size:9.5px;font-weight:700;letter-spacing:.14em;
+.sahne-fiyat span{display:block;font-size:10.5px;font-weight:700;letter-spacing:.14em;
   color:var(--label-3)}
 .sahne-fiyat b{display:block;font-size:27px;font-weight:800;letter-spacing:-.03em;
   color:var(--gold);font-variant-numeric:tabular-nums;line-height:1.05;margin-top:2px;
@@ -1749,6 +1777,7 @@ img.aracfoto.yeni{animation:fotoGel .45s ease}
 </style>
 
 <div id="app" lang="tr">
+  <div id="ustmarka" class="ustmarka"></div>
   <header id="hud">
     <div class="hud-top">
       <div class="brand" id="brandLine">Kış &middot; 1. g&uuml;n</div>

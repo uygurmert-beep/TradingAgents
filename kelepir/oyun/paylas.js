@@ -13,9 +13,9 @@
 const KART={ G:1080, Y:1920 };
 /* Showroom paleti: paylaşılan kart oyunun kendisiyle aynı görünsün. */
 const KART_RENK={
-  zemin:"#F3F1EC", zemin2:"#FFFFFF", petrol:"#0E5E4B", altin:"#A86A00",
-  yazi:"#16181B", yazi2:"#5C6168", yazi3:"#80858C",
-  yesil:"#138A4E", kirmizi:"#C8323C", koyu:"#16181B", etiket:"#D9A03A"
+  zemin:"#F3F1EC", zemin2:"#FFFFFF", petrol:"#0E5E4B", altin:"#9A6200",
+  yazi:"#16181B", yazi2:"#5C6168", yazi3:"#6B7077",
+  yesil:"#0F7F3F", kirmizi:"#C8323C", koyu:"#16181B", etiket:"#D9A03A"
 };
 const KART_SITE="kelepiroyunu.com";
 

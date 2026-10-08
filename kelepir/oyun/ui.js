@@ -941,6 +941,16 @@ function renderHud(){
   const bekleyen=pendingOffers().length||((S.receivables||[]).some(r=>r.due<=S.day+1));
 
   nakitYaz(document.getElementById("hudCash"), S.cash);
+  const um=document.getElementById("ustmarka");
+  if(um){
+    const tabela=typeof lotAd==="function" ? lotAd() : "";
+    const renk=typeof lotRenk==="function" ? lotRenk().h : "";
+    if(um.dataset.tabela!==tabela+renk){
+      um.dataset.tabela=tabela+renk;
+      um.innerHTML=`<div class="marka">${LOGO_SVG}<span>Kelepir</span></div>
+        <button class="um-tabela" data-act="lotac" style="--h:${renk}" aria-label="Galerini düzenle">${tabela}</button>`;
+    }
+  }
   gunYaz(document.getElementById("brandLine"), `${sez.k} · ${S.day}. gün`);
   // Sezon zemine de işliyor: her mevsimin kendi ışık sıcaklığı var.
   document.documentElement.dataset.sezon=
@@ -1447,8 +1457,8 @@ function viewGaraj(){
   return `${teklifBlok}
     <div class="sec-head" style="margin-top:0"><h2 class="sec">Garaj</h2>${viewToggle()}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:-4px;margin-bottom:2px;gap:8px">
-      <span class="sec-note">${S.cars.length}/${S.slots} dolu &middot; tabela: <b style="color:${lotRenk().h}">${lotAd()}</b></span>
-      <button class="btn ghost" data-act="lotac" style="padding:5px 11px;font-size:11.5px;min-height:0">Galerimi d&uuml;zenle</button>
+      <span class="sec-note">${S.cars.length}/${S.slots} dolu &middot; tabela: <b class="tabelayazi" style="--h:${lotRenk().h}">${lotAd()}</b></span>
+      <button class="btn ghost" data-act="lotac" style="padding:5px 12px;font-size:12px;min-height:34px">Galerimi d&uuml;zenle</button>
     </div>
     <div class="seg">
       <button class="${g==="hazir"?"on":""}" data-act="garajtab" data-g="hazir">Hazırlıkta <em>${grup.hazir.length}</em></button>
@@ -1713,7 +1723,7 @@ function viewAyar(){
       </div></div>`:""}
 
     <div class="block"><h4>GALERİ</h4>
-      <div class="kv"><span>Tabela</span><b style="color:${lotRenk().h}">${lotAd()}</b></div>
+      <div class="kv"><span>Tabela</span><b class="tabelayazi" style="--h:${lotRenk().h}">${lotAd()}</b></div>
       <button class="btn full" data-act="lotac" style="margin-top:8px">Galerimi d&uuml;zenle</button>
     </div>
 

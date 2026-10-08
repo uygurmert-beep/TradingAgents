@@ -136,6 +136,12 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   çubuğu stili (`LIGHT`) yeni palette. Kasa sayacının alım sonrası kırmızı
   kalması düzeldi; 3B vitrinde uzun model adı iki satıra kırılıyor.
 
+- **Marka her ekranda:** kokpitin üstünde logo + "Kelepir" ve oyuncunun
+  tabelası (3B levhayla aynı koyu plaka, seçilen renk); aşağı kaydırınca çıkıyor.
+  UI denetimi: ikincil gri, altın ve kâr yeşili AA kontrasta çekildi; açık
+  zeminde okunmayan sarı tabela yazısı levhaya alındı; kapat düğmesi 36 px,
+  9,5 px etiketler 10,5 px.
+
 ### Sırada
 
 - **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da

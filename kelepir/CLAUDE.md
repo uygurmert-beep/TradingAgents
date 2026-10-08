@@ -74,7 +74,7 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış (109 kontrol)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi (112 kontrol)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
@@ -272,6 +272,10 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   araçlar görüş hattına giriyor; dokunuş onlara düşerse odak doğru biçimde
   oraya geçer. Test önce `W3D.isabet(x,y)` ile ışını yan etkisiz sorar, sonra
   aynı karede `W3D.dokun(x,y)` der (`vitrin-test.js`).
+- **Üst marka şeridi (`#ustmarka`) kokpitin üstünde, akışın içinde.** Yapışkan
+  değil: aşağı kaydırınca kendiliğinden çıkıyor. JS ile gizle/göster yapma —
+  kokpit boyu değişince içerik zıplıyor. Güvenli alan şeridin üstünde, eksi
+  alt pay kokpitin dolgusuyla örtüşüyor.
 - **3B fotoğraf kuyruğu boşta çalışıyor.** `foto.js` oyuncu yazarken/kaydırırken
   çekim yapmıyor (`requestIdleCallback`). Testte ya da mağaza görüntüsünde
   fotoğraf bekleniyorsa `.fotobekle` kalmayana dek yokla, sabit süre bekleme.

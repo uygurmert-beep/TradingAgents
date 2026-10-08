@@ -675,6 +675,27 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t(`liste kartlarında 3B fotoğraf (${foto.img}/${foto.kart})`, foto.img>=Math.min(3,foto.kart));
   t('Space Grotesk yazı tipi gömülü', foto.font);
 
+  console.log('15) üst marka şeridi');
+  /* Logo oyuna girince kayboluyordu. Şerit sayfa başında görünmeli, aşağı
+     kaydırınca kokpitin arkasında kalmalı; kokpit yapışık kalmalı. */
+  const um=await p.evaluate(async()=>{
+    closeSheet(); S.tab="pazar"; render(); window.scrollTo(0,0);
+    await new Promise(r=>setTimeout(r,150));
+    const m=document.getElementById("ustmarka"), h=document.getElementById("hud");
+    const bas={logo:!!m.querySelector(".glogo"), ad:/Kelepir/.test(m.textContent),
+      tabela:(m.querySelector(".um-tabela")||{}).textContent===lotAd(),
+      ustte:m.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 && m.getBoundingClientRect().top>=0};
+    document.body.style.minHeight="3000px"; window.scrollTo(0,400);
+    await new Promise(r=>setTimeout(r,150));
+    const kay={gizli:m.getBoundingClientRect().bottom<=h.getBoundingClientRect().top+1 && m.getBoundingClientRect().bottom<=1,
+      hudUstte:Math.abs(h.getBoundingClientRect().top)<2};
+    window.scrollTo(0,0); document.body.style.minHeight="";
+    return {...bas,...kay};
+  });
+  t('sayfa başında logo ve Kelepir yazısı görünüyor', um.logo && um.ad && um.ustte);
+  t('şeritte oyuncunun tabelası', um.tabela);
+  t('aşağı kaydırınca logo çıkıyor, kokpit yapışık kalıyor', um.gizli && um.hudUstte);
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;
   await b.close();
