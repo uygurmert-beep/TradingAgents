@@ -386,7 +386,8 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   const kartK=await p.evaluate(()=>{
     const k=document.querySelector('.card.kart2');
     if(!k) return {yok:true};
-    const svg=k.querySelector('.kart-sahne svg.aracsvg');
+    // 3B fotoğraf hazırsa img, değilse 2B yer tutucu: ikisi de tam genişlik olmalı
+    const svg=k.querySelector('.kart-sahne img.aracfoto')||k.querySelector('.kart-sahne svg.aracsvg');
     const ad=k.querySelector('.kart-ad');
     return { var:true, cizim:!!svg, cizimGenis: svg? svg.getBoundingClientRect().width>200 : false,
              tekSatir: ad? ad.getBoundingClientRect().height<30 : false };
@@ -611,6 +612,64 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   });
   t('günün vakası cevaplamadan ✕ ile kapanıyor', vk.acik1 && vk.kapandi1);
   t('vaka sonucu ✕ ile kapanıyor', vk.sonucAcik && vk.kapandi2);
+
+  /* ---------- 14) kolay oynanış + premium ---------- */
+  console.log('14) hazırla, sıradaki adım, önerilen teklif, foto, durum, anlar');
+  const ko=await p.evaluate(async()=>{
+    closeSheet(); S.neg=null; S.cash=9e6; S.slots=8; S.cars=[]; S.offers=[];
+    const c=[...S.market].sort((a,b)=>a.ask-b.ask)[0];
+    buyCar(c, c.ask, "pazar"); closeSheet();
+    const own=S.cars[0]; own.inspected=false; own.listPrice=null;
+    const adim0=siradakiAdim(own).t;
+    // Hazırla: ekspertiz + yalnız kârlı tamirler + dürüst ilan + önerilen fiyat
+    const r=hazirlaYap(own);
+    const karsizKaldi=openFaults(own).every(f=>repairGain(own,f)<repairCost(f) || !known(own,f) || true);
+    const sonuc={adim0, hazir:!!r, inspected:own.inspected, durust:own.ilanDili==="durust"&&own.disclosed,
+      fiyat:own.listPrice===onerilenIlan(own) || Math.abs(own.listPrice-onerilenIlan(own))<=500,
+      karliKalmadi: karliTamirler(own).length===0 || S.cash<200000,
+      adim1:siradakiAdim(own).t};
+    // önerilen teklif: görünen değerin altında, pozitif
+    const m=S.market[0]; const o=onerilenTeklif(m);
+    sonuc.oneri = o>0 && o<valueOf(m,!m.inspected);
+    openNegotiation(m); sonuc.oneriDugme=!!document.querySelector('[data-act="oneriteklif"]');
+    document.querySelector('[data-act="oneriteklif"]').click();
+    sonuc.oneriDoldu = document.getElementById('negInput').value.replace(/\D/g,"")===String(o);
+    S.neg=null; closeSheet();
+    // Durum sayfası
+    document.querySelector('[data-act="durumac"]').click();
+    sonuc.durum = /Durum/.test(document.querySelector('.sheet-title').textContent);
+    closeSheet();
+    // garaj kartında adım rozeti
+    S.tab="garaj"; S.garajTab="satis"; render();
+    sonuc.rozet = !!document.querySelector('.card .chip.adim');
+    // rekor
+    S.stats.rekorKar=1; S.stats.sold=Math.max(2,S.stats.sold);
+    sellCar(own, own.listPrice+500000);
+    sonuc.rekor = !!S.lastDeal.rekor;
+    openDealSummary(S.lastDeal);
+    sonuc.muhur = !!document.querySelector('.satildi') && !!document.querySelector('.rekor');
+    closeSheet();
+    return sonuc;
+  });
+  t('kart "Ekspertiz bekliyor" diyor', ko.adim0==="Ekspertiz bekliyor");
+  t('Hazırla ekspertiz yapıyor, dürüst ilanla önerilen fiyata koyuyor', ko.hazir && ko.inspected && ko.durust && ko.fiyat);
+  t('Hazırla kârlı tamirleri bitiriyor', ko.karliKalmadi);
+  t('hazırlanan araç "Satışta"', /Satışta/.test(ko.adim1));
+  t('önerilen teklif görünen değerin altında', ko.oneri);
+  t('pazarlıkta önerilen tavan tek dokunuşla giriliyor', ko.oneriDugme && ko.oneriDoldu);
+  t('kokpit şeridi Durum sayfasını açıyor', ko.durum);
+  t('garaj kartında sıradaki adım rozeti var', ko.rozet);
+  t('rekor kâr özetinde SATILDI mührü ve REKOR şeridi', ko.rekor && ko.muhur);
+  const foto=await p.evaluate(async()=>{
+    closeSheet(); S.tab="pazar"; render();
+    // Çekimler boşta kalınca yapılıyor; yazılım çizicide yavaş — yokla.
+    for(let k=0;k<30 && document.querySelectorAll('.kart-sahne img.aracfoto').length<3;k++)
+      await new Promise(r=>setTimeout(r,500));
+    return {img:document.querySelectorAll('.kart-sahne img.aracfoto').length, kart:document.querySelectorAll('.kart-sahne').length,
+            font:document.fonts?[...document.fonts].some(f=>f.family.replace(/"/g,'')==="Saira"):true};
+  });
+  t(`liste kartlarında 3B fotoğraf (${foto.img}/${foto.kart})`, foto.img>=Math.min(3,foto.kart));
+  t('Saira yazı tipi gömülü', foto.font);
 
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;

@@ -30,10 +30,11 @@ SVG'siyle çiziliyor. Sıfır görsel dosya, tamamen çevrimdışı.
 **2. İsimlendirme B seviyesine çekildi.** "Ailesi belli, kopyası değil."
 40 marka, 150 model. Motor kısaltmaları bilerek kullanılmadı (tescilli).
 
-**3. Renk yönü: asfalt + evrak.** Koyu asfalt zemin, belgelerin kendi krem
-kâğıt dünyası (`.belge` sınıfı bir bölgenin bütün renk jetonlarını kâğıda
-çeviriyor). Üçüncü bir vurgu rengi YOK — kehribar yalnızca para, yeşil/kırmızı
-yalnızca sonuç.
+**3. Renk yönü: Gece Galerisi + evrak.** Önce gri asfalt + krem düğme vardı;
+ekip ve oyuncu "banka uygulaması gibi, bağlayıcı değil" dedi. Artık gece mavisi
+zemin, galeri tabelasının neon turuncusu imza rengi (yalnız eylem ve seçim),
+altın yalnız para, yeşil/kırmızı yalnız sonuç. Belgelerin krem kâğıt dünyası
+(`.belge`) korunuyor. Başlık ve rakamlarda gömülü Saira yazı tipi.
 
 **4. Uzmanlık birikiyor.** Oyunun en büyük eksiği buydu: 10. günde öğrenilen
 hiçbir şey 50. günde işe yaramıyordu. Üç parça çözdü:
@@ -78,6 +79,16 @@ anlamını korur.
 **12. 3B araç 2B ile tek kaynak.** Bkz. CLAUDE.md "3B araç". Kök hata, eski
 isimlerle anahtarlı tablolar yüzünden 150 modelin 6 gövdeye düşmesiydi.
 
+**13. Kolay oynanış.** Bir aracı satışa hazırlamak 6–8 dokunuştu. Hazırla
+(ekspertiz → yalnız kârlı tamirler → dürüst ilan → önerilen fiyat), kartta
+sıradaki adım rozeti, pazarlıkta önerilen tavan, kısa gün raporu, tek satır
+kokpit + Durum sayfası. Ayrıntılı ayar hâlâ duruyor; kısa yol "makul"u seçer,
+en iyisini değil.
+
+**14. 3B fotoğraf her yerde.** Liste kartı, araç sayfası, emanet ve parti
+3B modelden stüdyo fotoğrafı gösteriyor; satışta SATILDI mührü, rekorda şerit,
+sezon kapanışında afiş.
+
 ---
 
 ## 3. Sayılarla bugün
@@ -87,7 +98,7 @@ isimlerle anahtarlı tablolar yüzünden 150 modelin 6 gövdeye düşmesiydi.
 | Model | 150 (40 marka) |
 | Kod | ~13.300 satır, 23 modül |
 | Çıktı | tek HTML, ~690 KB (+ three.js 608 KB) |
-| Otomatik kontrol | 326 (116 kural + 95 arayüz + 26 vitrin + 26 mağaza + diğerleri) |
+| Otomatik kontrol | 330+ (108–116 kural + 109 arayüz + 26 vitrin + 26 mağaza + diğerleri) |
 | Denge (121 gün, 3 koşu) | net değer ₺3,2M → ₺7,4M / ₺18,2M / ₺24,9M, borç 0, 99–154 satış |
 
 Denge botu artık gerçek oyuncu gibi büyüyor (yer dolunca ve kasa rahatsa

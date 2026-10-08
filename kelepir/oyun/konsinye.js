@@ -161,7 +161,7 @@ function openKonsTeklif(){
       <button class="x" data-act="close" aria-label="Kapat">&times;</button></div>
     <div class="kons-sahip"><div class="cav yuzlu">${yuzSvg(sh.k, 62)}</div>
       <div class="quote" style="margin:0">"${sh.line}"</div></div>
-    <div class="aracsahne">${aracGorsel(c,"tam")}</div>
+    <div class="aracsahne">${aracFoto(c,"tam")}</div>
     <div class="block"><h4>${c.model.n} ${c.year}</h4>
       <div class="kv"><span>Kilometre</span><b>${mesafe(c.km)}</b></div>
       <div class="kv"><span>Sahibinin istediği net</span><b>${tl(t.net)}</b></div>

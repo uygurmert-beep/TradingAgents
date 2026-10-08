@@ -690,7 +690,11 @@ function sellCar(car, price, note){
   else if(car.spent>Math.max(0,profit)) lesson="Tamire, geri d&ouml;nd&uuml;ğ&uuml;nden fazlasını harcadın. B&uuml;y&uuml;k revizyonlar genelde zarardır.";
   else if(car.daysListed>10) lesson="Ara&ccedil; uzun s&uuml;re elde kaldı; otopark ve sezon gideri k&acirc;rı yedi. Fiyatı erken kırmak toplamda daha iyi olabilir.";
   else if(profit>0 && !car.disclosed && hiddenIssues(car).length) lesson="Kusuru gizleyerek kazandın &mdash; ama bu kumar her seferinde tutmaz.";
-  S.lastDeal={n:`${car.model.n} ${car.year}`, buy:car.boughtFor, repair:car.spent, extra,
+  // Rekor kâr: kariyerin en kârlı satışı. Kutlama anı ve özet şeridi bundan.
+  const rekor = profit>0 && profit>(S.stats.rekorKar||0) && S.stats.sold>1;
+  if(profit>(S.stats.rekorKar||0)) S.stats.rekorKar=profit;
+  SON_SATILAN=car;   // özet fotoğrafı için — geçici, kayda yazılmaz
+  S.lastDeal={n:`${car.model.n} ${car.year}`, buy:car.boughtFor, repair:car.spent, extra, rekor, carId:car.id,
     sell:price, profit, xp:gain, rep:repDelta?("+"+String(Math.round(repDelta*10)/10).replace(".",",")):0, days:car.daysListed, note:note||"", lesson};
   cGain("yilmaz");
   cal(profit>=0?"satis":"reddet");
@@ -941,23 +945,38 @@ function renderHud(){
   // Sezon zemine de işliyor: her mevsimin kendi ışık sıcaklığı var.
   document.documentElement.dataset.sezon=
     ["kis","ilkbahar","yaz","sonbahar"][SEASONS.indexOf(sez)]||"kis";
+  /* Kokpit sadeleşti: eskiden kasa + gider çubuğu + dört etiketli metrik üç
+     katman yer kaplıyordu; liste ikinci ekrana itiliyordu. Artık tek ince
+     şerit — sezon ilerlemesi, stok, itibar, seviye, günlük gider — ve
+     dokununca ayrıntılı Durum sayfası. */
+  const sezonOran=(i+1)/SEASON_LEN;
+  const xpOran=l>=XP_LEVELS.length?1:clamp((S.xp-prev)/Math.max(1,next-prev),0,1);
   document.getElementById("hudRow").innerHTML=`
-    <div class="burn" style="grid-column:1/-1">
-      <div class="burnbar">${bar}<i style="flex:1;background:var(--asphalt-3)"></i></div>
-      <span>${tl(yakim)}/g&uuml;n</span>
-    </div>
-    <div class="hudgrid" style="grid-column:1/-1">
-      <div><span class="minilbl">Sezon</span><div class="rail">${ticks}</div></div>
-      <div><span class="minilbl">Stok</span><div class="dots">${dots}</div></div>
-      <div><span class="minilbl">İtibar</span>
-        <div class="hval" style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</div></div>
-      <div><span class="minilbl">Seviye</span>
-        <div class="hval">Sv ${l}${bekleyen?'<span class="dot-badge"></span>':''}</div>
-        <div class="xpcubuk" title="${S.xp}/${next} XP"><i style="width:${
-          /* Son seviyede "5000/4000" gibi taşan bir kesir yazıyordu; artık
-             ilerleme bir çubuk ve tavanda dolu kalıyor. */
-          l>=XP_LEVELS.length?100:Math.round(clamp((S.xp-prev)/Math.max(1,next-prev),0,1)*100)}%"></i></div></div>
-    </div>`;
+    <button class="hudserit" data-act="durumac" aria-label="Durum ayrıntıları">
+      <span class="hs-sezon" title="Sezon: ${kalan} gün kaldı"><i style="width:${Math.round(sezonOran*100)}%"></i></span>
+      <span class="hs-oge"><em>Stok</em><b>${S.cars.length}/${S.slots}</b></span>
+      <span class="hs-oge"><em>İtibar</em><b style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</b></span>
+      <span class="hs-oge"><em>Sv</em><b>${l}${bekleyen?'<span class="dot-badge"></span>':''}</b><u><i style="width:${Math.round(xpOran*100)}%"></i></u></span>
+      <span class="hs-oge gider"><b>&minus;${tlk(yakim)}</b><em>/gün</em></span>
+    </button>`;
+  HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar};
+}
+let HUD_SON=null;   // Durum sayfası için son hesap — geçici, kayda yazılmaz
+function openDurum(){
+  renderHud(); const h=HUD_SON||{}; const l=level(), next=nextXp(), sez=seasonOf(S.day);
+  openBilgi("Durum", `${sez.k} · ${S.day}. gün · sezon bitimine ${h.kalan} gün`, `
+    <div class="block"><h4>SEZON</h4><div class="rail">${h.ticks}</div></div>
+    <div class="block"><h4>GÜNLÜK GİDER &middot; ${tl(h.yakim)}</h4>
+      <div class="burnbar" style="margin:4px 0 10px">${h.bar}<i style="flex:1;background:var(--asphalt-3)"></i></div>
+      <div class="kv"><span>Otopark</span><b>${tl(h.park)}</b></div>
+      ${h.maas?`<div class="kv"><span>Personel</span><b>${tl(h.maas)}</b></div>`:""}
+      ${h.faiz?`<div class="kv"><span>Kredi faizi</span><b>${tl(h.faiz)}</b></div>`:""}
+      <div class="kv"><span>Dükkân kirası (günlük pay)</span><b>${tl(h.kira)}</b></div></div>
+    <div class="block"><h4>KARİYER</h4>
+      <div class="kv"><span>Seviye</span><b>Sv ${l} &middot; ${S.xp}/${next} XP</b></div>
+      <div class="kv"><span>İtibar</span><b>${Math.round(S.rep)} / 100</b></div>
+      <div class="kv"><span>Stok</span><b>${S.cars.length} / ${S.slots} park yeri</b></div>
+      <div class="sec-note" style="margin-top:6px">İtibar temiz satışla yükselir, yakalanan kusurla düşer; alıcı akışını ve krediyi etkiler.</div></div>`);
 }
 function renderTabs(){
   document.getElementById("tabs").innerHTML=["pazar","garaj","muzayede","galeri","rapor","ayar"].map(t=>{
@@ -1008,8 +1027,9 @@ function cardHtml(c, mode){
     const vf=c.faults.filter(f=>!f.fixed&&f.visible).length;
     if(vf) chips.push(`<span class="chip warn">${vf} g&ouml;r&uuml;n&uuml;r arıza</span>`);
   }else{
-    if(!c.listPrice) chips.push(`<span class="chip">Hazırlıkta</span>`);
-    else chips.push(`<span class="chip gold">${c.daysListed} g&uuml;nd&uuml;r ilanda</span>`);
+    // Kartın ilk çipi aracın şu an beklediği adım: oyuncu ne yapacağını aramasın.
+    const ad=siradakiAdim(c);
+    chips.push(`<span class="chip adim ${ad.tip}">${ad.t}</span>`);
     const of=openFaults(c).filter(f=>known(c,f)).length;
     if(of) chips.push(`<span class="chip warn">${of} açık arıza</span>`);
     if(c.listPrice&&!c.disclosed&&hiddenIssues(c).length) chips.push(`<span class="chip warn">Gizli kusur</span>`);
@@ -1023,7 +1043,7 @@ function cardHtml(c, mode){
   const ab=adBol(c.model.n);
   return `<button class="card kart2" data-act="open" data-id="${c.id}" data-mode="${mode}">
     <div class="kart-sahne">
-      ${aracGorsel(c,"tam")}
+      ${aracFoto(c,"tam")}
       <span class="kart-plaka">${plateHtml(c.plate)}</span>
     </div>
     <div class="kart-govde">
@@ -1780,11 +1800,14 @@ function sheetHead(c, extra){
       <div class="sheet-sub" style="color:var(--muted-2)">${c.gear} · ${c.fuel} · ${DOSEME_LBL[dosemeTipi(c)]}</div>
       <div style="margin-top:7px">${plateHtml(c.plate)}</div></div>
     <button class="x" data-act="close" aria-label="Kapat">×</button></div>
-    <div class="aracsahne">${aracGorsel(c,"tam")}</div>${extra||""}`;
+    <div class="aracsahne">${aracFoto(c,"tam")}</div>${extra||""}`;
 }
 /* Son tamir edilen organ — yalnızca bir çizim boyunca yaşayan geçici
    durum. Kayda yazılmıyor: S'ye koyulsa eski kayıtta da canlanırdı. */
 let SON_TAMIR=null;
+/* Son satılan araç — anlaşma özetindeki fotoğraf için. S'ye konmuyor:
+   satılmış araç kayıtta tutulmaz, yalnızca bu çizim boyunca yaşar. */
+let SON_SATILAN=null;
 
 /* ---- ekspertiz mührü ----
    Rapor sayı yığınıyla açılıyordu; sonucu okumak için beş çubuğu, tramer
@@ -2055,7 +2078,7 @@ function openOwnCar(c){
     const press=rivalPressure(c.model.seg);
     const gizli=hiddenIssues(c).length;
     const dil=c.ilanDili||"muglak", sun=c.sunum|0;
-    sellPart=`<section class="ilan">
+    sellPart=hazirlaKart(c)+`<section class="ilan">
       <div class="ilan-bas"><span class="ilan-et">İLANI KUR</span>
         <span class="ilan-rozet">${gizli?gizli+" gizli kusur":"gizlenecek kusur yok"}</span></div>
       <div class="ilan-alt">İLANIN DİLİ</div>
@@ -2491,6 +2514,8 @@ function renderNeg(){
           ${swc("senetac", !!n.senet)}</div>`:""}
         ${n.counter?`<button class="btn primary full" data-act="acceptcounter">Kabul et &middot; ${tl(n.counter)}</button>`:""}
         <input class="offer-input" id="negInput" type="text" inputmode="numeric" value="${num(start)}">
+        ${(()=>{ const o=onerilenTeklif(c); return `<button class="oneri" data-act="oneriteklif" data-v="${o}">
+          <span>Önerilen tavan</span><b>${tl(o)}</b><em>~%12 kâr payı bırakır</em></button>`; })()}
         <div class="quick">
           <button data-act="q" data-p="-10">&minus;%10</button>
           <button data-act="q" data-p="-5">&minus;%5</button>
@@ -2605,6 +2630,15 @@ function openReport(){
   // Teklif getiren olaylar rapordan doğrudan kendi sayfasına açılıyor:
   // raporu kapatıp Pazar'da kartı aramak bir adım fazlaydı.
   const git={parti:S.parti?["partiac","Partiye bak"]:null, emanet:S.konsTeklif?["konsac","Teklife bak"]:null};
+  /* Rapor kısa: teklif getiren ve kötü haberler öne, en fazla üç olay açık,
+     gerisi katlı. Uzun günlerde oyuncu raporu kaydırmadan geçebilsin. */
+  const sirali=[...r.events].sort((x,y)=>((y.parti||y.emanet||y.siparis)?2:y.bad?1:0)-((x.parti||x.emanet||x.siparis)?2:x.bad?1:0));
+  const olaySatir=e=>{
+    const g=(e.parti&&git.parti)||(e.emanet&&git.emanet);
+    return `<div class="olaysat ${e.bad?"kotu":""}">${e.t}${g?`<button class="olaygit" data-act="${g[0]}">${g[1]} &rsaquo;</button>`:""}</div>`;
+  };
+  const olayKisa=sirali.slice(0,3).map(olaySatir).join(""), olayKalan=sirali.slice(3).map(olaySatir).join("");
+  const olayFazla=Math.max(0,sirali.length-3);
   const olay=r.events.map(e=>{
     const g=(e.parti&&git.parti)||(e.emanet&&git.emanet);
     return `<div class="olaysat ${e.bad?"kotu":""}">${e.t}${g?`<button class="olaygit" data-act="${g[0]}">${g[1]} &rsaquo;</button>`:""}</div>`;
@@ -2632,7 +2666,7 @@ function openReport(){
         <div class="sec-note" style="margin-top:6px">Fiyatı kırmak alıcı akışını belirgin artırıyor.</div>
         <div class="bosbtn"><button class="btn" data-act="closereportgaraj">Satıştakileri a&ccedil;</button></div></div>`}
 
-    ${olay?`<div class="block"><h4>BUG&Uuml;N NE OLDU</h4>${olay}</div>`:""}
+    ${olay?`<div class="block"><h4>BUG&Uuml;N NE OLDU</h4>${olayKisa}${olayFazla?`<details class="olayfold"><summary>${olayFazla} olay daha</summary>${olayKalan}</details>`:""}</div>`:""}
 
     ${r.costs.length?`<details class="kasafold" ${ofs.length?"":"open"}>
       <summary><span>Kasa hareketi</span>
@@ -2667,6 +2701,11 @@ function openSeasonSummary(){
       <div><div class="sheet-title">Sezon kapanışı</div>
         <div class="sheet-sub">${r.day}. g&uuml;n</div></div>
       <button class="x" data-act="seasondone" aria-label="Kapat">&times;</button></div>
+    <div class="sezon-afis">
+      <span>SEZON KAPANDI</span>
+      <b>${s.to.toLocaleUpperCase("tr")}</b>
+      <em>${rank}. sıradasın${delta>0?` &middot; ${delta} basamak yukarı`:delta<0?` &middot; ${-delta} basamak aşağı`:""}</em>
+    </div>
     <div class="crest">
       <div class="sn" style="color:var(--muted)">${s.from}</div>
       <div class="arrow">bitti &middot; sıradaki</div>
@@ -3150,10 +3189,24 @@ function refreshOfferView(){
 
 /* ---- anlaşma özeti ---- */
 function openDealSummary(d){
+  /* Satış anı: aracın fotoğrafı üstüne damga gibi inen SATILDI mührü; kariyer
+     rekorunda altın şerit. Kısa ve atlanabilir — Devam her an basılabilir. */
+  const car=(SON_SATILAN && SON_SATILAN.id===d.carId) ? SON_SATILAN : null;
+  const kazanc=d.profit>=0;
+  if(d.rekor && !d.kutlandi){
+    d.kutlandi=true;
+    setTimeout(()=>{ try{ parla("REKOR KÂR", "+"+tl(d.profit), "var(--gold)"); cal("seviye"); titre(HAPTIK.basari); }catch(e){} }, 450);
+  }
   openSheet(`<div class="sheet-head">
       <div><div class="sheet-title">Anlaşma</div>
         <div class="sheet-sub">${d.n}</div></div>
       <button class="x" data-act="dealdone" aria-label="Kapat">&times;</button></div>
+    <div class="satis-sahne ${kazanc?"":"zarar"}">
+      ${car?aracFoto(car,"tam"):""}
+      <div class="satildi">${kazanc?"SATILDI":"ZARARINA SATILDI"}</div>
+      ${d.rekor?`<div class="rekor">REKOR K&Acirc;R</div>`:""}
+      <div class="satis-kar ${kazanc?"pos":"neg"}">${kazanc?"+":""}${tl(d.profit)}</div>
+    </div>
     <div class="block">
       <div class="kv"><span>Alış</span><b>&minus;${tl(d.buy)}</b></div>
       <div class="kv"><span>Tamir</span><b class="${d.repair?"neg":""}">${d.repair?"&minus;"+tl(d.repair):"&mdash;"}</b></div>
@@ -3285,6 +3338,7 @@ document.addEventListener("click",e=>{
      sayfada dışarı dokunacak yer de kalmayınca oyuncu sayfada hapsoluyordu.
      ux-test her data-act'in bir karşılığı olduğunu artık denetliyor. */
   if(a==="closesheet"){ closeSheet(); render(); return; }
+  if(a==="durumac"){ openDurum(); return; }
   if(a==="closereportgaraj"){ S.report=null; S.reportStep=0; closeSheet();
     S.tab="garaj"; S.garajTab="satis"; render(); return; }
   /* --- arama, sıralama, sipariş filtresi --- */
@@ -3584,6 +3638,23 @@ document.addEventListener("click",e=>{
     car.daysListed=0; car.leadsSeen=0; gorevIlerle("ilan");
     toast(`İlan yayında — ${tl(price)} · ${ILAN_DILI[car.ilanDili].n.replace(/&uuml;/g,"ü")}`,"good");
     save(); closeSheet(); S.tab="garaj"; render(); return;
+  }
+  if(a==="hazirla"){
+    const p=hazirlaPlan(car);
+    const metin=(car.inspected?"":`Ekspertiz yapılır (${p.ep?tl(p.ep):"bedava"}). `)+
+      (p.tam?(p.tam.length?`${p.tam.length} kârlı tamir yapılır (${tl(p.tamTutar)}). `:"Kârlı tamir yok. ")
+            :"Çıkan kusurlardan yalnız kendini amorti edenler tamir edilir. ")+
+      `Dürüst ilanla piyasa değerinin %3 üstüne ilana konur.`;
+    onay("Hazırla ve ilana koy", metin, "Hazırla", ()=>{
+      const r=hazirlaYap(car); if(!r) return;
+      closeSheet(); S.tab="garaj"; S.garajTab="satis"; render();
+      toast(`İlanda · ${tl(r.fiyat)}${r.yapilan.length?` · ${r.yapilan.length} tamir ${tlk(r.harcanan)}`:""} · beklenen kâr ${tlk(r.kar)}`, r.kar>=0?"good":"bad");
+    });
+    return;
+  }
+  if(a==="oneriteklif"){
+    const inp=document.getElementById("negInput"); if(inp) inp.value=num(+b.dataset.v);
+    return;
   }
   if(a==="ilandil"){
     if(!car) return;

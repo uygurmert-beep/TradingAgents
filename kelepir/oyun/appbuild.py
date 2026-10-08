@@ -6,7 +6,7 @@ import json, shutil, os, re
 
 AD      = "Kelepir"
 AD_UZUN = "Kelepir — Galeri Simülasyonu"
-ZEMIN   = "#0B1012"
+ZEMIN   = "#0A0E1A"
 
 
 def cakismaKontrol(dosyalar):
@@ -28,11 +28,12 @@ def cakismaKontrol(dosyalar):
 shell = open('shell.html', encoding='utf-8').read()
 MODULLER = (
           'hata.js','aracciz.js','kayit.js','i18n.js','ses.js','game.js','world.js','rehber.js',
-          'gunlukritim.js','koleksiyon.js','galeri.js','konsinye.js','yangorev.js','sirala.js','cila.js','yuz.js',
+          'gunlukritim.js','koleksiyon.js','galeri.js','konsinye.js','yangorev.js','kolay.js','foto.js','sirala.js','cila.js','yuz.js',
           'kisisel.js','karne.js','meydan.js','paylas.js','demo.js','ui.js','app.js')
 parcalar=[open(f,encoding='utf-8').read() for f in MODULLER]
 cakismaKontrol(MODULLER)
-govde = shell.replace('/*BUNDLE*/', "\n".join(parcalar))
+from yazitipi import font_css
+govde = shell.replace('/*FONT*/', font_css()).replace('/*BUNDLE*/', "\n".join(parcalar))
 govde = govde.replace(
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>',
     '<script src="three.min.js"></script>')

@@ -48,6 +48,14 @@ const cek=async(p, ad, klasor)=>{
   // Bildirimler ekranın üstünü kapatıyor; mağaza görselinde uygulamanın
   // kendisi görünmeli, geçici uyarılar değil.
   await p.waitForTimeout(260);
+  // 3B araç fotoğrafları boşta kalınca çekiliyor: görünen kartlarınki bitmeden
+  // çekilen görüntüde 2B silüet kalıyordu. En fazla 20 sn bekle.
+  for(let k=0;k<40;k++){
+    const kalan=await p.evaluate(()=>[...document.querySelectorAll('.fotobekle')]
+      .filter(e=>{ const r=e.getBoundingClientRect(); return r.bottom>0 && r.top<innerHeight; }).length);
+    if(!kalan) break;
+    await p.waitForTimeout(500);
+  }
   // Bildirimler ve rehber kartı ekranın üstünü kapatıyor; mağaza görselinde
   // uygulamanın kendisi görünmeli, geçici katmanlar değil.
   await p.evaluate(()=>{

@@ -37,7 +37,7 @@ birleştirip `shell.html` içindeki `/*BUNDLE*/` işaretinin yerine koyuyor.
 ```
 hata.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → world.js
 → rehber.js → gunlukritim.js → koleksiyon.js → galeri.js → konsinye.js
-→ yangorev.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
+→ yangorev.js → kolay.js → foto.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
 → paylas.js → demo.js → ui.js → app.js
 ```
 
@@ -74,7 +74,7 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, ölü düğme (98 kontrol)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış (109 kontrol)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
@@ -103,6 +103,8 @@ Playwright Chromium yolu: `/opt/pw-browsers/chromium`.
 ## 4. Değiştirilemez kurallar
 
 1. **Dış kaynak yok.** CDN, web fontu, analitik, uzak görsel — hiçbiri.
+   İmza yazı tipi Saira (OFL) `oyun/font/` altında; `yazitipi.py` onu iki
+   derleyicide de base64 olarak `/*FONT*/` yerine gömüyor.
    `appbuild.py` içinde `assert 'cdnjs' not in govde` var; ihlal derlemeyi
    durdurur. Oyun ilk açılıştan itibaren tamamen çevrimdışı çalışıyor.
 2. **Reklam ve uygulama içi satın alma yok.** Mağaza metni bunu vaat ediyor.
@@ -115,9 +117,13 @@ Playwright Chromium yolu: `/opt/pw-browsers/chromium`.
    artır ve `kayit.js` içine göç kodu yaz; `test/goc-test.js` bunu denetliyor.
    Geçici arayüz durumunu `S`'ye KOYMA (kayda yazılır) — modül düzeyinde
    değişken kullan. Örnek: `SON_TAMIR`.
-5. **Dil.** Kod, değişken adları, yorumlar ve arayüz Türkçe. Yeni kullanıcıya
+5. **Renk.** Palet "Gece Galerisi": gece mavisi zemin, **turuncu (`--tint`)
+   yalnızca eylem ve seçim**, altın (`--gold`) yalnızca para, yeşil/kırmızı
+   yalnızca sonuç. Sabit renk yazma; `--surface-tepe` gibi değişken kullan,
+   yoksa kâğıt (`.belge`) dünyasında koyu kalır.
+6. **Dil.** Kod, değişken adları, yorumlar ve arayüz Türkçe. Yeni kullanıcıya
    görünen metin eklersen `en.js` sözlüğüne de karşılığını ekle.
-6. **Türkçe büyük harf:** `toLocaleUpperCase("tr")` — aksi hâlde "i" → "I".
+7. **Türkçe büyük harf:** `toLocaleUpperCase("tr")` — aksi hâlde "i" → "I".
 
 ---
 
@@ -155,6 +161,8 @@ iş listesine yaz.
 | `galeri.js` | 127 | **galerinin yeri** — kaçan kelepir, yandaki dükkân, sezon hedefi kutusu |
 | `konsinye.js` | 178 | **emanet araç** — sahibi net ister, üstü senin, yer kaplar (filonun yerine) |
 | `yangorev.js` | 212 | toptan parti, dönen müşteri, sanayi günü, sezon hedefi |
+| `kolay.js` | 102 | Hazırla (tek dokunuşla satışa), sıradaki adım rozeti, önerilen teklif |
+| `foto.js` | 105 | listede/sayfada 3B stüdyo fotoğrafı (ayrı çizici, boşta kuyruk, 2B yedek) |
 | `sirala.js` | 74 | Türkiye sıralaması (60 sanal galeri) |
 | `cila.js` | 125 | mikro animasyon, haptik, onay kutusu |
 | `yuz.js` | 129 | satıcı/alıcı/tanıdık/emanet sahibi yüz çizimi (ruh hâline göre) |
@@ -163,9 +171,9 @@ iş listesine yaz.
 | `meydan.js` | 176 | günün vakası (günlük bilmece) |
 | `paylas.js` | 377 | 1080×1920 paylaşım kartları (canvas) |
 | `demo.js` | 213 | otomatik tanıtım turu |
-| `ui.js` | 3936 | **bütün ekranlar ve olay yönlendirme** (BUGÜN rayı, gözle ekspertiz kuralları) |
+| `ui.js` | 4012 | **bütün ekranlar ve olay yönlendirme** (BUGÜN rayı, gözle ekspertiz kuralları) |
 | `app.js` | 171 | Capacitor köprüsü, güvenli alan, geri tuşu |
-| `shell.html` | 1694 | bütün CSS + belge iskeleti |
+| `shell.html` | 1786 | bütün CSS + belge iskeleti |
 
 `ui.js` ve `game.js` büyük. Bölmeye kalkışmadan önce 2. bölümdeki ad çakışması
 tuzağını hatırla — bölmek mimari kazanç sağlamıyor, risk ekliyor.
@@ -260,6 +268,9 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   araçlar görüş hattına giriyor; dokunuş onlara düşerse odak doğru biçimde
   oraya geçer. Test önce `W3D.isabet(x,y)` ile ışını yan etkisiz sorar, sonra
   aynı karede `W3D.dokun(x,y)` der (`vitrin-test.js`).
+- **3B fotoğraf kuyruğu boşta çalışıyor.** `foto.js` oyuncu yazarken/kaydırırken
+  çekim yapmıyor (`requestIdleCallback`). Testte ya da mağaza görüntüsünde
+  fotoğraf bekleniyorsa `.fotobekle` kalmayana dek yokla, sabit süre bekleme.
 - **Sayfa içi eylem çubuğu** (`.sheet>.actionbar`) `bottom:-24px` ile duruyor.
   Chromium yapışkan konumu kaydırıcının içerik kutusuna göre hesaplıyor; 0
   olunca çubuk sayfanın alt dolgusu kadar yukarıda kalıyor ve altından içerik
@@ -279,6 +290,7 @@ Testler kırmızıyken iş bitmiş sayılmaz.
 ```
 oyun/            kaynak + derleyiciler + üreticiler
 oyun/test/       bütün testler ve denge simülasyonu
+oyun/font/       Saira woff2 + OFL lisansı (derlemede gömülür)
 kabuk/           Capacitor projesi (android + ios)
 kabuk/android/   kelepir-upload.jks + keystore.properties  ← GİZLİ, kaybetme
 magaza/          mağaza metinleri, ikonlar, ekran görüntüleri, gizlilik

@@ -90,7 +90,7 @@ function openParti(){
       <button class="x" data-act="close" aria-label="Kapat">&times;</button></div>
     <div class="quote">"Hepsini birden alırsan fiyatta anlaşırız. Tek tek vermem, ekspertize de vakit yok."</div>
     <div class="partiler">${p.cars.map(c=>`<div class="partiarac">
-        <div class="pa-gor">${aracGorsel(c)}</div>
+        <div class="pa-gor">${aracFoto(c)}</div>
         <div class="pa-ad"><b>${adBol(c.model.n).ad}</b><span>${c.year} &middot; ${mesafe(c.km)}</span></div>
         <div class="pa-fiyat">${tlk(c.ask)}</div></div>`).join("")}</div>
     <div class="block">

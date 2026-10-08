@@ -1,6 +1,8 @@
 <title>Kelepir</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
 <style>
+/*FONT*/
+
 /* ==================================================================
    KELEPİR — renk ve yüzey sistemi
    Yaklaşım sahibinden.com'dan: sakin nötr bir zemin, üstünde TEK cüretli
@@ -26,19 +28,22 @@
   --sar:var(--safe-area-inset-right, env(safe-area-inset-right,0px));
 
   /* ---- ASFALT: çerçevenin dünyası ---- */
-  --bg:#0E1214;
-  --bg-2:#080B0D;
-  --surface:#171D20;
-  --surface-2:#1F262A;
-  --fill:rgba(198,206,210,.075);
-  --fill-2:rgba(198,206,210,.042);
-  --sep:rgba(198,206,210,.13);
-  --sep-soft:rgba(198,206,210,.07);
+  /* GECE GALERİSİ: zemin nötr gri değil, gece mavisi. Eski asfalt grisi
+     bir banka uygulaması gibi duruyordu; oyunu bağlayan bir renk yoktu. */
+  --bg:#0A0E1A;
+  --bg-2:#070A13;
+  --surface:#131A2B;
+  --surface-2:#1A2338;
+  --surface-tepe:#162036;
+  --fill:rgba(150,170,230,.08);
+  --fill-2:rgba(150,170,230,.045);
+  --sep:rgba(150,170,230,.14);
+  --sep-soft:rgba(150,170,230,.075);
   --edge:rgba(255,255,255,.045);
 
-  --label:#ECEFF1;
-  --label-2:#98A3A9;
-  --label-3:#6B767C;
+  --label:#F3F5FB;
+  --label-2:#9EAAC6;
+  --label-3:#6A7693;
 
   /* ---- KÂĞIT: belgelerin dünyası ---- */
   --kagit:#F2EEE5;
@@ -48,24 +53,26 @@
   --murekkep-3:#878E96;
   --plaka:#1C4C8C;           /* belge üstünde etkileşim rengi */
 
-  /* Etkileşim rengi diye ayrı bir renk YOK. Koyu çerçevede birincil eylem
-     bir kâğıt parçası: krem zemin, mürekkep yazı. Böylece kehribar
-     yalnızca paraya, yeşil/kırmızı yalnızca sonuca kalıyor. */
-  --tint:#EDE7DA;
-  --tint-2:#D6CFC0;
-  --tint-soft:rgba(237,231,218,.12);
-  --tint-ink:#15181A;
+  /* İMZA RENGİ — galeri tabelasının neon turuncusu. Eskiden etkileşim
+     rengi krem bir "kâğıt"tı; güvenliydi ama oyuncuyu çekmiyordu (ekip:
+     "banka uygulaması gibi"). Kural korunuyor: turuncu YALNIZCA eylem ve
+     seçim; kehribar/altın yalnızca para; yeşil/kırmızı yalnızca sonuç. */
+  --tint:#FF8A1F;
+  --tint-2:#FF7A12;
+  --tint-soft:rgba(255,138,31,.14);
+  --tint-ink:#1A0C00;
+  --imza-isik:0 8px 24px -10px rgba(255,138,31,.75);
 
   /* para */
-  --gold:#F0B452;
-  --gold-2:#D1912B;
-  --gold-soft:rgba(240,180,82,.13);
+  --gold:#FFC94A;
+  --gold-2:#E0A52C;
+  --gold-soft:rgba(255,201,74,.13);
 
   /* anlamsal */
-  --green:#3DD68C;
-  --green-soft:rgba(61,214,140,.14);
-  --red:#FF6B5E;
-  --red-soft:rgba(255,107,94,.13);
+  --green:#2EE59D;
+  --green-soft:rgba(46,229,157,.14);
+  --red:#FF5A6E;
+  --red-soft:rgba(255,90,110,.13);
   --orange:#F5A524;
   --orange-soft:rgba(245,165,36,.14);
 
@@ -83,7 +90,7 @@
   --sodium:var(--gold);
   --sodium-dim:var(--gold-soft);
   --plate:var(--label);
-  --ink:#0B1012;
+  --ink:#070A13;
   --text:var(--label);
   --muted:var(--label-2);
   --muted-2:var(--label-3);
@@ -94,6 +101,9 @@
   --pad:16px;
   --sf:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,"Helvetica Neue",sans-serif;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  /* İmza yazı tipi: başlıklar, fiyatlar, kasa. Gövde metni sistem fontunda
+     kalıyor (okunurluk ve ilk boyama hızı). Saira gömülü, ağa çıkmıyor. */
+  --imza-font:"Saira",var(--sf);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -156,7 +166,7 @@ input,select{font:inherit;color:inherit;font-family:var(--sf)}
 .listbas .viewtoggle button{padding:6px 12px;min-height:32px;font-size:13px}
 .rail{display:flex;gap:2px;align-items:flex-end;height:13px}
 .rail span{flex:1;background:var(--fill);border-radius:2px;height:5px}
-.rail span.done{background:rgba(22,184,174,.35)}
+.rail span.done{background:rgba(255,138,31,.35)}
 .rail span.now{background:var(--tint);height:13px}
 .dots{display:flex;gap:4px}
 .dots i{width:9px;height:9px;border-radius:3px;background:var(--fill);display:block}
@@ -249,12 +259,12 @@ body.ogret-ac main{padding-bottom:218px}
 .ogret-isik{position:relative;z-index:41;
   box-shadow:0 0 0 2px var(--tint), 0 0 0 7px var(--tint-soft) !important;
   border-radius:14px;animation:ogretNabiz 1.5s ease-in-out infinite}
-@keyframes ogretNabiz{0%,100%{box-shadow:0 0 0 2px var(--tint),0 0 0 6px rgba(22,184,174,.16)}
-  50%{box-shadow:0 0 0 2px var(--tint),0 0 0 11px rgba(22,184,174,.05)}}
+@keyframes ogretNabiz{0%,100%{box-shadow:0 0 0 2px var(--tint),0 0 0 6px rgba(255,138,31,.16)}
+  50%{box-shadow:0 0 0 2px var(--tint),0 0 0 11px rgba(255,138,31,.05)}}
 
 
 /* ---------- günlük görevler ---------- */
-.gunluk{border-color:rgba(22,184,174,.22)}
+.gunluk{border-color:rgba(255,138,31,.22)}
 .gunluk .gbas{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .gunluk .gsay{font-size:12px;font-weight:700;color:var(--tint);
   background:var(--tint-soft);border-radius:100px;padding:2px 8px}
@@ -334,6 +344,52 @@ body.ogret-ac main{padding-bottom:218px}
 
 /* ---------- emanet + hedef ---------- */
 .block.emanet{box-shadow:inset 3px 0 0 var(--tint),var(--shadow)}
+/* ---------- sade kokpit ---------- */
+.hud-row{display:block!important}
+.hudserit{display:flex;align-items:center;gap:12px;width:100%;margin:6px 0 0;padding:6px 0 2px;border:none;background:none;
+  color:var(--label-2);font:inherit;font-size:12px;cursor:pointer;position:relative;text-align:left}
+.hs-sezon{position:absolute;left:0;right:0;top:0;height:2px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden}
+.hs-sezon i{display:block;height:100%;background:var(--tint)}
+.hs-oge{display:flex;align-items:baseline;gap:4px;white-space:nowrap;position:relative}
+.hs-oge em{font-style:normal;color:var(--label-3);font-size:11px}
+.hs-oge b{font-family:var(--imza-font);font-weight:700;color:var(--label);font-size:14px;font-variant-numeric:tabular-nums}
+.hs-oge u{display:inline-block;width:26px;height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin-left:3px;align-self:center;overflow:hidden}
+.hs-oge u i{display:block;height:100%;background:var(--tint)}
+.hs-oge.gider{margin-left:auto}
+.hs-oge.gider b{color:var(--label-2);font-size:12.5px}
+/* ---------- anlar: satış, rekor, sezon ---------- */
+.satis-sahne{position:relative;margin:0 0 12px;padding:6px 6px 12px;border-radius:var(--r);overflow:hidden;text-align:center;
+  background:radial-gradient(80% 90% at 50% 75%, rgba(255,138,31,.16), transparent 70%), var(--surface)}
+.satis-sahne.zarar{background:radial-gradient(80% 90% at 50% 75%, rgba(255,90,110,.12), transparent 70%), var(--surface)}
+.satis-sahne img.aracfoto,.satis-sahne svg{width:100%;aspect-ratio:3/1;object-fit:contain;display:block}
+.satildi{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-8deg);
+  font-family:var(--imza-font);font-weight:700;font-size:26px;letter-spacing:.12em;color:var(--tint);
+  border:3px solid var(--tint);border-radius:10px;padding:3px 14px;background:rgba(10,14,26,.55);
+  animation:muhurBas .5s cubic-bezier(.2,1.6,.4,1) both .15s}
+.satis-sahne.zarar .satildi{color:var(--red);border-color:var(--red);font-size:18px}
+@keyframes muhurBas{from{opacity:0;transform:translate(-50%,-50%) rotate(-8deg) scale(1.8)}to{opacity:1;transform:translate(-50%,-50%) rotate(-8deg) scale(1)}}
+.rekor{position:absolute;top:10px;right:-34px;transform:rotate(35deg);background:linear-gradient(90deg,#FFD978,var(--gold));
+  color:#2A1A00;font-family:var(--imza-font);font-weight:700;font-size:11px;letter-spacing:.1em;padding:4px 40px}
+.satis-kar{font-family:var(--imza-font);font-weight:700;font-size:28px;margin-top:2px;font-variant-numeric:tabular-nums}
+.sezon-afis{text-align:center;margin:2px 0 14px;padding:18px 12px 16px;border-radius:var(--r);
+  background:radial-gradient(90% 120% at 50% 0%, rgba(255,138,31,.22), transparent 70%), var(--surface)}
+.sezon-afis span{display:block;font-size:11px;letter-spacing:.16em;color:var(--label-3);font-weight:700}
+.sezon-afis b{display:block;font-family:var(--imza-font);font-size:38px;letter-spacing:.06em;color:var(--tint);margin:4px 0 2px;
+  animation:afisGel .6s ease both}
+.sezon-afis em{font-style:normal;font-size:13px;color:var(--label-2)}
+@keyframes afisGel{from{opacity:0;letter-spacing:.4em}to{opacity:1;letter-spacing:.06em}}
+@media (prefers-reduced-motion:reduce){.satildi,.sezon-afis b{animation:none}}
+/* ---------- imza yazı tipi ---------- */
+.sheet-title,h2.sec,.hud-cash,.kart-fiyat,.kart-ad,.pval,.w3dname,.w3dprice,.bd-bas,
+.aj-deger,.ozet b,.ro b,.lb-et,.bugun-bas span,.hz-bas b,.sec-head .sec{
+  font-family:var(--imza-font);font-variant-numeric:tabular-nums}
+.sheet-title,h2.sec{letter-spacing:-.01em;font-weight:700}
+.hud-cash{letter-spacing:0;font-weight:700}
+.kart-fiyat{font-weight:700;letter-spacing:0}
+.kart-ad{font-weight:600;letter-spacing:-.005em}
+.btn.primary{font-family:var(--imza-font);font-weight:700;letter-spacing:.01em}
+.olayfold summary{cursor:pointer;font-size:13px;color:var(--plaka);font-weight:600;padding:8px 0 2px;list-style:none}
+.olayfold summary::-webkit-details-marker{display:none}
 .olaygit{display:block;margin-top:7px;padding:0;background:none;border:none;color:var(--plaka);
   font:inherit;font-size:13px;font-weight:650;cursor:pointer}
 .yer-hedef{margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:var(--fill-2);cursor:pointer}
@@ -737,6 +793,23 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
 .gozdavet span{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--label-2)}
 .gozdavet i{flex:none;font-style:normal;font-size:22px;color:var(--gold)}
 .block.gozblok{box-shadow:inset 3px 0 0 var(--gold),var(--shadow)}
+/* ---------- kolay oynanış ---------- */
+.hazirla{margin:0 0 12px;padding:14px 14px 12px;border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(255,138,31,.12),rgba(255,138,31,.04));box-shadow:inset 0 0 0 1px rgba(255,138,31,.30)}
+.hz-bas{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.hz-bas b{font-size:11px;letter-spacing:.1em;color:var(--tint)}
+.hz-bas span{font-size:12px;color:var(--label-3)}
+.hz-adim{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:13px;color:var(--label-2);margin-bottom:10px;line-height:1.35}
+.hz-adim i{font-style:normal;color:var(--label-3)}
+.hz-not{font-size:12px;color:var(--gold);margin:-4px 0 10px}
+.hz-alt{font-size:11.5px;color:var(--label-3);text-align:center;margin-top:8px}
+.chip.adim{background:var(--tint-soft);color:var(--tint);border-color:rgba(255,138,31,.30);font-weight:600}
+.chip.adim.sicak{background:var(--tint);color:var(--tint-ink);border-color:transparent}
+.chip.adim.uyari{background:var(--gold-soft);color:var(--gold);border-color:rgba(255,201,74,.3)}
+.oneri{display:flex;align-items:baseline;gap:8px;width:100%;margin:8px 0 2px;padding:9px 12px;border-radius:11px;
+  border:1px dashed rgba(255,138,31,.45);background:transparent;color:var(--label-2);font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
+.oneri b{color:var(--tint);font-size:14px;font-variant-numeric:tabular-nums}
+.oneri em{margin-left:auto;font-style:normal;font-size:11px;color:var(--label-3)}
 .w3dgoz{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;padding:8px 11px;border-radius:11px;
   background:rgba(255,255,255,.06);font-size:12.5px;color:var(--label-2);line-height:1.35}
 .w3dgoz b{flex:none;font-size:10.5px;letter-spacing:.09em;color:var(--gold)}
@@ -781,7 +854,8 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
 
 body{
   background:
-    radial-gradient(120% 70% at 50% -12%, rgba(22,184,174,.07), transparent 62%),
+    radial-gradient(120% 60% at 50% -12%, rgba(255,138,31,.13), transparent 60%),
+    radial-gradient(90% 50% at 100% 105%, rgba(61,140,255,.09), transparent 60%),
     var(--bg);
   background-attachment:fixed;
 }
@@ -789,7 +863,7 @@ body{
 
 /* ---- üst kokpit: camsı, altında ince ışık çizgisi ---- */
 #hud{
-  background:rgba(11,16,18,.955);
+  background:rgba(10,14,26,.955);
   border-bottom:.5px solid var(--sep);
 }
 .brand{color:var(--label-3);font-size:13px;letter-spacing:.01em}
@@ -799,7 +873,7 @@ body{
 .burnbar i{filter:none}
 .minilbl{font-size:10px;letter-spacing:.06em;color:var(--label-3)}
 .rail span{background:rgba(255,255,255,.07)}
-.rail span.done{background:rgba(22,184,174,.38)}
+.rail span.done{background:rgba(255,138,31,.38)}
 .rail span.now{background:var(--tint)}
 .dots i{background:rgba(255,255,255,.08)}
 .dots i.full{background:var(--tint)}
@@ -808,7 +882,10 @@ body{
 /* Apple geçişi: paneller artık "cam kart" değil, gruplanmış liste hücresi.
    Gradyan ve gölge yerine düz yüzey + saç teli ayıraç. */
 .card,.block,.ordercard,.offercard,.move,.mv,.topbar,.seasonstrip,.fold,.stat,.pick{
-  background:var(--surface);
+  /* tepe tonu bir değişken: kâğıt (.belge) dünyasında kâğıda dönüyor.
+     Sabit #162036 yazıldığında belge sayfasındaki teklif kartı koyu bir
+     gradyana dönüp mürekkep yazıyı okunmaz yapıyordu. */
+  background:linear-gradient(180deg,var(--surface-tepe),var(--surface));
   border:.5px solid var(--sep-soft);
   box-shadow:none;
 }
@@ -821,7 +898,7 @@ button.card:active{transform:scale(.985);box-shadow:var(--shadow-lift)}
 
 /* kart sol kenarında durum şeridi */
 .ordercard.match{border-color:rgba(61,214,140,.38);box-shadow:inset 3px 0 0 var(--green)}
-.offercard.hot{border-color:rgba(22,184,174,.4);box-shadow:inset 3px 0 0 var(--tint)}
+.offercard.hot{border-color:rgba(255,138,31,.4);box-shadow:inset 3px 0 0 var(--tint)}
 .mv.risk{border-color:rgba(255,107,94,.4);box-shadow:inset 3px 0 0 var(--red)}
 
 /* ---- çipler: ince kenarlı rozetler ---- */
@@ -841,9 +918,10 @@ button.card:active{transform:scale(.985);box-shadow:var(--shadow-lift)}
 }
 .btn:active{transform:scale(.985);filter:brightness(.92);opacity:1}
 .btn.primary{
-  background:var(--tint);color:var(--tint-ink);border-color:transparent;font-weight:650;
-  box-shadow:none;
+  background:linear-gradient(180deg,#FF9A33,var(--tint-2));color:var(--tint-ink);border-color:transparent;font-weight:700;
+  box-shadow:var(--imza-isik);
 }
+.btn.primary:disabled{box-shadow:none}
 .btn.ghost{background:transparent;border-color:var(--sep-soft);color:var(--label-2);box-shadow:none}
 .btn.danger{background:linear-gradient(180deg,rgba(255,94,82,.22),rgba(255,94,82,.10));
   color:#FF8478;border-color:rgba(255,94,82,.35)}
@@ -877,7 +955,7 @@ button.card:active{transform:scale(.985);box-shadow:var(--shadow-lift)}
 
 /* ---- sekme şeridi: etkin sekmede parlayan hap ---- */
 #tabs{
-  background:rgba(9,13,15,.96);
+  background:rgba(8,11,20,.965);
   border-top:.5px solid var(--sep);
   box-shadow:none;
 }
@@ -993,7 +1071,7 @@ button.card:active{transform:scale(.985);box-shadow:var(--shadow-lift)}
   color:var(--label-3)}
 .girisadim i{flex:none;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;
   font-style:normal;font-size:10px;font-weight:800;color:var(--tint);
-  background:var(--tint-soft);border:.5px solid rgba(22,184,174,.35);margin-top:1px}
+  background:var(--tint-soft);border:.5px solid rgba(255,138,31,.35);margin-top:1px}
 .girisalt{margin-top:auto;padding-top:18px;display:flex;flex-direction:column;gap:8px}
 .girisalt .hint{margin-top:2px}
 
@@ -1026,7 +1104,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 /* ---- filo ---- */
 .kiraserit{display:flex;align-items:center;gap:10px;margin:-6px 0 10px;padding:9px 13px;
   border-radius:0 0 12px 12px;background:var(--tint-soft);
-  border:.5px solid rgba(22,184,174,.26);border-top:none}
+  border:.5px solid rgba(255,138,31,.26);border-top:none}
 .kirarozet{font-size:10px;font-weight:800;letter-spacing:.09em;color:var(--tint-ink);
   background:var(--tint);border-radius:100px;padding:3px 8px;flex:none}
 .kirabilgi{flex:1;min-width:0;font-size:12.5px;color:var(--label-2);
@@ -1145,7 +1223,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 /* ================= madde 7 · günün vakası ================= */
 .meyserit{display:flex;align-items:center;gap:11px;width:100%;text-align:left;min-height:56px;
   padding:12px;margin-bottom:10px;border-radius:14px;
-  background:var(--tint-soft);border:.5px solid rgba(22,184,174,.28)}
+  background:var(--tint-soft);border:.5px solid rgba(255,138,31,.28)}
 .meyserit.bitti{background:linear-gradient(135deg,rgba(67,192,138,.13),rgba(67,192,138,.03));
   border-color:rgba(67,192,138,.30)}
 .meyik{width:34px;height:34px;flex:none;border-radius:50%;display:flex;align-items:center;
@@ -1259,7 +1337,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 
 /* ---- sipariş filtresi şeridi ---- */
 .sipserit{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:2px 0 6px;
-  border-radius:11px;background:var(--tint-soft);border:.5px solid rgba(22,184,174,.3);
+  border-radius:11px;background:var(--tint-soft);border:.5px solid rgba(255,138,31,.3);
   font-size:13px;color:var(--label-2);line-height:1.35}
 .sipserit span{flex:1;min-width:0}
 .sipserit button{flex:none;color:var(--tint);font-weight:600;font-size:13px;
@@ -1313,6 +1391,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 .belge{
   --surface:var(--kagit);
   --surface-2:var(--kagit-2);
+  --surface-tepe:var(--kagit);
   --bg:var(--kagit);
   --label:var(--murekkep);
   --label-2:var(--murekkep-2);
@@ -1370,7 +1449,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 .thumb svg.aracsvg{width:100%;height:auto;display:block}
 .thumb{width:66px;height:30px;padding:0;overflow:hidden;background:transparent;box-shadow:none}
 .aracsahne{margin:0 -4px 12px;padding:10px 8px 6px;border-radius:14px;
-  background:radial-gradient(70% 90% at 50% 70%, rgba(22,184,174,.07), transparent 70%),
+  background:radial-gradient(70% 90% at 50% 70%, rgba(255,138,31,.07), transparent 70%),
              var(--surface);
   border:.5px solid var(--sep-soft)}
 .aracsahne svg{width:100%;height:auto;display:block;max-height:150px}
@@ -1507,7 +1586,7 @@ main>.card:nth-child(n+6){animation-delay:.15s}
 :root[data-sezon="sonbahar"] body{--sezonIsik:rgba(214,140,80,.075);  --sezonTon:rgba(52,34,22,.36)}
 body{
   background:
-    radial-gradient(120% 70% at 50% -12%, var(--sezonIsik, rgba(22,184,174,.07)), transparent 62%),
+    radial-gradient(120% 70% at 50% -12%, var(--sezonIsik, rgba(255,138,31,.07)), transparent 62%),
     linear-gradient(180deg, var(--sezonTon, transparent) 0%, transparent 46%),
     var(--bg);
   background-attachment:fixed;
@@ -1593,6 +1672,19 @@ body{
   border-bottom:.5px solid var(--sep-soft)}
 .kart-sahne svg.aracsvg{width:100%;height:auto;display:block;max-height:66px;
   filter:drop-shadow(0 5px 10px rgba(0,0,0,.45))}
+/* 3B stüdyo fotoğrafı: şerit 3:1 sabit, 2B yer tutucudan fotoğrafa geçerken
+   kart boyu oynamasın. */
+.kart-sahne{aspect-ratio:3/1;display:flex;align-items:center;justify-content:center;padding:4px 10px 0}
+.kart-sahne .fotobekle{width:100%;display:flex;align-items:center;justify-content:center}
+.kart-sahne img.aracfoto{width:100%;height:100%;object-fit:contain;display:block;
+  filter:drop-shadow(0 8px 12px rgba(0,0,0,.35))}
+.aracsahne img.aracfoto{width:100%;aspect-ratio:3/1;object-fit:contain;display:block}
+.aracsahne .fotobekle{display:block;aspect-ratio:3/1}
+.aracsahne .fotobekle svg{height:100%}
+.pa-gor img.aracfoto{width:100%;height:100%;object-fit:contain}
+img.aracfoto.yeni{animation:fotoGel .45s ease}
+@keyframes fotoGel{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){img.aracfoto.yeni{animation:none}}
 .kart-plaka{position:absolute;right:10px;bottom:5px;transform:scale(.82);transform-origin:right bottom}
 .kart-govde{display:flex;align-items:flex-end;gap:10px;padding:8px 13px 3px}
 .kart-sol{flex:1;min-width:0}
@@ -1655,8 +1747,8 @@ body{
    sürümleri, GPU'suz ortamlar) altındaki başlıklar olduğu gibi okunuyor ve
    ekran kirli görünüyor. Böyle bir ortamda katmanlar tamamen opak olsun. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  #hud{background:#0B1012}
-  #tabs{background:#090D0F}
+  #hud{background:#0A0E1A}
+  #tabs{background:#080B14}
   .actionbar{background:var(--bg)}
   #modal{background:rgba(3,5,8,.94)}
 }

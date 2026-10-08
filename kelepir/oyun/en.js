@@ -176,6 +176,12 @@ Object.assign(I18N.TAM, {
 "Gizli arızaları, tramer kaydını ve km oynamasını açığa çıkarır. Bulduğun her kusur pazarlıkta koz olur.":
   "Reveals hidden faults, accident records and clocked odometers. Every fault you find is leverage.",
 
+/* --- kolay oynanış, durum, anlar --- */
+"HAZIRLA":"PREP","Hazırla ve ilana koy":"Prep and list","Hazırla":"Prep","Ekspertiz bekliyor":"Awaiting inspection",
+"İlana hazır":"Ready to list","Teklif geldi":"Offer in","Fiyat kırmayı düşün":"Consider a price cut",
+"Emanet süresi bitiyor":"Consignment ending","Önerilen tavan":"Suggested ceiling","Durum":"Status",
+"SATILDI":"SOLD","ZARARINA SATILDI":"SOLD AT A LOSS","REKOR KÂR":"RECORD PROFIT","SEZON KAPANDI":"SEASON CLOSED",
+"Stok":"Stock","Sv":"Lv",
 /* --- 3B vitrin ve gözle ekspertiz --- */
 "GÖZLE BAK":"LOOK CLOSELY","GÖZLE BULDUKLARIN":"WHAT YOU SPOTTED","İncele":"Inspect",
 "Boyalı panel — ton farkı var":"Repainted panel — shade mismatch","Değişen parça — ton ve aralık bozuk":"Replaced panel — shade and gap off",
