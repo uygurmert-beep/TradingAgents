@@ -10,8 +10,9 @@ söylüyor; bu dosya **ne yapılacağını**.
 
 Oyun mağazaya yüklenebilir durumda ve önceki brief'teki derinlik eksikleri
 kapandı: filo konsinyeye çevrildi, toptan parti, dönen müşteri, sanayi günü ve
-sezon hedefi eklendi; Pazar ekranı yeniden düzenlendi (BUGÜN rayı). 296
-otomatik kontrol geçiyor (3B ped testi dahil). Sırada **yalanın uzun vadeli faturası**
+sezon hedefi eklendi; Pazar ekranı yeniden düzenlendi (BUGÜN rayı). 3B
+onarıldı (150 model kendi gövdesiyle, gerçekçi far/ızgara), yürüme yerine
+vitrin ve gözle ekspertiz geldi. 326 otomatik kontrol geçiyor. Sırada **yalanın uzun vadeli faturası**
 (tüketici şikâyeti) ve **satış sonrası evrak** (noter) var.
 
 ---
@@ -62,6 +63,21 @@ sanayi ve hedef artık yatay BUGÜN rayında birer kart; liste ilk ekranda.
 kârı × 1,10). Sabit kat denendi; bot bile 8 sezonun 7'sini tutturuyordu.
 Şimdi ~yarısı tutuyor. Tutunca gelecek sezon kirası donuyor ve %25 iniyor.
 
+**10. 3B gezinti vitrine döndü.** İki pedle yürünen saha telefonda yorucuydu
+ve oyuna bir şey katmıyordu. Artık kamera seçili aracın etrafında dönüyor
+(sürükle, iki parmak/tekerlek yakınlaş, ‹ › ya da fiske ile sıradaki araç),
+boşta araç döner tabladaki gibi dönüyor. Blok insan figürleri ve ayaklı fiyat
+panoları kaldırıldı.
+
+**11. Gözle ekspertiz.** Ekspertizsiz araçta boyalı panelin ton farkı, silik
+kapı çiziği, çamurluk göçüğü, eşik pası, yağ lekesi araçta çizili. Oyuncu
+vitrinde üstüne dokununca bulgu araç dosyasına yazılıyor ve pazarlıkta bedava
+koz oluyor. Göz yalnız kaportayı görür; motoru ekspertiz söyler — ekspertiz
+anlamını korur.
+
+**12. 3B araç 2B ile tek kaynak.** Bkz. CLAUDE.md "3B araç". Kök hata, eski
+isimlerle anahtarlı tablolar yüzünden 150 modelin 6 gövdeye düşmesiydi.
+
 ---
 
 ## 3. Sayılarla bugün
@@ -71,7 +87,7 @@ kârı × 1,10). Sabit kat denendi; bot bile 8 sezonun 7'sini tutturuyordu.
 | Model | 150 (40 marka) |
 | Kod | ~13.300 satır, 23 modül |
 | Çıktı | tek HTML, ~690 KB (+ three.js 608 KB) |
-| Otomatik kontrol | 296 (108 kural + 91 arayüz + 26 mağaza + diğerleri) |
+| Otomatik kontrol | 326 (116 kural + 95 arayüz + 26 vitrin + 26 mağaza + diğerleri) |
 | Denge (121 gün, 3 koşu) | net değer ₺3,2M → ₺7,4M / ₺18,2M / ₺24,9M, borç 0, 99–154 satış |
 
 Denge botu artık gerçek oyuncu gibi büyüyor (yer dolunca ve kasa rahatsa
@@ -123,8 +139,13 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
 
 - `ui.js` 3.881 satır. Bölmek cazip ama modüller tek kapsamda birleşiyor;
   bölme kazancı risk kadar değil. Böleceksen `cakismaKontrol()`'e güven.
-- `world.js` 3.195 satır, 3B. Testi yalnızca `pad-test.js` (kontroller).
-  Sahne içeriği için otomatik kontrol yok. Emanet aracı 3B'de ayrı işaretlenmiyor.
+- `world.js` ~3.400 satır, 3B. `vitrin-test.js` vitrini ve gözle ekspertizi,
+  `ux-test.js` 11. bölüm model profilini ölçüyor; görsel kalite için 150
+  modeli çizip bakmak hâlâ elle. Emanet aracı 3B'de ayrı işaretlenmiyor.
+- **3B'de daha gidilecek yol:** iç mekân koltukları kutu, arka stop lambaları
+  ve tampon detayı ön yüz kadar işlenmedi; hatchback'ler hâlâ biraz uzun
+  tavanlı. Göz ipuçları yalnız kaporta; lastik diş derinliği, far sararması
+  gibi yeni ipuçları kural tarafında karşılık isteyecek.
 - **İngilizce sözlük bakımsız.** `TEK_DIL="tr"` olduğu için fark edilmiyor.
   Yeni ekranların başlıkları eklendi, uzun cümleler eklenmedi.
 - **Artifact önizlemesinde paylaşım kartı indirilemiyor** (tarayıcı katmanı

@@ -5,12 +5,9 @@
 const W3D=(()=>{
   let ren=null, scene=null, cam=null, raf=null, mode="pazar";
   let items=[];            // {obj, car, sprite, ring}
-  const keys={};
   let yaw=0, pitch=0;
   let px=0, pz=0;          // oyuncunun konumu
   let focus=null, lastT=0, bob=0;
-  let joy={id:null,cx:0,cy:0,dx:0,dy:0};
-  let look={id:null,x:0,y:0};
   let bounds={x:16,z:22};
   let ready=false, failed=false;
   let ANISO=4;              // doku anizotropisi (renderer açılınca ayarlanır)
@@ -2115,6 +2112,12 @@ const W3D=(()=>{
     /* ================= HASAR KATMANI ================= */
     const yanUst=Math.min(pr.beltF,pr.beltR), yanY=(yanUst+pr.sill)/2+.05;
     const yanH=Math.max(.22, yanUst-pr.sill-.08);
+    /* GÖZLE EKSPERTİZ ipuçları: ekspertizsiz araçta bakan gözün yakalayabileceği
+       her iz bir nokta olarak kaydediliyor (yerel koordinat + yarıçap). Gizli
+       kaporta kusurları da çiziliyor ama SİLİK — dikkatli bakan görür. */
+    const ipucu=[];
+    const gizliKusur=k=>!car.inspected && (car.faults||[]).find(f=>f.k===k && !f.fixed && !f.visible);
+
     /* Yan yüzeye yapışan yama (hasar, boyalı panel, pas...).
        Yamanın bir satırı o z'deki kesitin dışına (davlumbaz boşluğu, kuşak üstü)
        düşerse xAt kenarda sıfıra yaklaşır ve yama gövdeden kopup havada asılı
@@ -2180,6 +2183,12 @@ const W3D=(()=>{
             Math.max(.3,(pr.tavanArka-pr.camUst)*.75), s.roof+.02, pm);
         }
         else yanKaplama(it.sx, it.z, it.uz||.78, yanH+.10, pm, .03);
+        if(!car.inspected){
+          const ip = it.ust==="kaput" ? [0, s.hood+.02, (pr.kaputZ+(-yarim+L*.09))/2]
+                   : it.ust==="bagaj" ? [0, (s.cls==="sedan"?pr.beltR:s.roof)+.02, s.cls==="sedan"?(pr.camAlt+pr.bagajZ)/2:(pr.camUst+pr.tavanArka)/2]
+                   : [it.sx*xAt(it.z,yanY), yanY, it.z];
+          ipucu.push({k:agir?"degisen":"boyali", poz:ip, r:it.ust?.55:Math.max(.42,(it.uz||.78)*.6)});
+        }
         if(agir && !it.ust){
           const gm=new THREE.MeshBasicMaterial({color:0x05070A, transparent:true, opacity:.22, side:THREE.DoubleSide});
           const zk=it.z+(it.uz||.78)/2;
@@ -2193,8 +2202,10 @@ const W3D=(()=>{
         }
       }
     }
-    if(pasVar){
-      const pm=new THREE.MeshBasicMaterial({map:dokuPas(), transparent:true});
+    const pasGizli=gizliKusur("altsac");
+    if(pasVar||pasGizli){
+      const pm=new THREE.MeshBasicMaterial({map:dokuPas(), transparent:true, opacity:pasVar?1:.45});
+      if(!car.inspected) for(const sx of [-1,1]) ipucu.push({k:"altsac", poz:[sx*xAt((onZ+arkaZ)/2,pr.sill+.08), pr.sill+.08, (onZ+arkaZ)/2], r:(arkaZ-onZ)*.45});
       for(const sx of [-1,1]){
         const say=1+Math.floor(rr()*2);
         for(let i=0;i<say;i++){
@@ -2213,16 +2224,19 @@ const W3D=(()=>{
         am.renderOrder=2; g.add(am);
       }
     }
-    if(kapiBoya){
-      const cm=new THREE.MeshBasicMaterial({map:dokuCizik(), transparent:true});
+    const kapiGizli=gizliKusur("kapiboya"), camGizli=gizliKusur("camurluk");
+    if(kapiBoya||kapiGizli){
+      const cm=new THREE.MeshBasicMaterial({map:dokuCizik(), transparent:true, opacity:kapiBoya?1:.40});
       const sx=rr()<.5?-1:1;
       yanKaplama(sx, onZ+.78, .80, yanH*.75, cm);
       yanKaplama(sx, onZ+1.36, .52, yanH*.55, cm, -.06);
+      if(!car.inspected) ipucu.push({k:"kapiboya", poz:[sx*xAt(onZ+1.0,yanY), yanY, onZ+1.0], r:.60});
     }
-    if(camurluk){
-      const gm=new THREE.MeshBasicMaterial({map:dokuGocuk(), transparent:true});
+    if(camurluk||camGizli){
+      const gm=new THREE.MeshBasicMaterial({map:dokuGocuk(), transparent:true, opacity:camurluk?1:.55});
       const sx=rr()<.5?-1:1;
       yanKaplama(sx, onZ-.18, .66, Math.min(.58,yanH*1.0), gm, .04);
+      if(!car.inspected) ipucu.push({k:"camurluk", poz:[sx*xAt(onZ-.18,yanY+.04), yanY+.04, onZ-.18], r:.48});
     }
     if(kompleBoya){
       const mm=new THREE.MeshBasicMaterial({map:dokuMat(), transparent:true, opacity:.9});
@@ -2232,10 +2246,13 @@ const W3D=(()=>{
         Math.max(.3,(pr.tavanArka-pr.camUst)*.82), s.roof+.03, mm);
       for(const sx of [-1,1]) yanKaplama(sx, (onZ+arkaZ)/2, (arkaZ-onZ)*.86, yanH*.9, mm);
     }
-    if(yagKacak){
+    const yagGizli=gizliKusur("yagkacak");
+    if(yagKacak||yagGizli){
       const lm=new THREE.Mesh(new THREE.PlaneGeometry(1.15,.85),
-        new THREE.MeshBasicMaterial({map:dokuLeke(), transparent:true, opacity:.85}));
+        new THREE.MeshBasicMaterial({map:dokuLeke(), transparent:true, opacity:yagKacak?.85:.45}));
       lm.rotation.x=-Math.PI/2; lm.position.set(0,.035,onZ-.15); g.add(lm);
+      lm.name="ipucuZemin";
+      if(!car.inspected) ipucu.push({k:"yagkacak", poz:[0,.05,onZ-.15], r:.75});
     }
     if(kaportaAsn>26 && !kompleBoya){
       const cm=new THREE.MeshBasicMaterial({map:dokuCizik(), transparent:true,
@@ -2254,6 +2271,8 @@ const W3D=(()=>{
     sh.rotation.x=-Math.PI/2; sh.position.y=.010; g.add(sh);
 
     g.userData.size={l:L,w:s.W,h:s.roof};
+    g.userData.ipucu=ipucu;
+    for(const q of ipucu) if((car.goz||[]).includes(q.k)) g.add(gozIsaretObj(q.poz));
     g.userData.xAt=xAt; g.userData.genislik=genislik; g.userData.spec=s; g.userData.pr=pr; g.userData.zOn=zOn; g.userData.zArka=zArka; g.userData.ustHat=gGeo.userData.ustHat; g.userData.altHat=gGeo.userData.altHat;
     return g;
   }
@@ -2642,6 +2661,7 @@ const W3D=(()=>{
   /** Ortak açık hava kabuğu. */
   function acikSaha(o){
     const en=o.en, z0=o.z0, z1=o.z1, derin=z0-z1, orta=(z0+z1)/2;
+    SAHA={x:en-.2, z0:z0-.3, z1:z1+.3};
     const D=new THREE.Group();   // statik dekor (sonda birleştirilir)
 
     const S4=SAAT;
@@ -2946,133 +2966,139 @@ const W3D=(()=>{
       m.castShadow=true;
     });
   }
+  /* Ayaklı fiyat panoları vitrinle birlikte kalktı: bilgi alttaki kartta.
+     Panolar arkadan bakınca koca siyah levhalar gibi duruyor, aracın önünü
+     kapatıyordu. Araç yalnızca vitrin sırasına ekleniyor. */
   function addCard(obj, car, kind, yon){
-    // Fiyat panosu: havada duran bir sprite değil, aracın koridor tarafında
-    // yere çakılı ayaklı tabela. Kamera yüksekliğinde (1.45 m) okunur.
-    const sp=new THREE.Group();
-    const genis=1.12, yuk=.68, tabanY=.46;
-    const panoM=new THREE.MeshBasicMaterial({map:priceCard(car,kind), side:THREE.DoubleSide});
-    const pano=new THREE.Mesh(new THREE.PlaneGeometry(genis,yuk), panoM);
-    pano.position.y=tabanY+yuk/2; sp.add(pano);
-    const cerc=new THREE.Mesh(new THREE.BoxGeometry(genis+.09,yuk+.09,.05),
-      new THREE.MeshLambertMaterial({color:0x1A242E}));
-    cerc.position.set(0,tabanY+yuk/2,-.035); cerc.castShadow=true; sp.add(cerc);
-    const ayakM=new THREE.MeshLambertMaterial({color:0x8B949C});
-    for(const dx of [-genis*.34, genis*.34]){
-      const a=new THREE.Mesh(new THREE.BoxGeometry(.055,tabanY+.10,.055), ayakM);
-      a.position.set(dx,(tabanY+.10)/2,-.03); a.castShadow=true; sp.add(a);
-    }
-    const kaide=new THREE.Mesh(new THREE.BoxGeometry(genis*.82,.07,.30), ayakM);
-    kaide.position.set(0,.035,-.02); kaide.castShadow=true; sp.add(kaide);
-    sp.position.set(obj.position.x + yon*2.05, 0, obj.position.z + 2.30);
-    sp.rotation.y = yon>0 ? 0.80 : -0.80;
-    // odakta büyüsün diye ölçek hedefi grubun kendisinde
-    sp.scale.set(1,1,1);
-    scene.add(sp);
     const sz=obj.userData.size||{l:4.5,w:1.8};
-    const rr0=Math.max(1.9, sz.l*.40);
-    const ring=new THREE.Mesh(new THREE.RingGeometry(rr0,rr0+.25,24),
-      new THREE.MeshBasicMaterial({color:0xF2A007, transparent:true, opacity:0, side:THREE.DoubleSide}));
-    ring.rotation.x=-Math.PI/2; ring.position.set(obj.position.x,.06,obj.position.z);
-    scene.add(ring);
-    items.push({obj, car, sprite:sp, ring, r:Math.max(1.5, sz.l*.34)});
+    items.push({obj, car, r:Math.max(1.5, sz.l*.34)});
   }
 
 
-  /* ---------- girdi ---------- */
+  /* ==================================================================
+     VİTRİN — serbest yürüyüşün yerine
+     Önce iki pedle yürünen bir saha vardı: telefonda iki parmakla yürüyüp
+     arabaya hizalanmak yorucuydu ve oyunun asıl işine (arabaya bakmaya)
+     hiçbir şey katmıyordu. Artık kamera seçili aracın etrafında dönüyor:
+       tek parmak sürükle  → aracın etrafında dön / eğ
+       iki parmak, tekerlek → yakınlaş / uzaklaş
+       ‹ › , ok tuşları, hızlı kaydırma → sıradaki araç
+       dokun              → başka araca geç; seçili araca dokun → incele
+     Kimse dokunmazken araç vitrindeki gibi ağır ağır dönüyor.
+     ================================================================== */
+  const VFOV=50;
+  let SAHA={x:9.4, z0:13, z1:-20};   // vitrin kamerasının kalması gereken saha (çit içi)
+  const VT={i:0, aci:0, egim:.20, uzak:1, hAci:0, hEgim:.20, hUzak:1,
+            T:null, hT:null, son:0, gecis:1, parmak:{}, pinch:null, surukle:null};
   function onKey(e,d){
-    const k=e.key.toLowerCase();
-    if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){
-      keys[k]=d; e.preventDefault();
+    if(!d || !ready) return;
+    const k=e.key;
+    if(k==="ArrowRight"){ sec(VT.i+1); e.preventDefault(); }
+    else if(k==="ArrowLeft"){ sec(VT.i-1); e.preventDefault(); }
+    else if(k==="Enter" && focus){ openItem(focus); e.preventDefault(); }
+  }
+  function hedefKoy(it, anlik){
+    if(!it) return;
+    const o=it.obj, sz=o.userData.size||{l:4.4};
+    VT.hT=new THREE.Vector3(o.position.x, .62, o.position.z);
+    // önden üç çeyrek: burnun yönü + koridor tarafına doğru bir pay
+    const burun=o.rotation.y+Math.PI;
+    VT.hAci=burun + (o.position.x>0?.75:-.75);
+    VT.hUzak=1; VT.uzunluk=sz.l;
+    if(anlik || !VT.T){ VT.T=VT.hT.clone(); VT.aci=VT.hAci; VT.uzak=1; }
+    else {
+      // en kısa yönden dön
+      while(VT.hAci-VT.aci>Math.PI) VT.hAci-=2*Math.PI;
+      while(VT.aci-VT.hAci>Math.PI) VT.hAci+=2*Math.PI;
+      VT.gecis=0;
     }
   }
-  function padBolme(){
-    // Ekranın ortası değil, kontrol panelinin ortası: iki alan net ayrılsın.
-    const p=document.getElementById("w3dpad");
-    if(p){ const r=p.getBoundingClientRect(); return r.left + r.width/2; }
-    return window.innerWidth/2;
+  function sec(i, anlik){
+    if(!items.length) return;
+    VT.i=((i%items.length)+items.length)%items.length;
+    focus=items[VT.i]; VT.son=performance.now();
+    hedefKoy(focus, anlik);
+    updateFocusBar();
+    try{ if(typeof dokun==="function") dokun("sec"); }catch(e){}
   }
-  function padGoster(v){
-    const p=document.getElementById("w3dpad");
-    if(!p) return;
-    p.classList.toggle("hidden", !v);
+  /** Kamerayı odaktaki aracın sağ (sx=1) ya da sol (sx=-1) yanına çevir. */
+  function yanaBak(sx){
+    if(!focus) return;
+    const ry=focus.obj.rotation.y;
+    VT.hAci=Math.atan2(sx*Math.cos(ry), -sx*Math.sin(ry));
+    while(VT.hAci-VT.aci>Math.PI) VT.hAci-=2*Math.PI;
+    while(VT.aci-VT.hAci>Math.PI) VT.hAci+=2*Math.PI;
+    VT.son=performance.now()+4000;   // döner tabla hemen kaçırmasın
   }
-  function padSus(v){
-    const p=document.getElementById("w3dpad");
-    if(p) p.classList.toggle("sus", !!v);
-  }
-  /* --- pedler gerçekten tepki versin: topuz ve göz bebeği parmağı izler --- */
-  function padEl(hangi){ return document.querySelector("#w3dpad .pad."+hangi); }
-  /** Pedleri bilgi çubuğunun üstüne hizala — odaktaki araç kartı büyüyünce
-      pedlerin üstüne binmesin. */
-  function padHizala(){
-    const p=document.getElementById("w3dpad"), bar=document.getElementById("w3dbar");
-    if(!p||!bar) return;
-    const h=bar.getBoundingClientRect().height||120;
-    p.style.paddingBottom=(h+10)+"px";
-  }
-  function padAktif(hangi, v){ const e=padEl(hangi); if(e) e.classList.toggle("on", !!v); }
-  function padTopuz(dx,dy){
-    const t=document.querySelector("#w3dpad .topuz");
-    if(t) t.style.transform=`translate(${(dx*23).toFixed(1)}px,${(dy*23).toFixed(1)}px)`;
-  }
-  function padGoz(dx,dy){
-    const b=document.querySelector("#w3dpad .goz b");
-    if(b) b.style.transform=`translate(${clamp(dx,-1,1)*20}px,${clamp(dy,-1,1)*9}px)`;
-  }
+  function noktalar(e){ return e.changedTouches ? [...e.changedTouches] : [e]; }
   function pointerDown(e){
-    padSus(true);
-    for(const t of e.changedTouches||[e]){
-      const x=t.clientX, y=t.clientY;
-      const yarim=padBolme();
-      if(x<yarim && joy.id===null){
-        joy.id=t.identifier??"m";
-        // Sabit merkez: soldaki halkanın ortası. Parmak nereye değerse değsin
-        // yön hep aynı noktadan ölçülür — kontrol tahmin edilebilir olur.
-        const h=document.querySelector("#w3dpad .pad.sol .halka");
-        if(h){ const r=h.getBoundingClientRect(); joy.cx=r.left+r.width/2; joy.cy=r.top+r.height/2; }
-        else { joy.cx=x; joy.cy=y; }
-        joy.dx=clamp((x-joy.cx)/46,-1,1); joy.dy=clamp((y-joy.cy)/46,-1,1);
-        padAktif("sol",true); padTopuz(joy.dx, joy.dy);
-      }
-      else if(look.id===null){ look.id=t.identifier??"m"; look.x=x; look.y=y; look.moved=0; look.sx=x; look.sy=y;
-        padAktif("sag",true); padGoz(0,0); }
+    if(!ready) return;
+    VT.son=performance.now();
+    for(const t of noktalar(e)){
+      const id=t.identifier??"m";
+      VT.parmak[id]={x:t.clientX, y:t.clientY, sx:t.clientX, sy:t.clientY, t:performance.now(), yol:0};
+    }
+    const ids=Object.keys(VT.parmak);
+    if(ids.length>=2){
+      const [a,b]=ids.map(k=>VT.parmak[k]);
+      VT.pinch={d:Math.hypot(a.x-b.x,a.y-b.y), uzak:VT.hUzak};
     }
   }
   function pointerMove(e){
-    for(const t of e.changedTouches||[e]){
-      const id=t.identifier??"m";
-      if(id===joy.id){
-        joy.dx=clamp((t.clientX-joy.cx)/46,-1,1);
-        joy.dy=clamp((t.clientY-joy.cy)/46,-1,1);
-        padTopuz(joy.dx, joy.dy);
-      }else if(id===look.id){
-        yaw   -= (t.clientX-look.x)*.005;
-        pitch  = clamp(pitch-(t.clientY-look.y)*.004, -.5, .45);
-        look.moved += Math.abs(t.clientX-look.x)+Math.abs(t.clientY-look.y);
-        look.x=t.clientX; look.y=t.clientY;
-        padGoz((t.clientX-look.sx)/90, (t.clientY-look.sy)/120);
+    if(!ready) return;
+    let degisti=false;
+    for(const t of noktalar(e)){
+      const id=t.identifier??"m", p=VT.parmak[id]; if(!p) continue;
+      const dx=t.clientX-p.x, dy=t.clientY-p.y;
+      p.yol+=Math.abs(dx)+Math.abs(dy); p.x=t.clientX; p.y=t.clientY;
+      if(!VT.pinch){
+        VT.hAci -= dx*.0085;
+        VT.hEgim = clamp(VT.hEgim + dy*.0045, .08, .80);
       }
+      degisti=true;
     }
+    if(VT.pinch && degisti){
+      const ids=Object.keys(VT.parmak);
+      if(ids.length>=2){ const [a,b]=ids.map(k=>VT.parmak[k]);
+        const d=Math.hypot(a.x-b.x,a.y-b.y);
+        VT.hUzak=clamp(VT.pinch.uzak*VT.pinch.d/Math.max(20,d), .62, 1.55); }
+    }
+    if(degisti) VT.son=performance.now();
   }
   function pointerUp(e){
-    for(const t of e.changedTouches||[e]){
-      const id=t.identifier??"m";
-      if(id===joy.id){ joy.id=null; joy.dx=joy.dy=0; hideJoy(); padAktif("sol",false); padTopuz(0,0); }
-      else if(id===look.id){
-        if(look.moved<8) tapAt(look.sx, look.sy);
-        look.id=null; padAktif("sag",false); padGoz(0,0);
+    if(!ready) return;
+    for(const t of noktalar(e)){
+      const id=t.identifier??"m", p=VT.parmak[id]; if(!p) continue;
+      delete VT.parmak[id];
+      if(VT.pinch){ if(Object.keys(VT.parmak).length<2) VT.pinch=null; continue; }
+      const sure=performance.now()-p.t, dx=t.clientX-p.sx;
+      if(p.yol<8) tapAt(t.clientX, t.clientY);
+      // hızlı ve yatay bir fiske sıradaki araca geçirir; yavaş sürükleme döndürür
+      else if(sure<320 && Math.abs(dx)>70 && Math.abs(dx)>Math.abs(t.clientY-p.sy)*1.6){
+        VT.hAci+=dx*.0085;   // fiskenin döndürdüğünü geri al
+        sec(VT.i+(dx<0?1:-1));
       }
     }
-    // Tüm parmaklar kalktıysa kilidi kesin aç: kaçan bir touchend yüzünden
-    // kontroller ölü kalmasın.
-    try{
-      if(e.touches && e.touches.length===0){
-        joy.id=null; joy.dx=joy.dy=0; look.id=null;
-        hideJoy(); padAktif("sol",false); padAktif("sag",false); padTopuz(0,0); padGoz(0,0);
-      }
-    }catch(_){}
-    if(joy.id===null && look.id===null) padSus(false);
+    if(e.touches && e.touches.length===0){ VT.parmak={}; VT.pinch=null; }
+  }
+  function tekerlek(e){
+    if(!ready) return;
+    VT.hUzak=clamp(VT.hUzak*(e.deltaY>0?1.08:.93), .62, 1.55); VT.son=performance.now();
+    e.preventDefault();
+  }
+  /** Yan etkisiz ışın sorgusu: (x,y) dokunuşu hangi araca, hangi ipucuna düşer. */
+  function isabet(x,y){
+    if(!ren||!focus) return null;
+    const rect=ren.domElement.getBoundingClientRect();
+    const nd=new THREE.Vector2(((x-rect.left)/rect.width)*2-1, -((y-rect.top)/rect.height)*2+1);
+    const rc=new THREE.Raycaster(); rc.setFromCamera(nd, cam);
+    const hit=rc.intersectObjects(items.map(i=>i.obj), true)[0];
+    if(!hit) return {arac:null};
+    let o=hit.object; while(o.parent && o!==focus.obj && !items.some(i=>i.obj===o)) o=o.parent;
+    if(o!==focus.obj) return {arac:"baska"};
+    const yerel=focus.obj.worldToLocal(hit.point.clone());
+    const q=(focus.obj.userData.ipucu||[]).find(q=>Math.hypot(yerel.x-q.poz[0],yerel.y-q.poz[1],yerel.z-q.poz[2])<q.r);
+    return {arac:"odak", ipucu:q?q.k:null};
   }
   function tapAt(x,y){
     if(!ren) return;
@@ -3081,24 +3107,67 @@ const W3D=(()=>{
     const rc=new THREE.Raycaster(); rc.setFromCamera(nd, cam);
     const hedefler=items.map(i=>i.obj);
     const hit=rc.intersectObjects(hedefler, true)[0];
-    if(hit){
-      let o=hit.object; while(o.parent && !hedefler.includes(o)) o=o.parent;
-      const it=items.find(i=>i.obj===o);
-      if(it) openItem(it);
-    }
+    if(!hit) return;
+    if(typeof gozTik==="function" && gozTik(hit)) return;   // gözle ekspertiz işaretleri
+    let o=hit.object; while(o.parent && !hedefler.includes(o)) o=o.parent;
+    const k=items.findIndex(i=>i.obj===o);
+    if(k<0) return;
+    if(k===VT.i) openItem(items[k]); else sec(k);
   }
+  /* ---- gözle ekspertiz: dokunulan nokta bir ipucunun yakınında mı ---- */
+  function gozIsaretTex(){
+    return tex("gozIsaret",64,64,(g)=>{
+      g.clearRect(0,0,64,64);
+      g.fillStyle="rgba(240,180,82,.28)"; g.beginPath(); g.arc(32,32,30,0,7); g.fill();
+      g.strokeStyle="#F0B452"; g.lineWidth=5; g.beginPath(); g.arc(32,32,22,0,7); g.stroke();
+      g.fillStyle="#F0B452"; g.beginPath(); g.arc(32,32,7,0,7); g.fill();
+    });
+  }
+  function gozIsaretObj(poz){
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:gozIsaretTex(), depthTest:false, transparent:true}));
+    sp.scale.set(.30,.30,.30); sp.position.set(poz[0],poz[1],poz[2]); sp.renderOrder=9; sp.name="gozIsaret";
+    return sp;
+  }
+  function gozTik(hit){
+    if(mode!=="pazar" || !focus || focus.car.inspected) return false;
+    let o=hit.object; while(o.parent && o!==focus.obj) o=o.parent;
+    if(o!==focus.obj) return false;
+    const yerel=focus.obj.worldToLocal(hit.point.clone());
+    // Üst üste binen izlerde (boyalı kapı + çizik) önce henüz bulunmamış olan
+    const bulunan=focus.car.goz||[];
+    let en=null, ed=1e9;
+    for(const q of (focus.obj.userData.ipucu||[])){
+      const d=Math.hypot(yerel.x-q.poz[0], yerel.y-q.poz[1], yerel.z-q.poz[2]);
+      const puan=d+(bulunan.includes(q.k)?10:0);
+      if(d<q.r && puan<ed){ ed=puan; en=q; }
+    }
+    if(!en){ gozSonuc("Burası temiz görünüyor.", false); return true; }
+    const b=(typeof gozBul==="function") ? gozBul(focus.car, en.k) : null;
+    if(b){
+      focus.obj.add(gozIsaretObj(en.poz));
+      try{ if(typeof cal==="function") cal("kasa"); if(typeof dokun==="function") dokun("al"); }catch(e){}
+      gozSonuc(`Gözün yakaladı: ${b.t}. Pazarlıkta koz.`, true);
+    } else gozSonuc("Bunu zaten not ettin.", false);
+    return true;
+  }
+  function gozSonuc(metin, iyi){
+    GOZ_SON={metin, iyi, t:performance.now()};
+    updateFocusBar();
+  }
+  let GOZ_SON=null;   // son dokunuşun sonucu — geçici, kayda yazılmaz
+  function gozDurum(c){
+    if(mode!=="pazar" || c.inspected) return "";
+    const n=(c.goz||[]).length;
+    const son=GOZ_SON && performance.now()-GOZ_SON.t<6000 ? GOZ_SON : null;
+    return `<div class="w3dgoz ${son?(son.iyi?"iyi":""):""}">
+      <b>GÖZLE BAK</b><span>${son?son.metin:"Kusur görürsen üstüne dokun — bedava koz."}</span>
+      ${n?`<em>${n} bulgu</em>`:""}</div>`;
+  }
+
   function openItem(it){
     pause();
     if(mode==="pazar") openMarketCar(it.car); else openOwnCar(it.car);
   }
-
-  /* ---------- joystick görseli ---------- */
-  function showJoy(){ /* sabit ped kullanılıyor; yüzen halka kapalı */ }
-  function moveJoyKnob(){
-    const k=document.getElementById("joyKnob");
-    if(k) k.style.transform=`translate(${joy.dx*30}px,${joy.dy*30}px)`;
-  }
-  function hideJoy(){ const j=document.getElementById("joy"); if(j) j.style.display="none"; }
 
   /* ---------- döngü ---------- */
   function tick(t){
@@ -3121,85 +3190,66 @@ const W3D=(()=>{
       }
       kare=0; kareSure=0;
     }
-    let ileri=0, yan=0;
-    if(keys["w"]||keys["arrowup"]) ileri+=1;
-    if(keys["s"]||keys["arrowdown"]) ileri-=1;
-    if(keys["a"]||keys["arrowleft"]) yan-=1;
-    if(keys["d"]||keys["arrowright"]) yan+=1;
-    if(joy.id!==null){ ileri-=joy.dy; yan+=joy.dx; }
-    const hiz=4.4*dt;
-    const sn=Math.sin(yaw), cs=Math.cos(yaw);
-    let nx=px + (-sn*ileri + cs*yan)*hiz;
-    let nz=pz + (-cs*ileri - sn*yan)*hiz;
 
-    // sınırlar ve araç çarpışması
-    nx=clamp(nx,-bounds.x,bounds.x); nz=clamp(nz,-bounds.z,bounds.z);
-    for(const it of items){
-      const dx=nx-it.obj.position.x, dz=nz-it.obj.position.z;
-      const d=Math.hypot(dx,dz);
-      const rr=it.r||2.05;
-      if(d<rr){ nx=it.obj.position.x+dx/d*rr; nz=it.obj.position.z+dz/d*rr; }
+    /* --- vitrin kamerası --- */
+    if(VT.T){
+      const bos=performance.now()-VT.son;
+      if(bos>3200 && !Object.keys(VT.parmak).length) VT.hAci += dt*.16;   // döner tabla
+      VT.gecis=Math.min(1, VT.gecis+dt*1.6);
+      const yum=Math.min(1, dt*(VT.gecis<1?4.5:7));
+      VT.T.lerp(VT.hT, yum);
+      VT.aci  += (VT.hAci-VT.aci)*yum;
+      VT.egim += (VT.hEgim-VT.egim)*Math.min(1,dt*7);
+      VT.uzak += (VT.hUzak-VT.uzak)*Math.min(1,dt*6);
+      /* Mesafe yatay görüş açısından: dik telefonda yatay açı dar, araç
+         boyu ekrana sığacak kadar uzakta dur. Sabit bir mesafe kullanıldığında
+         araç kadrajdan taşıyor, komşu araçlar önüne giriyordu. */
+      const yarimV=THREE.MathUtils.degToRad(VFOV/2);
+      const yarimY=Math.atan(Math.tan(yarimV)*Math.max(.35,cam.aspect));
+      const R=clamp((VT.uzunluk*.50+.55)/Math.tan(yarimY), 4.6, 11)*VT.uzak;
+      // giriş: sahne açılırken biraz uzaktan süzülerek yerine otur
+      varis=Math.min(1, varis+dt*1.1);
+      const v=1-Math.pow(1-varis,3), Rv=R*(1+(1-v)*.45);
+      const ce=Math.cos(VT.egim);
+      /* Kamera çitin dışına çıkmasın: döndürünce sahanın kenarındaki yeşil
+         cam panellerin arkasına düşüp aracı camın ardından gösteriyordu.
+         Yatay doğrultuda sınıra çarpan yarıçap kısaltılıyor. */
+      const dx=Math.sin(VT.aci)*ce, dz=Math.cos(VT.aci)*ce;
+      let Rk=Rv;
+      if(dx>1e-3) Rk=Math.min(Rk,(SAHA.x-VT.T.x)/dx); else if(dx<-1e-3) Rk=Math.min(Rk,(-SAHA.x-VT.T.x)/dx);
+      if(dz>1e-3) Rk=Math.min(Rk,(SAHA.z0-VT.T.z)/dz); else if(dz<-1e-3) Rk=Math.min(Rk,(SAHA.z1-VT.T.z)/dz);
+      Rk=Math.max(Rk, VT.uzunluk*.62);
+      cam.position.set(VT.T.x+dx*Rk, VT.T.y+Math.sin(VT.egim)*Math.max(Rk,Rv*.8)+.15, VT.T.z+dz*Rk);
+      cam.lookAt(VT.T.x, VT.T.y, VT.T.z);
+      if(Math.abs(cam.fov-VFOV)>.01){ cam.fov=VFOV; cam.updateProjectionMatrix(); }
+      px=cam.position.x; pz=cam.position.z;
     }
-    px=nx; pz=nz;
-    const hizMik=Math.min(1, Math.hypot(ileri,yan));
-    if(hizMik>.05) bob+=dt*9;
-
-    /* --- kamera dili (madde 14) --- */
-    hizYum += (hizMik-hizYum)*Math.min(1, dt*5.5);
-    const hedefFov = 60 + hizYum*5.0;
-    fov += (hedefFov-fov)*Math.min(1, dt*4.5);
-    if(Math.abs(cam.fov-fov)>0.02){ cam.fov=fov; cam.updateProjectionMatrix(); }
-    // bakış yumuşatma: parmak bıraktıktan sonra bile hareket yumuşak biter
-    const yum=Math.min(1, dt*16);
-    camYaw   += (yaw-camYaw)*yum;
-    camPitch += (pitch-camPitch)*yum;
-    const hedefRoll = -yan*0.030*hizYum;
-    camRoll += (hedefRoll-camRoll)*Math.min(1, dt*6);
-    // varış: sahne açılırken hafif geri/yukarı başlayıp yerine oturur
-    varis = Math.min(1, varis + dt*1.25);
-    const v = 1-Math.pow(1-varis, 3);
-    const yKamera = 1.62 + Math.sin(bob)*.035*(0.4+hizYum*0.9) + (1-v)*0.55;
-    cam.position.set(px, yKamera, pz + (1-v)*1.6);
-    cam.rotation.set(camPitch - (1-v)*0.06, camYaw, camRoll, "YXZ");
 
     for(const f of CANLI){ try{ f(dt,t); }catch(e){} }
-
-    // en yakın aracı odakla
-    let en=null, ed=8.5;
-    for(const it of items){
-      const d=Math.hypot(px-it.obj.position.x, pz-it.obj.position.z);
-      if(d<ed){ ed=d; en=it; }
-    }
-    if(en!==focus){
-      if(focus) focus.ring.material.opacity=0;
-      focus=en;
-      updateFocusBar();
-    }
-    if(focus){
-      focus.ring.material.opacity=.35+Math.sin(t/260)*.16;
-      focus.sprite.scale.set(1.16,1.16,1.16);
-    }
-    for(const it of items) if(it!==focus) it.sprite.scale.set(1,1,1);
-
     ren.render(scene,cam);
   }
 
   function updateFocusBar(){
     const bar=document.getElementById("w3dbar");
     if(!bar) return;
-    setTimeout(padHizala,0);
-    if(!focus){ bar.innerHTML=`<div class="w3dhint">Sol pedi sürükle: yürü &middot; sağ pedi sürükle: bak</div>`; return; }
+    if(!focus){ bar.innerHTML=`<div class="w3dhint">${mode==="pazar"?"Pazarda ilan yok":"Garajın boş"}</div>`; return; }
     const c=focus.car;
     const fiyat = mode==="pazar" ? c.ask : (c.listPrice||valueOf(c,!c.inspected));
+    const gz=(typeof gozDurum==="function")?gozDurum(c):"";
     bar.innerHTML=`
       <div class="w3dcar">
-        <div style="min-width:0">
+        <button class="w3dok" data-act="w3donce" aria-label="Önceki araç">&lsaquo;</button>
+        <div style="min-width:0;flex:1">
           <div class="w3dname">${c.model.n} <span style="color:var(--muted)">${c.year}</span></div>
-          <div class="w3dsub">${typeof mesafe==="function"?mesafe(c.km):c.km+" km"} · ${c.gear} · ${c.fuel}</div>
+          <div class="w3dsub">${typeof mesafe==="function"?mesafe(c.km):c.km+" km"} · ${c.gear} · ${c.fuel}
+            <span class="w3dsira">${VT.i+1}/${items.length}</span></div>
         </div>
         <div class="w3dprice">${tl(fiyat)}</div>
+        <button class="w3dok" data-act="w3dsonra" aria-label="Sonraki araç">&rsaquo;</button>
       </div>
-      <button class="btn primary full" data-act="w3dopen">İncele</button>`;
+      ${gz}
+      <button class="btn primary full" data-act="w3dopen">İncele</button>
+      <div class="w3dhint">Sürükle: etrafında dön &middot; iki parmak: yakınlaş</div>`;
   }
 
   /* ---------- açma / kapama ---------- */
@@ -3251,8 +3301,6 @@ const W3D=(()=>{
       }
     }catch(e){}
     dispose();
-    joy.id=null; joy.dx=0; joy.dy=0; look.id=null; look.moved=0;
-    for(const k in keys) delete keys[k];
     saatSec();
     host.classList.remove("hidden");
     document.getElementById("app").classList.add("in3d");
@@ -3290,7 +3338,8 @@ const W3D=(()=>{
     if(koru){ px=clamp(eskiX,-bounds.x,bounds.x); pz=clamp(eskiZ,-bounds.z,bounds.z);
               yaw=eskiYaw; pitch=eskiPitch; }
     placeCars();
-    focus=null; updateFocusBar();
+    focus=null; VT.T=null; VT.parmak={}; VT.pinch=null; VT.hEgim=VT.egim=.20;
+    if(items.length) sec(koru?Math.min(VT.i,items.length-1):0, true); else updateFocusBar();
     kurulanDamga=damga(mode);
     if(ren.shadowMap) ren.shadowMap.needsUpdate=true;
     const yer=document.getElementById("w3dplace");
@@ -3302,7 +3351,6 @@ const W3D=(()=>{
     if(grade) grade.style.setProperty("--w3dton", SAAT.vinyet);
     ready=true;
     requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); });
-    padGoster(true); padSus(false); setTimeout(padHizala,0);
     resume();
     perdeKapat();
     return true;
@@ -3325,8 +3373,6 @@ const W3D=(()=>{
     requestAnimationFrame(bak);
   }
   function close(){
-    padGoster(false);
-    joy.id=null; joy.dx=0; joy.dy=0; look.id=null;
     dispose();
     const host=document.getElementById("world");
     if(host) host.classList.add("hidden");
@@ -3338,7 +3384,11 @@ const W3D=(()=>{
     const kutu=document.getElementById("w3dcanvas");
     const w=kutu.clientWidth||window.innerWidth, h=kutu.clientHeight||window.innerHeight;
     ren.setSize(w,h,false);
-    cam.aspect=w/h; cam.updateProjectionMatrix();
+    cam.aspect=w/h;
+    // Alt bilgi kartı ekranın altını kaplıyor: görüntü merkezi yukarı
+    // kaydırılıyor ki araç kartın arkasında değil üstünde dursun.
+    cam.setViewOffset(w, h, 0, h*.13, w, h);
+    cam.updateProjectionMatrix();
   }
   function refresh(){ if(ready){ const m=mode; open(m, true); } }
 
@@ -3350,5 +3400,8 @@ const W3D=(()=>{
   return {open, close, pause, resume, resize, refresh, tp, guncel, perdeAc,
           get focus(){ return focus; }, get active(){ return ready; }, get mode(){ return mode; },
           get failed(){ return failed; },
-          onKey, pointerDown, pointerMove, pointerUp};
+          onKey, pointerDown, pointerMove, pointerUp, tekerlek,
+          sonraki:()=>sec(VT.i+1), onceki:()=>sec(VT.i-1), sec:(i)=>sec(i), yanaBak, isabet, dokun:(x,y)=>tapAt(x,y),
+          aciAyarla:(a)=>{ VT.hAci=a; VT.aci=a; VT.son=performance.now()+4000; },
+          get vitrin(){ return {i:VT.i, aci:VT.aci, uzak:VT.uzak, adet:items.length}; }};
 })();

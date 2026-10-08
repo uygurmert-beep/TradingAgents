@@ -395,44 +395,6 @@ body.ogret-ac main{padding-bottom:218px}
 .ligkar{font-variant-numeric:tabular-nums;color:var(--green)}
 
 
-/* ---------- 3B kontrol alanları: solda yürü, sağda bak ---------- */
-#w3dpad{position:absolute;left:50%;transform:translateX(-50%);bottom:0;z-index:6;pointer-events:none;
-  display:flex;width:100%;max-width:480px;
-  height:min(42vh,320px);padding:0 0 calc(132px + var(--sab));
-  transition:padding-bottom .18s ease}
-#w3dpad.hidden{display:none}
-#w3dpad .pad{flex:1;position:relative;display:flex;flex-direction:column;
-  align-items:center;justify-content:flex-end;gap:9px;padding-bottom:6px;
-  transition:opacity .35s ease}
-#w3dpad .pad.sol{border-right:1px dashed rgba(255,255,255,.10)}
-#w3dpad .etk{font-size:10px;letter-spacing:.14em;font-weight:700;color:rgba(255,255,255,.42)}
-#w3dpad .halka{width:84px;height:84px;border-radius:50%;
-  border:2px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.05);position:relative;
-  transition:border-color .15s ease,background .15s ease}
-#w3dpad .topuz{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;
-  border-radius:50%;background:rgba(255,255,255,.26);border:1.5px solid rgba(255,255,255,.55);
-  transition:transform .05s linear,background .15s ease}
-#w3dpad .pad.sol.on .halka{border-color:rgba(255,255,255,.62);border-style:solid;
-  background:rgba(255,255,255,.10)}
-#w3dpad .pad.sol.on .topuz{background:rgba(255,255,255,.72)}
-#w3dpad .pad.sag.on .goz{border-color:rgba(255,255,255,.62);border-style:solid;
-  background:rgba(255,255,255,.10)}
-#w3dpad .pad.sag.on .goz b{background:rgba(255,255,255,.92)}
-#w3dpad .ok{position:absolute;width:0;height:0;border:5px solid transparent}
-#w3dpad .ok.u{top:7px;left:50%;margin-left:-5px;border-bottom-color:rgba(255,255,255,.45)}
-#w3dpad .ok.d{bottom:7px;left:50%;margin-left:-5px;border-top-color:rgba(255,255,255,.45)}
-#w3dpad .ok.l{left:7px;top:50%;margin-top:-5px;border-right-color:rgba(255,255,255,.45)}
-#w3dpad .ok.r{right:7px;top:50%;margin-top:-5px;border-left-color:rgba(255,255,255,.45)}
-#w3dpad .goz{width:84px;height:52px;border-radius:42px/26px;
-  border:2px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.05);
-  display:grid;place-items:center;position:relative}
-#w3dpad .goz i{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.45)}
-#w3dpad .goz b{position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.55);
-  transition:transform .06s linear,background .15s ease}
-#w3dpad.sus .pad{opacity:.5}
-#w3dpad.sus .pad.on{opacity:1}
-
-
 .lpkar{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
   margin-top:10px;padding:9px 11px;border-radius:11px;background:var(--fill);
   font-size:14px;font-variant-numeric:tabular-nums}
@@ -769,6 +731,22 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
 .w3dback{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:100px;
   background:rgba(30,32,36,.72);border:none;font-size:15px;font-weight:600;
   color:#fff;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.gozdavet{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 12px;padding:12px 14px;
+  border:none;border-radius:var(--r);background:var(--gold-soft);color:var(--label);font:inherit;cursor:pointer}
+.gozdavet b{flex:none;font-size:10.5px;letter-spacing:.09em;color:var(--gold)}
+.gozdavet span{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--label-2)}
+.gozdavet i{flex:none;font-style:normal;font-size:22px;color:var(--gold)}
+.block.gozblok{box-shadow:inset 3px 0 0 var(--gold),var(--shadow)}
+.w3dgoz{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;padding:8px 11px;border-radius:11px;
+  background:rgba(255,255,255,.06);font-size:12.5px;color:var(--label-2);line-height:1.35}
+.w3dgoz b{flex:none;font-size:10.5px;letter-spacing:.09em;color:var(--gold)}
+.w3dgoz span{flex:1;min-width:0}
+.w3dgoz em{flex:none;font-style:normal;font-weight:700;color:var(--gold);background:var(--gold-soft);border-radius:100px;padding:2px 8px;font-size:11px}
+.w3dgoz.iyi{background:var(--gold-soft);color:var(--label)}
+.w3dok{flex:none;width:38px;height:38px;border-radius:50%;border:none;background:var(--fill);
+  color:var(--label);font-size:24px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.w3dok:active{transform:scale(.94)}
+.w3dsira{margin-left:6px;padding:1px 7px;border-radius:100px;background:var(--fill);color:var(--label-2);font-size:11px}
 .w3dplace{padding:8px 14px;border-radius:100px;background:rgba(30,32,36,.62);border:none;
   font-weight:600;font-size:14px;letter-spacing:0;color:#fff;
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
@@ -778,7 +756,7 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
   padding:14px 16px calc(104px + var(--sab));z-index:3;pointer-events:none;
   background:linear-gradient(180deg,rgba(8,12,17,0),rgba(8,12,17,.88) 34%)}
 #w3dbar button,#w3dbar a,#w3dbar .btn,#w3dbar [data-act]{pointer-events:auto}
-.w3dcar{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:12px}
+.w3dcar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .w3dname{font-weight:600;font-size:19px;color:#fff;letter-spacing:-.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .w3dsub{font-size:14px;color:rgba(255,255,255,.62);margin-top:2px;font-variant-numeric:tabular-nums}
@@ -787,10 +765,6 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
 .w3dhint{text-align:center;font-size:14px;color:rgba(255,255,255,.55);padding:14px 0 4px}
 #w3dbar .btn{background:rgba(255,255,255,.16);color:#fff}
 #w3dbar .btn.primary{background:#fff;color:#111}
-#joy{position:fixed;width:96px;height:96px;border-radius:50%;z-index:38;display:none;pointer-events:none;
-  border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
-#joyKnob{position:absolute;left:28px;top:28px;width:40px;height:40px;border-radius:50%;
-  background:rgba(255,255,255,.80);transition:transform .04s linear}
 .viewtoggle{display:flex;gap:2px;background:var(--fill);border:none;border-radius:10px;padding:2px}
 .viewtoggle button{padding:10px 16px;min-height:40px;border-radius:8px;font-size:15px;color:var(--label);font-weight:500}
 .viewtoggle button.on{background:var(--surface);font-weight:600;
@@ -1710,12 +1684,7 @@ body{
     <button class="w3dback" data-act="view" data-v="0">&#8592; Liste</button>
     <span class="w3dplace" id="w3dplace">OTO PAZARI</span>
   </div>
-  <div id="w3dpad" class="hidden" aria-hidden="true">
-    <div class="pad sol"><div class="halka"><span class="ok u"></span><span class="ok d"></span><span class="ok l"></span><span class="ok r"></span><i class="topuz"></i></div><span class="etk">YÜRÜ</span></div>
-    <div class="pad sag"><div class="goz"><i></i><b></b></div><span class="etk">BAK</span></div>
-  </div>
   <div id="w3dbar"></div></div>
-<div id="joy"><div id="joyKnob"></div></div>
 <div id="intro" class="hidden" lang="tr"><div class="introwrap" id="introBody"></div></div>
 <div id="modal" class="hidden" lang="tr"><div class="sheet" id="sheet"></div></div>
 <div id="ogret" class="hidden" lang="tr"></div>

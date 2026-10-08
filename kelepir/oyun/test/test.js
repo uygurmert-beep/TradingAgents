@@ -77,7 +77,9 @@ const ok=(k,v)=>console.log((v?'  ok   ':'  FAIL ')+k);
     const p=await sayfa();
     const r=await p.evaluate(()=>{
       S.tutorial=false; S.cash=5e6;
-      const c=S.market[0];
+      // En ucuz ilan: pazarın ilki 7–8 milyonluk bir lüks olabiliyor ve
+      // 5 milyonla alınamayınca test rastgele düşüyordu.
+      const c=[...S.market].sort((a,b)=>a.ask-b.ask)[0];
       buyCar(c, Math.round(c.ask*.9));
       const own=S.cars[0];
       const f=own.faults.find(x=>!x.fixed);

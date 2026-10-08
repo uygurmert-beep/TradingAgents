@@ -23,7 +23,7 @@ testler kırılır.
 
 Oyun döngüsü: **pazardan araç al → ekspertiz ettir → kârlı tamiri yaptır →
 ilanı kur → alıcıyla pazarlık et → sat.** Yan katmanlar: sezonlar, günlük
-görevler, tanıdıklar, rakip galericiler, lig, koleksiyon, 3B galeri gezintisi,
+görevler, tanıdıklar, rakip galericiler, lig, koleksiyon, 3B vitrin (gözle ekspertiz),
 günün vakası, galeri kirası ve büyütme, konsinye (emanet araç), toptan parti,
 dönen müşteri, sanayi günü ve sezon hedefi.
 
@@ -73,15 +73,15 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
-node test/yeni-test.js     # kural motoru (108 kontrol)
-node test/ux-test.js       # arayüz ve yeni sistemler (91 kontrol)
+node test/yeni-test.js     # kural motoru (116 kontrol)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil (95 kontrol)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
 node test/kayittest.js     # kayıt / dışa aktarma / içe alma
 node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
-node test/pad-test.js      # 3B kontrol pedleri (yavaş, ~3 dk)
+node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz (26 kontrol, ~1 dk)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
 
@@ -148,7 +148,7 @@ iş listesine yaz.
 | `i18n.js` | 216 | dil katmanı (tek dil kilidi burada) |
 | `ses.js` | 354 | WebAudio ses ve müzik |
 | `game.js` | 910 | **kural motoru** — model tablosu, değerleme, arızalar, alıcı/satıcı |
-| `world.js` | 3195 | 3B galeri (three.js) |
+| `world.js` | 3407 | 3B vitrin (three.js) — gövde profili `profil3B()` 2B kimlikten |
 | `rehber.js` | 99 | ilk oyun rehberi |
 | `gunlukritim.js` | 95 | günlük görevler ve seri |
 | `koleksiyon.js` | 170 | koleksiyon, lig tablosu, rakip vitrini, prestij |
@@ -163,9 +163,9 @@ iş listesine yaz.
 | `meydan.js` | 176 | günün vakası (günlük bilmece) |
 | `paylas.js` | 377 | 1080×1920 paylaşım kartları (canvas) |
 | `demo.js` | 213 | otomatik tanıtım turu |
-| `ui.js` | 3881 | **bütün ekranlar ve olay yönlendirme** (Pazar'daki BUGÜN rayı dahil) |
+| `ui.js` | 3936 | **bütün ekranlar ve olay yönlendirme** (BUGÜN rayı, gözle ekspertiz kuralları) |
 | `app.js` | 171 | Capacitor köprüsü, güvenli alan, geri tuşu |
-| `shell.html` | 1725 | bütün CSS + belge iskeleti |
+| `shell.html` | 1694 | bütün CSS + belge iskeleti |
 
 `ui.js` ve `game.js` büyük. Bölmeye kalkışmadan önce 2. bölümdeki ad çakışması
 tuzağını hatırla — bölmek mimari kazanç sağlamıyor, risk ekliyor.
@@ -203,6 +203,29 @@ yakalanan ve tekrarlanmaması gereken kusurlar:
 - sedan kabini öne kaçmış kamyonet gibi (tavan sonu %50 → %66)
 - stop lambası kuyruğun tepe köşesinde ince çizgi (arka yüzeye oturtuldu)
 
+### 3B araç (`world.js`)
+
+3B gövde ölçüleri ve marka imzası **2B ile aynı kaynaktan** geliyor:
+`profil3B(m)` ve `imza3B(m)` `aracKimlik()`'ten türetiyor. Burada eskiden
+model adıyla anahtarlı elle yazılmış iki tablo vardı; isimler B seviyesine
+geçince hiçbiri eşleşmedi ve 150 model 6 varsayılan gövdeye düştü. **Model
+adıyla anahtarlı yeni bir 3B tablosu yazma.** `ux-test.js` 11. bölüm her
+modelin kendi profilini aldığını ölçüyor.
+
+3B'de tekrarlanmaması gereken kusurlar:
+
+- çamurlukta siyah "pençe izi": far paneli burnun 56 cm gerisine taşıp
+  çamurluğa yapışıyordu → `onPanel/arkaPanel` noktaları `PANEL_DERIN` (12 cm)
+- kapı altında kahverengi/siyah bant: kabin tabanı ve iç etek `s.W`/`HW`'ye
+  göre konuyordu → iç parçalar `xAt()` ile gövdenin o yükseklikteki genişliği
+- far düz siyah levha, hasar dokuları görünmez: `yuzey()` uv üretmiyordu
+- krom yeşil: sahne ortamındaki çim yansıyordu → `kromOrtamTex()` nötr stüdyo
+- teker kemeri kesiti sıkıştırıyordu → kesit hep eşikten, kemer yalnız alt
+  noktaları düzleştiriyor (`kemerHat`)
+- ayna havada, silecek camın dışında: `HW` yerine `xAt()` / `hwCam`
+
+Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
+
 ---
 
 ## 8. Doğrulama beklentisi
@@ -233,6 +256,10 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   `index.html` sunulur. `kayit.js` içinde `kabuk()` kontrolü bunu engelliyor.
 - **`backdrop-filter`** desteklenmeyen ortamda yarı saydam katmanların altı
   okunuyor. Üst kokpit/sekme şeridi opaklığı bu yüzden yüksek (.955/.96).
+- **3B vitrin testleri ekran koordinatına güvenmesin.** Yandan bakınca komşu
+  araçlar görüş hattına giriyor; dokunuş onlara düşerse odak doğru biçimde
+  oraya geçer. Test önce `W3D.isabet(x,y)` ile ışını yan etkisiz sorar, sonra
+  aynı karede `W3D.dokun(x,y)` der (`vitrin-test.js`).
 - **Sayfa içi eylem çubuğu** (`.sheet>.actionbar`) `bottom:-24px` ile duruyor.
   Chromium yapışkan konumu kaydırıcının içerik kutusuna göre hesaplıyor; 0
   olunca çubuk sayfanın alt dolgusu kadar yukarıda kalıyor ve altından içerik

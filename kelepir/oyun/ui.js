@@ -1943,7 +1943,7 @@ function openMarketCar(c){
      <div class="kv"><span>Vites / yakıt</span><b>${c.gear} &middot; ${c.fuel}</b></div>
      <div class="kv"><span>Renk</span><b>${c.color}</b></div>
      <div class="kv"><span>İstenen fiyat</span><b style="color:var(--sodium)">${tl(c.ask)}</b></div></div>`;
-  openSheet(sheetHead(c)+hikaye+valueBlock(c)+condBlock(c,c.inspected)+bakisBlok(c)+
+  openSheet(sheetHead(c)+hikaye+valueBlock(c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
     (c.inspected?notSatiri(c.model):"")+faultBlock(c,false)+historyBlock(c)+claims+specs+
     `<div class="actionbar">
        <div class="btn-row">
@@ -2141,10 +2141,49 @@ function repairGain(c,f){
 }
 
 /* ---- pazarlık ---- */
+/* ==================================================================
+   GÖZLE EKSPERTİZ
+   3B vitrinde ekspertizsiz araca dokunarak kusur aranır. Boyalı panelin ton
+   farkı, kapıdaki silik çizik, çamurluktaki göçük, eşikteki pas, motorun
+   altındaki yağ lekesi araçta gerçekten çizili; gizli olanlar silik. Bulunan
+   her iz aracın dosyasına yazılır ve pazarlıkta bedava bir koz olur.
+   Ekspertiz parayla kesinlik verir; göz bedavadır ama yalnız kaportayı görür
+   — motoru, şanzımanı, elektriği yine ekspertiz söyler.
+   ================================================================== */
+const GOZ_BULGU={
+  boyali:  {t:"Boyalı panel — ton farkı var",          cut:.035},
+  degisen: {t:"Değişen parça — ton ve aralık bozuk",   cut:.060},
+  kapiboya:{t:"Kapıda çizik, boya isteyecek",          cut:.045},
+  camurluk:{t:"Çamurlukta göçük",                      cut:.050},
+  altsac:  {t:"Eşikte pas izi",                        cut:.060},
+  yagkacak:{t:"Motorun altında yağ lekesi",            cut:.050}
+};
+/** Bir izi bulundu say. Yeni bulgu ise tanımını döndürür. */
+function gozBul(c, k){
+  if(!c || c.inspected || !GOZ_BULGU[k]) return null;
+  c.goz=c.goz||[];
+  if(c.goz.includes(k)) return null;
+  c.goz.push(k);
+  const f=(c.faults||[]).find(x=>x.k===k && !x.fixed);
+  if(f) f.visible=true;                  // artık bilinen kusur: değer ve rapor da görür
+  S.stats.gozBulgu=(S.stats.gozBulgu||0)+1;
+  save();
+  return GOZ_BULGU[k];
+}
+/** Pazar sayfasında gözle bakışın özeti: bulunanlar koz olarak, yoksa davet. */
+function gozBlok(c){
+  if(c.inspected) return "";
+  const g=(c.goz||[]).filter(k=>GOZ_BULGU[k]);
+  if(!g.length) return `<button class="gozdavet" data-act="goz3b" data-id="${c.id}">
+      <b>GÖZLE BAK</b><span>3B vitrinde araca dokunarak kusur ara. Bulduğun her iz pazarlıkta bedava koz.</span><i>&rsaquo;</i></button>`;
+  return `<div class="block gozblok"><h4>GÖZLE BULDUKLARIN</h4>
+    ${g.map(k=>`<div class="kv"><span>${GOZ_BULGU[k].t}</span><b class="pos">koz &middot; &minus;%${(GOZ_BULGU[k].cut*100).toFixed(1).replace(".",",")}</b></div>`).join("")}
+    <div class="sec-note" style="margin-top:6px">Göz kaportayı görür; motoru, şanzımanı ve elektriği ekspertiz söyler.</div></div>`;
+}
 function negLeverage(c){
   if(c.inspected) return hiddenIssues(c);
-  if(!perk("tramer")) return [];
-  const out=[];
+  const out=(c.goz||[]).filter(k=>GOZ_BULGU[k]).map(k=>({t:GOZ_BULGU[k].t, cut:GOZ_BULGU[k].cut, goz:true}));
+  if(!perk("tramer")) return out;
   if(c.tramer>0) out.push({t:`Tramer kaydı: ${tl(c.tramer)}`, cut:.06});
   if(c.kmOynama) out.push({t:"Km'de oynama şüphesi", cut:.10});
   return out;
@@ -2161,6 +2200,11 @@ function openNegotiation(c){
       log:[{who:"them", t:`${greeting(c)} ${tl(c.ask)} istiyorum.`}],
       counter:null, done:false, senet:false
     };
+  }else{
+    // Pazarlık yarıda bırakılıp araca 3B'de bakıldıysa yeni gözle bulunan
+    // kozlar listeye eklensin; kullanılmış kozların sırası bozulmasın.
+    for(const l of negLeverage(c))
+      if(!S.neg.known.some(x=>x.t===l.t)) S.neg.known.push({...l, i:S.neg.known.length});
   }
   renderNeg();
 }
@@ -3411,6 +3455,16 @@ document.addEventListener("click",e=>{
     return;
   }
   if(a==="view"){ toggle3d(b.dataset.v==="1"); return; }
+  if(a==="w3dsonra"){ W3D.sonraki(); return; }
+  if(a==="goz3b"){
+    // 3B vitrini bu araçla aç
+    const id=+b.dataset.id; closeSheet(); S.tab="pazar";
+    toggle3d(true);
+    const bekle=(n)=>{ if(W3D.active && W3D.vitrin.adet){ const i=S.market.findIndex(x=>x.id===id); if(i>=0) W3D.sec(i); }
+                       else if(n>0) setTimeout(()=>bekle(n-1),250); };
+    bekle(40); return;
+  }
+  if(a==="w3donce"){ W3D.onceki(); return; }
   if(a==="w3dopen"){ const f=W3D.focus; if(f){ W3D.pause();
       if(S.tab==="pazar") openMarketCar(f.car); else openOwnCar(f.car); } return; }
   if(a==="filter"){ S.filter=b.dataset.f; render(); return; }
@@ -3856,6 +3910,7 @@ function boot(fresh){
   host.addEventListener("mousedown", e=>{ if(e.target.closest("#w3dbar")) return; W3D.pointerDown(e); });
   window.addEventListener("mousemove", e=>W3D.pointerMove(e));
   window.addEventListener("mouseup",   e=>W3D.pointerUp(e));
+  host.addEventListener("wheel", e=>W3D.tekerlek(e), {passive:false});
   window.addEventListener("keydown", e=>W3D.onKey(e,true));
   window.addEventListener("keyup",   e=>W3D.onKey(e,false));
   window.addEventListener("resize", ()=>W3D.resize());
