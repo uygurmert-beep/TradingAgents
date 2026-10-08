@@ -74,7 +74,7 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil (95 kontrol)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, ölü düğme (98 kontrol)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler

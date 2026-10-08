@@ -3280,6 +3280,11 @@ document.addEventListener("click",e=>{
     return;
   }
   if(a==="closereport"){ S.report=null; S.reportStep=0; closeSheet(); render(); return; }
+  /* Vaka, vaka sonucu, galeri düzenleme ve paylaşım kartı "closesheet"
+     kullanıyordu ama bu eylemin karşılığı hiç yazılmamıştı: ✕ ölüydü, uzun
+     sayfada dışarı dokunacak yer de kalmayınca oyuncu sayfada hapsoluyordu.
+     ux-test her data-act'in bir karşılığı olduğunu artık denetliyor. */
+  if(a==="closesheet"){ closeSheet(); render(); return; }
   if(a==="closereportgaraj"){ S.report=null; S.reportStep=0; closeSheet();
     S.tab="garaj"; S.garajTab="satis"; render(); return; }
   /* --- arama, sıralama, sipariş filtresi --- */

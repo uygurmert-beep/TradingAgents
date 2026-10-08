@@ -587,6 +587,31 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   });
   t(`far ve ızgara burnun önünde kalıyor (${tasma.length} sorun)`, tasma.length===0);
 
+  /* ---------- 12) her düğmenin bir karşılığı var + vaka kapanıyor ---------- */
+  console.log('13) ölü düğme yok');
+  {
+    const fs=require('fs'), yol=require('path');
+    const kaynak=fs.readdirSync(OYUN).filter(f=>f.endsWith('.js')&&!f.startsWith('_'))
+      .map(f=>fs.readFileSync(yol.join(OYUN,f),'utf8')).join('\n');
+    const eylem=new Set([...kaynak.matchAll(/data-act="([a-zA-Z0-9]+)"/g)].map(m=>m[1]));
+    const karsilik=new Set([...kaynak.matchAll(/a===\"([a-zA-Z0-9]+)\"/g)].map(m=>m[1]));
+    const olu=[...eylem].filter(e=>!karsilik.has(e));
+    t(`her data-act'in bir karşılığı var${olu.length?' — ölü: '+olu.join(', '):''}`, olu.length===0);
+  }
+  const vk=await p.evaluate(async()=>{
+    closeSheet(); S.meydan=null; openMeydan();
+    const acik1=!document.getElementById('modal').classList.contains('hidden');
+    document.querySelector('#sheet [data-act="closesheet"]').click();
+    const kapandi1=document.getElementById('modal').classList.contains('hidden');
+    openMeydan(); meydanCevapla();
+    const sonucAcik=!document.getElementById('modal').classList.contains('hidden');
+    document.querySelector('#sheet .x').click();
+    const kapandi2=document.getElementById('modal').classList.contains('hidden');
+    return {acik1,kapandi1,sonucAcik,kapandi2};
+  });
+  t('günün vakası cevaplamadan ✕ ile kapanıyor', vk.acik1 && vk.kapandi1);
+  t('vaka sonucu ✕ ile kapanıyor', vk.sonucAcik && vk.kapandi2);
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;
   await b.close();
