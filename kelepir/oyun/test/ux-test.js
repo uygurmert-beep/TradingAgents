@@ -613,7 +613,8 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     const kaynak=fs.readdirSync(OYUN).filter(f=>f.endsWith('.js')&&!f.startsWith('_'))
       .map(f=>fs.readFileSync(yol.join(OYUN,f),'utf8')).join('\n');
     const eylem=new Set([...kaynak.matchAll(/data-act="([a-zA-Z0-9]+)"/g)].map(m=>m[1]));
-    const karsilik=new Set([...kaynak.matchAll(/a===\"([a-zA-Z0-9]+)\"/g)].map(m=>m[1]));
+    // ui.js'teki a==="x" dalları ve kanca.js üzerinden kaydolan KANCA.eylem.x işleyicileri
+    const karsilik=new Set([...kaynak.matchAll(/a===\"([a-zA-Z0-9]+)\"/g), ...kaynak.matchAll(/KANCA\.eylem\.([a-zA-Z0-9]+)\s*=/g)].map(m=>m[1]));
     const olu=[...eylem].filter(e=>!karsilik.has(e));
     t(`her data-act'in bir karşılığı var${olu.length?' — ölü: '+olu.join(', '):''}`, olu.length===0);
   }
@@ -726,6 +727,99 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     return {svg:!!(sahne&&sahne.querySelector('svg.aracsvg')), eski:!!(sahne&&sahne.querySelector('img.aracfoto'))};
   });
   t('anahtar değişince kart eski fotoğrafı koruyor (2B yok)', ft.eski && !ft.svg);
+
+  console.log('17) takas, parça, ilan fotoğrafı, piyasa nabzı, grup, canlı artırma');
+  const ys=await p.evaluate(async()=>{
+    closeSheet(); S.cash=9e6; S.slots=Math.max(S.slots,10); S.xp=Math.max(S.xp,900);
+    const r={};
+    /* parça: çıkma parça ucuz, gerçek değerden düşer, ilk bakışta görünmez; geri gelebilir */
+    const c=genCar(); c.owned=true; c.inspected=true; c.boughtFor=c.ask||500000; c.spent=0;
+    let f=c.faults.find(x=>!x.fixed);
+    if(!f){ f={id:_uid++, k:"aku", n:"Akü ölmüş", comp:"elektrik", cost:7500, gain:10, dm:1.35, visible:true, fixed:false}; c.faults.push(f); }
+    S.cars.push(c);
+    r.ucuz = parcaBedel(f,"cikma") < parcaBedel(f,"yansanayi") && parcaBedel(f,"yansanayi") < parcaBedel(f,"orijinal");
+    r.kazancSirasi = parcaKazanc(c,f,"cikma") < parcaKazanc(c,f,"orijinal");
+    PARCA_SECIM="cikma"; const once=S.cash; parcaTamir(c,f); PARCA_SECIM="orijinal";
+    r.odendi = S.cash===once-parcaBedel(f,"cikma") && f.fixed && f.parca==="cikma";
+    r.gizli = hiddenIssues(c).some(x=>/parça/.test(x.t));
+    const kaydir=Math.random; let n=0; Math.random=()=>0; KANCA.gun.forEach(g=>{ try{ g({events:[],costs:[],offers:[]}); }catch(e){} }); Math.random=kaydir;
+    r.geriGeldi = !f.fixed && f.geriGeldi===true;
+    /* ilan fotoğrafı: puan saf fonksiyon, segmente göre değişiyor, saklanan hasar işaretleniyor */
+    const lux=genCar({model:MODELS.find(m=>m.seg==="lux")}), tic=genCar({model:MODELS.find(m=>m.seg==="ticari")});
+    r.luxStudyo = ilanFotoPuan(lux,{aci:"on",isik:"studyo",zemin:"studyo"}).puan > ilanFotoPuan(lux,{aci:"arka",isik:"aksam",zemin:"galeri"}).puan || IFOTO_KOYU.includes(lux.color);
+    r.ticGaleri = ilanFotoPuan(tic,{aci:"on",isik:"gun",zemin:"galeri"}).puan > ilanFotoPuan(tic,{aci:"on",isik:"gun",zemin:"studyo"}).puan;
+    const h=genCar(); h.owned=true; h.faults.push({id:_uid++, k:"kapiboya", n:"Kapı boyası gerekli", comp:"kaporta", cost:9500, gain:13, dm:1.45, visible:true, fixed:false});
+    const pk=ilanFotoPuan(h,{aci:"arka",isik:"gun",zemin:"galeri"});
+    r.sakliyor = pk.gizler.some(g=>g.k==="kapiboya") && ilanFotoPuan(h,{aci:"yan",isik:"gun",zemin:"galeri"}).gizler.length===0;
+    h.ilanFoto={aci:"arka",isik:"gun",zemin:"galeri",puan:90,gizler:pk.gizler}; h.listPrice=valueOf(h,false);
+    r.akis = ilanFotoAkis(h)>1 && hiddenIssues(h).some(x=>/Fotoğrafta/.test(x.t));
+    S.cars.push(h); openIlanFoto(h.id);
+    r.foto = !!document.querySelector('#sheet .ifoto-onizleme') && document.querySelectorAll('#sheet [data-act="ifsec"]').length===9;
+    /* takas: kayıt-yükleme, ekspertiz, değer kırma */
+    h.listPrice=valueOf(h,false);
+    let bt=null; for(let i=0;i<600 && !(bt&&bt.takas);i++) bt=makeBuyer(h,S);
+    if(bt&&bt.takas){
+      const o={oid:S.oidSeq++, carId:h.id, amount:bt.offer, caught:false, issues:[], inspects:false, type:bt.type,
+               takas:bt.takas, taksit:null, day:S.day, expires:S.day+2};
+      S.offers.push(o);
+      const d=JSON.parse(JSON.stringify(serialize())); deserialize(d);
+      r.takasKayit = MODELS.includes(d.offers.find(x=>x.oid===o.oid).takas.car.model);
+      takasEksper(o.oid);
+      r.takasEksper = o.takas.bakildi && o.takas.car.inspected && !!document.querySelector('#sheet .takas-hukum');
+      const ilk=o.takas.claim; Math.random=()=>0; takasKir(o.oid,8); Math.random=kaydir;
+      r.takasKir = o.takas.claim<ilk;
+      r.olasilik = takasKabulOlasiligi({ilk:100,real:80,bakildi:true},92) > takasKabulOlasiligi({ilk:100,real:80,bakildi:false},92);
+    }else r.takasYok=true;
+    /* piyasa nabzı: dalga değeri oynatıyor, grafik çiziliyor */
+    nabizDurum(); const seg=c.model.seg, v0=valueOf(c,false); S.nabiz.d[seg]=.05; const v1=valueOf(c,false); S.nabiz.d[seg]=0;
+    r.nabizDeger = v1>v0;
+    closeSheet(); openNabiz();
+    r.nabizGrafik = document.querySelectorAll('#sheet .nb-svg').length===6 && !!document.querySelector('#sheet .nb-tahmin');
+    /* grup: mesaj gelir, ihbar pazara araç koyar, sonuçlanınca sicile yazılır */
+    S.grup=null; const g=grupDurum(); const uye=grupUyeler()[0];
+    const m=_grpIhbar({...uye, g:1}); g.m.push({id:g.sira++, gun:S.day, kim:uye.n, cozuldu:false, ...m});
+    r.grupIhbar = !!S.market.find(x=>x.id===m.carId) && m.dogru===true;
+    S.market=S.market.filter(x=>x.id!==m.carId);
+    KANCA.gun.forEach(fn=>{ try{ fn({events:[],costs:[],offers:[]}); }catch(e){} });
+    r.grupSicil = g.m[0].cozuldu && g.st[uye.n] && g.st[uye.n].d>=1;
+    closeSheet(); openGrup();
+    r.grupEkran = document.querySelectorAll('#sheet .grp-msj').length>=1 && grupOkunmamis()===0;
+    /* canlı artırma: saat, rakip, oyuncu teklifi, sonuç */
+    closeSheet(); CANLI.oto=false; CANLI.aktif=false;
+    const lot=genCar({auction:true}); S.canli={car:lot, donem:S.auctionDay, bitis:S.day+2, durum:"acik"};
+    S.tab="muzayede"; render();
+    r.canliKart = !!document.querySelector('.canli-kart');
+    openCanli(); canliBasla(); const once2=CANLI.fiyat; canliTeklif(1);
+    r.canliTeklif = CANLI.lider==="sen" && CANLI.fiyat>once2 && CANLI.kalan>=7000;
+    CANLI.rakipler=[]; const sayi=S.cars.length; canliAdim(20000);
+    r.canliKazandi = S.canli.durum==="bitti" && S.canli.sonuc==="sen" && S.cars.length===sayi+1;
+    closeSheet();
+    return r;
+  });
+  t('çıkma < yan sanayi < orijinal bedel', ys.ucuz);
+  t('ucuz parça gerçek değere daha az katıyor', ys.kazancSirasi);
+  t('parça tamiri bedeli düşüyor, parça arızaya yazılıyor', ys.odendi);
+  t('ucuz parça gizli kusur sayılıyor', ys.gizli);
+  t('ucuz parça geri gelebiliyor', ys.geriGeldi);
+  t('lüks araç stüdyoda daha yüksek puan', ys.luxStudyo);
+  t('ticari araç galeri önünde daha yüksek puan', ys.ticGaleri);
+  t('arka açı kapı boyasını saklıyor, yan profil saklamıyor', ys.sakliyor);
+  t('iyi fotoğraf akışı artırıyor, saklanan hasar gizli kusur', ys.akis);
+  t('ilan fotoğrafı stüdyosu açılıyor (önizleme + 9 seçim)', ys.foto);
+  if(!ys.takasYok){
+    t('takas aracı kayıttan model bağıyla dönüyor', ys.takasKayit);
+    t('takas aracı ekspertize sokulabiliyor', ys.takasEksper);
+    t('takas değeri kırılabiliyor', ys.takasKir);
+    t('ekspertiz kanıtı kırmayı kolaylaştırıyor', ys.olasilik);
+  }
+  t('piyasa dalgası aracın değerini oynatıyor', ys.nabizDeger);
+  t('piyasa nabzı: 6 segment grafiği + tahmin', ys.nabizGrafik);
+  t('gruptaki ihbar pazara araç koyuyor', ys.grupIhbar);
+  t('sonuçlanan mesaj gönderenin siciline yazılıyor', ys.grupSicil);
+  t('grup ekranı açılıyor, okunmamış sıfırlanıyor', ys.grupEkran);
+  t('müzayedede canlı lot kartı', ys.canliKart);
+  t('canlı artırmada teklif saati uzatıyor', ys.canliTeklif);
+  t('saat bitince araç oyuncunun', ys.canliKazandi);
 
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   if(errs.length) fail+=errs.length;

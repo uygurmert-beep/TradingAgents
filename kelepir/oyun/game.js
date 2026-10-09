@@ -217,6 +217,18 @@ const FAULTS=[
  {k:"beyin", n:"Motor beyni arızası",     c:"elektrik",  cost:36000,  gain:28, vis:.08, dm:0.85},
 ];
 
+/* ============ parça kalitesi ============
+   Tamir artık "yaptır / yaptırma" değil, "hangi parçayla". Ucuz parça kısa
+   vadede kârı büyütür ama iki bedeli var: aracın GERÇEK değerinden düşer
+   (ekspertize giden ya da dürüst ilanı okuyan alıcı bunu fiyatlar) ve
+   birkaç gün içinde arıza geri gelebilir. İlk bakışta kimse fark etmez —
+   gizlemek cazip, yakalanmak pahalı. risk: ~8 günde geri gelme olasılığı. */
+const PARCA={
+  orijinal: {n:"Orijinal",   d:"Garantili, değer kaybı yok",            kat:1.00, kayip:0,   risk:0},
+  yansanayi:{n:"Yan sanayi", d:"%32 ucuz, ekspertizde fark edilir",     kat:0.68, kayip:.12, risk:.06},
+  cikma:    {n:"&Ccedil;ıkma",      d:"Yarı fiyat, geri gelme riski y&uuml;ksek",   kat:0.45, kayip:.26, risk:.20}
+};
+
 /* ============ satıcı arketipleri ============ */
 const SELLERS=[
  {k:"acil",   n:"Acil nakit lazım",  d:"İhtiyaçtan satılık. Pazarlık payı geniş.",  ask:1.02, res:0.78, pat:4, sert:.20, w:18, savvy:.30, motiv:.80, ego:.3,  pesin:.055},
@@ -432,7 +444,9 @@ function valueOf(car, apparent){
   // "her zaman yapma" değil, "hangi araçta" sorusuna dönüşüyor.
   const zengin = clamp(baseValue(m,age)/2600000, 0, 1);
   for(const f of car.faults){
-    if(f.fixed || !seesFault(car,f,apparent)) continue;
+    // Ucuz parçayla onarılmış arıza ilk bakışta görünmez; gerçek değerden düşer.
+    if(f.fixed){ if(!apparent && f.parca && PARCA[f.parca]) v -= f.cost*PARCA[f.parca].kayip; continue; }
+    if(!seesFault(car,f,apparent)) continue;
     const dm0=f.dm||1;
     const dm = dm0<1 ? dm0 + (1.30-dm0)*zengin : dm0;
     v -= f.cost * dm;
@@ -455,6 +469,8 @@ function valueOf(car, apparent){
     if(st) v*=st.val;
   }
   v *= evMul("val", m.seg);
+  // segmentin piyasa dalgası (piyasa.js) — grafikte görünen eğrinin kendisi
+  if(typeof nabizKat==="function") v *= nabizKat(m.seg);
   v *= evMul("fuel", car.fuel);
   // Hurda tabanı: kusur bedeli değerin üstüne çıksa bile araç sökümlük
   // olarak bir şey eder. Bu taban olmadan 450 bin km'lik bir klasik
@@ -473,6 +489,10 @@ function hiddenIssues(car){
   if(car.boyali>2) list.push({t:`${car.boyali} boyalı parça`, cut:.03});
   if(car.kmOynama) list.push({t:"Km'de oynama şüphesi", cut:.10});
   for(const f of openFaults(car)) if(f.cost>=20000) list.push({t:f.n, cut:.045});
+  for(const f of car.faults) if(f.fixed && f.parca && PARCA[f.parca] && f.parca!=="orijinal")
+    list.push({t:`${f.n} — ${PARCA[f.parca].n.replace("&Ccedil;","Ç").toLocaleLowerCase("tr")} parça`, cut:f.parca==="cikma"?.05:.03});
+  for(const g of ((car.ilanFoto&&car.ilanFoto.gizler)||[]))
+    if(car.listPrice && openFaults(car).some(f=>f.k===g.k)) list.push({t:`Fotoğrafta gizlenen: ${g.n}`, cut:.035});
   const lie=car.claims.find(c=>CLAIMS_LIE.includes(c));
   if(lie && (car.tramer>0||car.boyali>0)) list.push({t:`İlanda "${lie}" yazıyor`, cut:.05});
   return list;
@@ -854,6 +874,8 @@ function leadChance(car, S){
   if(acikArz===0){ p*=1.18; if(car.disclosed) p*=1.08; }
   // ilanın dili ve sunumu akışı değiştiriyor
   p*=ilanDili(car).akis * ilanSunum(car).akis;
+  // kendi çektiğin ilan fotoğrafı (ilanfoto.js); çekmediysen etkisiz
+  if(typeof ilanFotoAkis==="function") p*=ilanFotoAkis(car);
   // Acemi dönemi: ilk satışa kadar alıcı akışı belirgin şekilde yüksek.
   // İlk haftasını tek bir ilana bakarak geçiren oyuncu oyunu bırakıyor.
   // Gerçekçi modda bu tolerans yok — oyuncu bunu bilerek seçti.
@@ -869,11 +891,14 @@ function makeBuyer(car, S){
   const dil=ilanDili(car), sun=ilanSunum(car);
   const mv=valueOf(car,false), av=valueOf(car,true);
   // Abartılı ilan alıcıyı şüphelendirir: daha sık ekspertize götürür.
-  const inspects = chance(clamp(bt.insp*dil.supheli,0,.97)) || car.disclosed;
+  // Fotoğrafta hasarı saklayan ilan, aracı görmeye gelen alıcıyı şüphelendirir.
+  const fotoSuphe = (car.ilanFoto&&car.ilanFoto.gizler&&car.ilanFoto.gizler.length&&!car.disclosed) ? 1.25 : 1;
+  const inspects = chance(clamp(bt.insp*dil.supheli*fotoSuphe,0,.97)) || car.disclosed;
   const ref = (car.disclosed || inspects) ? mv : av;
   const sez = 1+(seasonMul(S.day,car.model.seg)-1)*.35;
   // Alıcı KALİTESİ: dürüst ilan ve iyi sunum daha az pazarlıkçı alıcı getirir.
-  let offer = Math.round(ref*bt.pay*sez*dil.kalite*sun.kalite*(1-rnd(0,bt.haggle))*(zorGercek()?.97:1)/500)*500;
+  const fotoK = (typeof ilanFotoKalite==="function") ? ilanFotoKalite(car) : 1;
+  let offer = Math.round(ref*bt.pay*sez*dil.kalite*sun.kalite*fotoK*(1-rnd(0,bt.haggle))*(zorGercek()?.97:1)/500)*500;
   // Bakımlı araç primi: hiç açık arızası kalmamışsa alıcı biraz daha cömert.
   if(car.faults.every(f=>f.fixed)) offer=Math.round(offer*1.035/500)*500;
   // kimse ilan fiyatını doğrudan vermez; pazarlığa her zaman bir aralık kalır

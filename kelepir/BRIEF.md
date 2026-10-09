@@ -142,6 +142,16 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   zeminde okunmayan sarı tabela yazısı levhaya alındı; kapat düğmesi 36 px,
   9,5 px etiketler 10,5 px.
 
+- **Altı yan sistem** (`kanca.js` ile bağlı, `ui.js`'e dokunuş az):
+  takası derinleştirme (inceleme, ekspertiz, değer kırma; takas aracı artık
+  kayda doğru yazılıyor), parça kalitesi (çıkma/yan sanayi ucuz ama gerçek
+  değerden düşer ve geri gelebilir), ilan fotoğrafı stüdyosu (27 kadraj,
+  segmente göre puan, açıyla hasar saklama riski), piyasa nabzı (segment
+  dalgası değeri oynatıyor, 30 gün + 7 gün tahmin grafiği), galericiler
+  grubu (doğru/tuzak ihbar, söylenti, müzayede kulisi, gönderen sicili),
+  canlı açık artırma (12 sn saat, 7 sn uzatma, rakip tavanları, son saniye).
+  Nuri'nin bedava tamirinin yine de masraf yazılması düzeldi.
+
 ### Sırada
 
 - **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da

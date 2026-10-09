@@ -103,13 +103,19 @@ function serialize(){
   return {...S, market:S.market.map(carOut), cars:S.cars.map(carOut),
           auction:S.auction.map(carOut), report:null, neg:null, sale:null,
           konsTeklif:S.konsTeklif?{...S.konsTeklif, car:carOut(S.konsTeklif.car)}:null,
-          parti:S.parti?{...S.parti, cars:S.parti.cars.map(carOut)}:null};
+          parti:S.parti?{...S.parti, cars:S.parti.cars.map(carOut)}:null,
+          /* Bekleyen teklifteki takas aracı da araç taşıyor; eskiden düz
+             kopyalanıyordu ve yeniden açınca model bağı kopuyordu. */
+          offers:(S.offers||[]).map(o=>o.takas?{...o, takas:{...o.takas, car:carOut(o.takas.car)}}:o),
+          canli:S.canli&&S.canli.car?{...S.canli, car:carOut(S.canli.car)}:(S.canli||null)};
 }
 function deserialize(d){
   const carIn=c=>({...c, model:MODELS[c.model]||MODELS[0], seller:c.seller>=0?SELLERS[c.seller]:null});
   d.market=(d.market||[]).map(carIn); d.cars=(d.cars||[]).map(carIn); d.auction=(d.auction||[]).map(carIn);
   if(d.konsTeklif) d.konsTeklif.car=carIn(d.konsTeklif.car);
   if(d.parti) d.parti.cars=(d.parti.cars||[]).map(carIn);
+  (d.offers||[]).forEach(o=>{ if(o.takas&&o.takas.car) o.takas.car=carIn(o.takas.car); });
+  if(d.canli&&d.canli.car) d.canli.car=carIn(d.canli.car);
   /* Filo kaldırıldı (yerine konsinye geldi). Kiradaki araç sözleşmesi
      bitmiş sayılır ve normal stoğa döner — alan bırakılsaydı hiçbir
      ekran onu göstermeyeceği için araç görünmez bir kilitte kalırdı. */
@@ -449,6 +455,7 @@ function nextDay(){
   try{ yerGun(rep); }catch(e){}
   try{ konsinyeGun(rep); }catch(e){}
   try{ yanGorevGun(rep); }catch(e){}
+  kancaGun(rep);
   checkMilestones();
   gunlukKur(true);
   ligRakipGun();
@@ -1290,7 +1297,7 @@ const AJ_IKON={
 };
 function ajKart(o){
   return `<button class="ajkart ${o.sinif||""}" data-act="${o.act}" ${o.data||""}>
-    <span class="aj-ust"><span class="aj-ik"><svg viewBox="0 0 24 24">${AJ_IKON[o.ik]}</svg></span>
+    <span class="aj-ust"><span class="aj-ik"><svg viewBox="0 0 24 24">${AJ_IKON[o.ik]||KANCA.ikon[o.ik]||""}</svg></span>
       ${o.rozet?`<span class="aj-roz">${o.rozet}</span>`:""}</span>
     <b class="aj-bas">${o.bas}</b>
     <span class="aj-alt">${o.alt}</span>
@@ -1326,6 +1333,7 @@ function bugunKartlari(){
   if(sk<=3) k.push({ik:"sanayi", sinif:sk===0?"sicak":"", act:"sanayiac",
     bas:sk===0?"Sanayi g&uuml;n&uuml;":"Sanayi g&uuml;n&uuml; yaklaşıyor", alt:`Tamirler %${Math.round(SANAYI.indirim*100)} ucuz`,
     rozet:sk===0?"bug&uuml;n":`${sk} g&uuml;n`});
+  k.push(...kancaRay());
   const h=hedef(), il=hedefIlerleme();
   k.push({ik:"hedef", sinif:il>=1?"bitti":"", act:"hedefac", bas:"Sezon hedefi",
     alt:`${tlk(S.seasonProfit||0)} / ${tlk(h.tutar)}`, rozet:il>=1?"&#10003;":`%${Math.round(il*100)}`, cubuk:il});
@@ -1447,6 +1455,7 @@ function viewGaraj(){
         <div class="sec-note" style="display:flex;justify-content:space-between;margin-top:4px">
           <span>maliyet ${tlk(carCost(cc))}</span>
           <span class="${kar>=0?'pos':'neg'}">${kar>=0?"+":""}${tl(kar)}</span></div>
+        ${o.takas?takasBlok(o):""}
         <div class="btn-row" style="margin-top:11px">
           <button class="btn primary" data-act="salenego" data-oid="${o.oid}">Pazarlık et</button>
           <button class="btn" data-act="carfile" data-id="${cc.id}">Dosya</button>
@@ -1505,7 +1514,7 @@ function muzayedeyeKalan(){ for(let k=1;k<=3;k++) if((S.day+k)%3===1) return k; 
 function viewMuzayede(){
   if(!unlocked("muzayede")) return lockedView("Müzayede","Seviye 2'de açılır.","Kârlı birkaç çevirme yap — müzayedede ekspertizsiz, ucuz araçlar var.");
   if(!S.auction.length){ const k=muzayedeyeKalan();
-    return `<div class="sec-head"><h2 class="sec">Müzayede</h2></div>
+    return `<div class="sec-head"><h2 class="sec">Müzayede</h2></div>${canliBlok()}
     <div class="empty bosdurum">${bosSahne("muzayede")}
       <b class="bd-bas">${k===1?"Yarın m&uuml;zayede var":`M&uuml;zayedeye ${k} g&uuml;n`}</b>
       Kapalı zarf, ekspertizsiz, olduğu gibi. &Uuml;&ccedil; g&uuml;nde bir kurulur &mdash;
@@ -1513,6 +1522,7 @@ function viewMuzayede(){
       <div class="bosbtn"><button class="btn" data-act="tab" data-t="pazar">Pazara git</button></div></div>`; }
   const bids=S.auctionBids||{};
   return `<div class="sec-head"><h2 class="sec">Oto müzayede</h2><span class="sec-note">Kapalı zarf · ekspertiz yok</span></div>
+    ${canliBlok()}
     <div class="block"><div class="help"><p>Araçlar <strong>olduğu gibi</strong> satılır. Sadece gözle görünenler belli. En yüksek zarfı veren alır — rakip galericiler de zarf veriyor.</p></div></div>
     ${S.auction.map(c=>`
       ${cardHtml(c,"auction")}
@@ -1971,6 +1981,7 @@ function openMarketCar(c){
      <span class="chip">Sabır ${"&#9679;".repeat(c.pat+(perk("dil")?1:0))}</span>
      ${(c.age||0)>0?`<span class="chip agedots">${"<s></s>".repeat(Math.min(c.age,5))} ${c.age} g&uuml;n${c.cutDay?" &middot; fiyat kırdı":""}</span>`:""}</div></div>`;
   const specs=`<div class="block"><h4>ARA&Ccedil;</h4>
+     ${nabizSatir(c.model.seg)}
      <div class="kv"><span>Model yılı</span><b>${c.year}</b></div>
      <div class="kv"><span>Kilometre</span><b>${mesafe(c.km)}</b></div>
      <div class="kv"><span>Vites / yakıt</span><b>${c.gear} &middot; ${c.fuel}</b></div>
@@ -2026,8 +2037,9 @@ function atolyeBlok(c, act){
       <div class="atolye-not">Bilinen arıza kalmadı, kozmetik hazırlık yapıldı.
         Ara&ccedil; satışa hazır.</div></section>`;
 
-  const toplam = acik.reduce((s,f)=>s+repairCost(f),0);
-  const karli  = acik.filter(f=>repairGain(c,f)>=repairCost(f)).length;
+  const satirlar = acik.map(f=>({f, ...parcaSatirAlt(c,f)}));
+  const toplam = satirlar.reduce((s,x)=>s+x.bedel,0);
+  const karli  = satirlar.filter(x=>x.karli).length;
 
   const isSatir = (ad, alt, bedel, eylem, ek, karliMi)=>
     `<div class="isemri${karliMi?" karli":""}">
@@ -2039,15 +2051,12 @@ function atolyeBlok(c, act){
   return `<section class="atolye">
     <div class="atolye-bas"><span class="atolye-et">TAMİR ATÖLYESİ</span>
       <span class="atolye-rozet">${acik.length?acik.length+" a&ccedil;ık arıza":"kozmetik hazırlık"}</span></div>
+    ${acik.length?parcaSecimHtml(c, dosyaMi):""}
     ${acik.length?`<div class="atolye-ozet">
       <span>Hepsi <b>${tl(toplam)}</b></span>
       <span><b>${karli}</b> tanesi k&acirc;rlı</span></div>`:""}
-    ${acik.map(f=>{
-      const bedel=repairCost(f), g=repairGain(c,f), deger=g>=bedel;
-      return isSatir(f.n,
-        `${COMPLBL[f.comp]} &middot; değere +${tlk(g)}${deger?" &middot; k&acirc;rlı":" &middot; maliyetini &ccedil;ıkarmaz"}`,
-        bedel, act, ` data-f="${f.id}"`, deger);
-    }).join("")}
+    ${satirlar.map(x=>isSatir(x.f.n+(x.f.geriGeldi?` <i class="geri">geri geldi</i>`:""),
+        x.alt, x.bedel, act, ` data-f="${x.f.id}"`, x.karli)).join("")}
     ${cila?isSatir("Pasta cila + detaylı temizlik",
         "Ger&ccedil;ek değeri değiştirmez, ilk izlenimi g&uuml;&ccedil;lendirir",
         350, cilaAct, "", false):""}
@@ -2111,6 +2120,7 @@ function openOwnCar(c){
       </div>
       <div class="ilan-not">${ILAN_SUNUM[sun].d} &middot; alıcı akışı
         &times;${ILAN_SUNUM[sun].akis.toFixed(2)}</div>
+      ${ilanFotoBlok(c)}
     </section>
     <div class="block"><h4>FİYAT</h4>
       <div class="sec-note" style="margin-bottom:8px">Fiyatı ne kadar yükseltirsen alıcı o kadar seyrelir.</div>
@@ -2561,20 +2571,7 @@ function offerCard(o){
     : (o.inspects?`<div class="sec-note" style="margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;, temiz &ccedil;ıktı.</div>`:"");
   let extra="";
   if(o.takas){
-    const t=o.takas;
-    extra=`<div class="block" style="margin:11px 0 0;background:var(--asphalt-3)">
-      <h4>TAKAS TEKLİFİ</h4>
-      <div class="card-body" style="padding:0 0 8px">
-        <div class="thumb">${aracGorsel(t.car,"mini")}</div>
-        <div class="card-main">
-          <div class="card-title">${t.car.model.n} <span style="color:var(--muted)">${t.car.year}</span></div>
-          <div class="card-sub">${mesafe(t.car.km)} &middot; ${t.car.gear} &middot; ${t.car.fuel}</div>
-        </div>
-      </div>
-      <div class="kv"><span>Aracına bi&ccedil;tiği değer</span><b>${tl(t.claim)}</b></div>
-      <div class="kv"><span>&Uuml;st&uuml;ne vereceği nakit</span><b style="color:var(--sodium)">${tl(t.cash)}</b></div>
-      <div class="sec-note" style="margin-top:6px">Ekspertizsiz devralırsın. Park yerin ${Math.max(0,S.slots-S.cars.length)} boş.</div>
-    </div>`;
+    extra=takasBlok(o);
   }else if(o.taksit){
     const k=o.taksit, kp=k.total-cost;
     extra=`<div class="block" style="margin:11px 0 0;background:var(--asphalt-3)">
@@ -3323,6 +3320,7 @@ document.addEventListener("click",e=>{
   if(a==="ogretatla"){ ogretBitir(false); render(); return; }
   cal(SES_EYLEM[a]||"tik");
   titre(a==="endday"||a==="buy"||a==="acceptoffer" ? HAPTIK.orta : HAPTIK.hafif);
+  if(kancaEylem(a, b, car)) return;
 
   if(a==="ses"){ const kapali=sesAnahtar(); render();
     toast(kapali?"Ses kapatıldı.":"Ses açıldı."); return; }
@@ -3412,12 +3410,12 @@ document.addEventListener("click",e=>{
   if(a==="repairfile"){
     const cc=S.cars.find(x=>x.id===+id);
     const f=cc&&cc.faults.find(x=>x.id===+b.dataset.f);
-    const bedel=f?repairCost(f):0;
-    if(!f||S.cash<bedel){ toast("Nakit yetmiyor.","bad"); return; }
+    if(!f) return;
     const oncekiRF=compsOf(cc,false)[f.comp];
-    S.cash-=bedel; cc.spent+=bedel; f.fixed=true; S.stats.repairs++; cGain("nuri"); gorevIlerle("tamir");
+    const r=parcaTamir(cc, f); if(!r) return;
+    S.stats.repairs++; cGain("nuri"); gorevIlerle("tamir");
     SON_TAMIR={id:cc.id, comp:f.comp, eski:oncekiRF};
-    toast(`${f.n} yapıldı — ${tl(bedel)}`,"good");
+    toast(`${f.n} yapıldı — ${tl(r.bedel)}${r.tur!=="orijinal"?" · "+PARCA[r.tur].n.replace("&Ccedil;","Ç").toLocaleLowerCase("tr")+" parça":""}`,"good");
     save(); renderHud(); openCarFile(cc.id); cubukDoldur(); SON_TAMIR=null; return;
   }
   if(a==="salemove"){ doSaleMove(b.dataset.k, b.dataset.i); return; }
@@ -3617,14 +3615,14 @@ document.addEventListener("click",e=>{
     return; }
   if(a==="repair"){
     const f=car.faults.find(x=>x.id===+b.dataset.f);
-    const bedel=f?repairCost(f):0;
-    if(!f||S.cash<bedel){ toast("Nakit yetmiyor.","bad"); return; }
+    if(!f) return;
     const oncekiR=compsOf(car,false)[f.comp];
-    if(S.favors&&S.favors.nuri){ S.favors.nuri=false; toast("Nuri bu tamiri bedava yaptı.","good"); }
-    else S.cash-=bedel;
-    car.spent+=(S.favors&&S.favors.nuri)?0:bedel; f.fixed=true; S.stats.repairs++; cGain("nuri"); gorevIlerle("tamir");
+    /* Nuri'nin iyiliği eskiden önce harcanıp sonra okunuyordu: bedava tamirin
+       bedeli yine de araca masraf yazılıyordu. parcaTamir sırayı düzeltiyor. */
+    const r=parcaTamir(car, f); if(!r) return;
+    S.stats.repairs++; cGain("nuri"); gorevIlerle("tamir");
     SON_TAMIR={id:car.id, comp:f.comp, eski:oncekiR};
-    toast(`${f.n} yapıldı — ${tl(bedel)}`,"good");
+    toast(`${f.n} yapıldı — ${tl(r.bedel)}${r.tur!=="orijinal"?" · "+PARCA[r.tur].n.replace("&Ccedil;","Ç").toLocaleLowerCase("tr")+" parça":""}`,"good");
     save(); renderHud(); openOwnCar(car); cubukDoldur(); SON_TAMIR=null; return;
   }
   if(a==="cosmetic" || a==="cosmeticfile"){

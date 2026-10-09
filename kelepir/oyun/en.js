@@ -268,6 +268,24 @@ I18N.PARCA.push(
  ["Şirket aracı. Bakımlı ama km yüksek.","Company car. Well kept but high mileage."],
 );
 
+/* --- takas, parça, ilan fotoğrafı, piyasa nabzı, grup, canlı artırma --- */
+Object.assign(I18N.TAM, {
+"Takas aracı":"Trade-in car","TAKAS TEKLİFİ":"TRADE-IN OFFER","Takası al":"Take the trade-in",
+"Ekspertize sok":"Send to inspection","DEĞERİNİ KIR":"PUSH THE VALUE DOWN","EKSPERTİZ SONUCU":"INSPECTION RESULT",
+"Orijinal":"OEM","Yan sanayi":"Aftermarket","Çıkma":"Salvaged","geri geldi":"came back",
+"İlan fotoğrafı":"Listing photo","İLAN FOTOĞRAFI":"LISTING PHOTO","Kendin çek":"Shoot it yourself",
+"Fotoğraf çekildi":"Photo taken","AÇI":"ANGLE","IŞIK":"LIGHT","ARKA PLAN":"BACKDROP",
+"Ön çapraz":"Front three-quarter","Yan profil":"Side profile","Arka çapraz":"Rear three-quarter",
+"Gün ışığı":"Daylight","Stüdyo":"Studio","Akşam":"Golden hour",
+"Galeri önü":"Lot front","Stüdyo fonu":"Studio backdrop","Sahil yolu":"Coast road",
+"NEDEN BU PUAN":"WHY THIS SCORE",
+"Piyasa nabzı":"Market pulse","gerçekleşen":"actual","takvime göre tahmin":"calendar forecast","bugün":"today",
+"Galericiler grubu":"Dealers' group","İlana bak":"See listing","doğru çıktı":"turned out true",
+"tuzaktı":"was a trap","yanlış çıktı":"turned out false","sonuç bekleniyor":"pending",
+"Canlı açık artırma":"Live auction","Masaya otur · başlat":"Take a seat · start","Çekil":"Walk away",
+"Tokmak indi":"Hammer down","Senin oldu":"It's yours","SENDE":"YOU LEAD","TEKLİF BEKLENİYOR":"AWAITING BIDS",
+});
+
 /* ---- çoğul eki: |s| işaretçisi, metindeki ilk sayıya bakar ---- */
 (function(){
   const esk=cevir;

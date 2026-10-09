@@ -25,7 +25,8 @@ Oyun döngüsü: **pazardan araç al → ekspertiz ettir → kârlı tamiri yapt
 ilanı kur → alıcıyla pazarlık et → sat.** Yan katmanlar: sezonlar, günlük
 görevler, tanıdıklar, rakip galericiler, lig, koleksiyon, 3B vitrin (gözle ekspertiz),
 günün vakası, galeri kirası ve büyütme, konsinye (emanet araç), toptan parti,
-dönen müşteri, sanayi günü ve sezon hedefi.
+dönen müşteri, sanayi günü ve sezon hedefi, takas (ekspertiz + değer kırma),
+parça kalitesi, ilan fotoğrafı, piyasa nabzı, galericiler grubu, canlı açık artırma.
 
 ---
 
@@ -35,9 +36,10 @@ dönen müşteri, sanayi günü ve sezon hedefi.
 birleştirip `shell.html` içindeki `/*BUNDLE*/` işaretinin yerine koyuyor.
 
 ```
-hata.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → world.js
+hata.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → kanca.js → world.js
 → rehber.js → gunlukritim.js → koleksiyon.js → galeri.js → konsinye.js
-→ yangorev.js → kolay.js → foto.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
+→ yangorev.js → kolay.js → foto.js → parca.js → takas.js → ilanfoto.js → piyasa.js
+→ grup.js → canli.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
 → paylas.js → demo.js → ui.js → app.js
 ```
 
@@ -58,6 +60,14 @@ iki dosya tanımlıyorsa **derleme durur**. Bu kontrolü kaldırma.
 Modüle özel yardımcıların adını önekle: `aracciz.js` içindekiler `_ac` ile
 başlıyor (`_acRenk`, `_acTohum`, `AC_ISKELET`).
 
+### Yeni yan sistem: `kanca.js` üzerinden bağla
+
+Gün geçişi, BUGÜN rayı ve düğme yönlendirmesi için `ui.js`'e satır ekleme.
+Modül kendini kaydeder: `KANCA.gun.push(rep=>…)`, `KANCA.ray.push(()=>[kart…])`,
+`KANCA.eylem.ad=(b,car)=>…`, ray simgesi `KANCA.ikon.ad`. Kancalar korumalı
+çağrılır; biri hata verirse gün durmaz. `ux-test.js` 13. bölüm (ölü düğme)
+`KANCA.eylem.x=` kayıtlarını da karşılık sayıyor.
+
 ---
 
 ## 3. Komutlar
@@ -74,7 +84,7 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto (113 kontrol; UX_TOHUM ile pazar değişir)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto, 6 yan sistem (135 kontrol; UX_TOHUM ile pazar değişir)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
@@ -166,7 +176,14 @@ iş listesine yaz.
 | `konsinye.js` | 178 | **emanet araç** — sahibi net ister, üstü senin, yer kaplar (filonun yerine) |
 | `yangorev.js` | 212 | toptan parti, dönen müşteri, sanayi günü, sezon hedefi |
 | `kolay.js` | 102 | Hazırla (tek dokunuşla satışa), sıradaki adım rozeti, önerilen teklif |
-| `foto.js` | 105 | listede/sayfada 3B stüdyo fotoğrafı (ayrı çizici, boşta kuyruk, 2B yedek) |
+| `foto.js` | 125 | listede/sayfada 3B stüdyo fotoğrafı (ayrı çizici, boşta kuyruk, 2B yedek) |
+| `kanca.js` | 34 | yan sistemlerin gün / BUGÜN rayı / düğme bağlantısı |
+| `parca.js` | 77 | tamirde parça kalitesi (orijinal / yan sanayi / çıkma), geri gelme |
+| `takas.js` | 129 | takas aracını inceleme, ekspertiz, değer kırma |
+| `ilanfoto.js` | 215 | ilan fotoğrafı stüdyosu (açı, ışık, arka plan → puan → alıcı akışı) |
+| `piyasa.js` | 123 | segment dalgası (değeri oynatır) + 30 günlük nabız grafiği |
+| `grup.js` | 156 | galericiler grubu: ihbar, söylenti, müzayede kulisi, gönderen sicili |
+| `canli.js` | 190 | canlı açık artırma (geri sayım, rakip tavanları, son saniye) |
 | `sirala.js` | 74 | Türkiye sıralaması (60 sanal galeri) |
 | `cila.js` | 125 | mikro animasyon, haptik, onay kutusu |
 | `yuz.js` | 129 | satıcı/alıcı/tanıdık/emanet sahibi yüz çizimi (ruh hâline göre) |
@@ -280,6 +297,11 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   cila). Anahtar değişince yeni çekim bitene dek `FOTO.son` (araç id → son
   fotoğraf) yerinde kalıyor; 2B çizime düşmek "resim değişip geri geliyor"
   diye görünüyordu. Önbellek LRU: sık görülen aracın fotoğrafı düşmesin.
+- **Piyasa dalgası `valueOf`'u çarpıyor** (`nabizKat`, ±%8, ortalamaya döner).
+  Değer karşılaştıran testlerde dalgayı sıfırla (`S.nabiz.d[seg]=0`), yoksa
+  gün geçince aynı aracın değeri kıpırdar.
+- **Canlı artırma zamanlayıcısı** testte `CANLI.oto=false` ile kapatılır;
+  saat `canliAdim(ms)` ile elle ilerletilir.
 - **3B fotoğraf kuyruğu boşta çalışıyor.** `foto.js` oyuncu yazarken/kaydırırken
   çekim yapmıyor (`requestIdleCallback`). Testte ya da mağaza görüntüsünde
   fotoğraf bekleniyorsa `.fotobekle` kalmayana dek yokla, sabit süre bekleme.
@@ -288,7 +310,8 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   olunca çubuk sayfanın alt dolgusu kadar yukarıda kalıyor ve altından içerik
   görünüyordu. `ux-test.js` 9. bölüm bunu ölçüyor.
 - **Kayıtta araç taşıyan her alan** `serialize`/`deserialize` içinde model
-  indeksine çevrilmeli. `S.konsTeklif.car` ve `S.parti.cars` bu yüzden orada;
+  indeksine çevrilmeli. `S.konsTeklif.car`, `S.parti.cars`, bekleyen
+  tekliflerdeki `takas.car` ve `S.canli.car` bu yüzden orada;
   yeni bir "araç tutan teklif" eklersen oraya da ekle, yoksa model nesnesi
   JSON'a kopyalanır ve `MODELS.includes` sessizce yanlış döner.
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
