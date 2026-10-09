@@ -252,6 +252,12 @@ modelin kendi profilini aldığını ölçüyor.
 - teker kemeri kesiti sıkıştırıyordu → kesit hep eşikten, kemer yalnız alt
   noktaları düzleştiriyor (`kemerHat`)
 - ayna havada, silecek camın dışında: `HW` yerine `xAt()` / `hwCam`
+- teker gövdeye yapıştırılmış gibi: kemer 1,085R'deydi, lastik üstünde boşluk
+  yoktu ve kemerin içi boya renginde ışık alıyordu → `KEMER_ORAN` 1,16 (gövde
+  kemeri, kovuk ve SUV kaplaması aynı sayıdan), kemer içinde kara `kovukGeo`,
+  lastik zemine `temas` gölgesiyle basıyor, lastik çamurluktan 1–2 cm içeride
+- jantla lastik arasında açık halka: yanağın düz yüzü yoktu → `yanakGeo` içine
+  halka; klasik ve ticari araçta yıldız alaşım yerine sac jant
 
 Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
 

@@ -18,6 +18,8 @@ const W3D=(()=>{
 
   /* ---------- dokular ---------- */
   const texCache={};
+  // davlumbaz yarıçapı / teker yarıçapı — gövde kemeri, kovuk ve kaplama aynı sayıdan
+  const KEMER_ORAN=1.16;
   function tex(key, w, h, ciz, rep){
     if(texCache[key]) return texCache[key];
     const c=document.createElement("canvas"); c.width=w; c.height=h;
@@ -1131,7 +1133,10 @@ const W3D=(()=>{
   function govdeGeo(anahtar, s, pr){
     if(geoCache[anahtar]) return geoCache[anahtar];
     const L=s.L, yarim=L/2, R=s.wr;
-    const ra=R*1.085, kemerY=R;                 // davlumbaz yayı
+    /* Davlumbaz yayı. 1,085R'de lastikle kemer arasında yalnız ~1,5 cm kalıyordu;
+       karanlık kovuk görünmüyor, teker gövdeye yapıştırılmış duruyordu. Gerçek
+       araçta lastik üstü boşluk 4–6 cm: 1,16R. */
+    const ra=R*KEMER_ORAN, kemerY=R;
 
     const ustHat=(z)=>{
       if(z<=-yarim+L*.008) return pr.burun;
@@ -1473,8 +1478,42 @@ const W3D=(()=>{
       const m=new THREE.Matrix4().makeRotationY(Math.PI/2);
       m.setPosition(sx*en*.34,0,0);
       p.push({geo:new THREE.TorusGeometry(rt,tt,6,16), mat:m});
+      /* Yanağın düz yüzü. Eskiden yalnız dış kenarda bir simit vardı; jant
+         dudağı (R*.74) ile simit (R*.79) arasında boşluk kalıyor, oradan arka
+         plan görünüyordu — jant lastiğe takılı değil, önüne yapıştırılmış
+         gibi duruyordu. */
+      const mr=new THREE.Matrix4().makeRotationY(sx*Math.PI/2);
+      mr.setPosition(sx*en*.30,0,0);
+      p.push({geo:new THREE.RingGeometry(R*.66, R*.93, 24, 1), mat:mr});
     }
     const g=birlestir(p); geoCache[k]=g; g.userData.paylasimli=true; return g;
+  }
+  /* Davlumbaz kovuğu: kemer açıklığının içi kapkara olmalı. Gövde kesiti
+     kemerde düz bir tabanla kapanıyor; o taban boya renginde ve ışık alıyordu,
+     tekerin üstünde açık renk bir boşluk kalıyor ve teker gövdeye takılı
+     değil, yanına konmuş gibi görünüyordu. Kovuk: kemerin hemen içinde, üst
+     yarıyı saran açık silindir + içe bakan kapak. */
+  function kovukGeo(ra, derin){
+    const k=`kov${ra.toFixed(3)}_${derin.toFixed(3)}`;
+    if(geoCache[k]) return geoCache[k];
+    const p=[];
+    // yalnız üst yarı: fazlası tekerin önünde ve arkasında paça gibi sarkıyordu
+    const yay=Math.PI*1.02, bas=-yay/2;
+    const sil=new THREE.CylinderGeometry(ra, ra, derin, 22, 1, true, bas, yay);
+    // silindir ekseni Y → X: üst yarı +Y'ye baksın
+    p.push({geo:sil, mat:new THREE.Matrix4().makeRotationZ(Math.PI/2).multiply(new THREE.Matrix4().makeRotationY(Math.PI/2))});
+    const kap=new THREE.CircleGeometry(ra, 22, -Math.PI*.01, Math.PI*1.02);
+    const mk=new THREE.Matrix4().makeRotationY(Math.PI/2); mk.setPosition(-derin/2,0,0);
+    p.push({geo:kap, mat:mk});
+    const g=birlestir(p); geoCache[k]=g; g.userData.paylasimli=true; return g;
+  }
+  /** Lastiğin zemine bastığı yerdeki yumuşak temas gölgesi. */
+  function temasTex(){
+    return tex("temas",64,64,(g,w,h)=>{
+      const rg=g.createRadialGradient(w/2,h/2,2,w/2,h/2,w/2);
+      rg.addColorStop(0,"rgba(0,0,0,.78)"); rg.addColorStop(.45,"rgba(0,0,0,.42)"); rg.addColorStop(1,"rgba(0,0,0,0)");
+      g.fillStyle=rg; g.fillRect(0,0,w,h);
+    });
   }
   function jantGeo(R, kol){                 // parlak yüzey: bilezik + kollar + göbek
     const k=`jant${R.toFixed(3)}_${kol}`;
@@ -1606,9 +1645,15 @@ const W3D=(()=>{
       tavanIc:new THREE.MeshLambertMaterial({color:0x767C82, emissive:0x1E2226}),
       lastik:new THREE.MeshPhongMaterial({color:0x14181C, shininess:10, specular:0x0A0C0E}),
       yanak: new THREE.MeshPhongMaterial({map:lastikYaziTex(), shininess:16, specular:0x121618}),
-      jant:  new THREE.MeshPhongMaterial({color:imza.tampon?0xCED4D9:(car.model.seg==="lux"?0xB6BDC3:0x9AA2A9),
-               shininess:120, specular:0xE8EEF3, envMap:ortamTex(), reflectivity:.46, combine:THREE.MixOperation}),
-      jantIc:matKara(0x22272C, 30),
+      /* Alaşım jant artık parlak açık gri bir disk değil: daha koyu metal,
+         daha az ayna. Açık gri, beyaz/gümüş gövdeyle birleşip tekeri tek renk
+         bir oyuncak parçasına çeviriyordu. */
+      jant:  new THREE.MeshPhongMaterial({color:imza.tampon?0xB9C0C6:(car.model.seg==="lux"?0x5E656C:0x858C93),
+               shininess:90, specular:0xC9D0D6, envMap:ortamTex(), reflectivity:.30, combine:THREE.MixOperation}),
+      sacJant:new THREE.MeshPhongMaterial({color:0x3A3F45, shininess:40, specular:0x5A6168}),
+      kovuk: new THREE.MeshLambertMaterial({color:0x08090B, side:THREE.DoubleSide}),
+      temas: new THREE.MeshBasicMaterial({map:temasTex(), transparent:true, depthWrite:false}),
+      jantIc:matKara(0x0D0F12, 8),   // kollar arası: derin gölge, gri disk değil
       disk:  new THREE.MeshPhongMaterial({color:0x5A6167, shininess:60, specular:0x8A9298}),
       kaliper:new THREE.MeshPhongMaterial({color:car.model.seg==="lux"?0x8E2A24:0x3A4046, shininess:40}),
       petek: new THREE.MeshPhongMaterial({map:petekTex(), shininess:26, specular:0x2A3036}),
@@ -1936,20 +1981,36 @@ const W3D=(()=>{
 
     /* ================= TEKERLEKLER ================= */
     const kolSay = car.model.cl?4:(car.model.seg==="lux"?5:(rr()<.5?5:6));
+    // Klasik ve ticari araçlarda alaşım değil sac jant: yıldız kollu jant bu
+    // araçlarda dönemine ve sınıfına uymuyordu.
+    const sacJant = car.model.cl || (car.model.seg==="ticari" && rr()<.7);
     for(const sx of [-1,1]) for(const z of [onZ,arkaZ]){
       const donus=rr()*Math.PI*2;
       // Çamurluk kenarı: gövdenin O YÜKSEKLİKTEKİ yarı genişliği (azami değil).
       // Aksi halde lastik, kesitin en geniş yerine hizalanıp davlumbazın dışına taşar.
-      const kemerLip=R*2.085;
+      const kemerLip=R*(1+KEMER_ORAN);
       let dudak=0;
       for(let k=0;k<=6;k++) dudak=Math.max(dudak, xAt(z, kemerLip+.012+k*.035));
       const disYuz=Math.max(dudak-.012, genislik(z)*.86);
-      const merkez=disYuz-R*.26;                // lastik dış yüzü çamurlukla hizalı
+      // Lastik çamurluğun 1–2 cm içinde: dış yüzü tam hizada olunca gövdeden
+      // dışarı taşmış, sonradan takılmış gibi duruyordu.
+      const merkez=disYuz-R*.31;
       const lastikDis=merkez+R*.26;             // lastiğin dış yanağı — her şey buna göre
       const x=sx*merkez;
+      // davlumbaz kovuğu: dışta çamurluk dudağının hemen içinden lastiğin iç yüzünün ötesine
+      const kovDis=disYuz-.006, kovIc=merkez-R*.42, kovDerin=kovDis-kovIc;
+      EK("kovuk", kovukGeo(R*KEMER_ORAN*.99, kovDerin), [sx*(kovIc+kovDerin/2), R, z], [0, sx>0?0:Math.PI, 0]);
+      // temas gölgesi: lastik zemine basıyor
+      EK("temas", new THREE.PlaneGeometry(R*.95, R*1.55), [x, .004, z], [-Math.PI/2,0,0]);
       EK("lastik", lastikGeo(R), [x,R,z], [donus,0,0]);
       EK("yanak",  yanakGeo(R, !!car.model.cl), [x,R,z], [donus,0,0]);
       EK("jantIc", jantIcGeo(R,sx), [sx*(lastikDis-R*.42),R,z], [donus,0,0]);
+      if(sacJant){
+        // klasik ve ticari: sac jant + küçük göbek kapağı
+        EK("sacJant", new THREE.CylinderGeometry(R*.66,R*.66,R*.05,22), [sx*(lastikDis-R*.30),R,z], [0,0,Math.PI/2]);
+        EK("sacJant", new THREE.TorusGeometry(R*.50,R*.035,5,20), [sx*(lastikDis-R*.27),R,z], [0,Math.PI/2,0]);
+        EK("jant",    new THREE.CylinderGeometry(R*.30,R*.33,R*.10,18), [sx*(lastikDis-R*.24),R,z], [0,0,Math.PI/2]);
+      }else
       EK("jant",   jantGeo(R,kolSay,sx), [sx*(lastikDis-R*.27),R,z], [donus*(sx>0?1:-1),0,0]);
       EK("disk",   diskGeo(R),   [sx*(lastikDis-R*.62),R,z]);
       EK("kaliper",kutu(R*.11,R*.36,R*.17), [sx*(lastikDis-R*.72), R+R*.36, z+(z<0?-R*.30:R*.30)]);
@@ -1957,10 +2018,10 @@ const W3D=(()=>{
         [sx*(lastikDis-R*.045), R, z], [0, sx*Math.PI/2, 0]);
       if(imza.kaplama){
         // Davlumbaz kaplaması: boru değil, çamurluğu saran yassı plastik bant.
-        const bant=new THREE.RingGeometry(R*1.06, R*1.31, 22, 1, -0.22, Math.PI+0.44);
+        const bant=new THREE.RingGeometry(R*(KEMER_ORAN-.02), R*(KEMER_ORAN+.23), 22, 1, -0.22, Math.PI+0.44);
         EK("koyu", bant, [sx*(disYuz+.008), R, z], [0, sx*Math.PI/2, 0]);
         // dış dudak: bandın kenarında ince bir kabartı
-        const lip=new THREE.TorusGeometry(R*1.29, .016, 5, 22, Math.PI+0.30);
+        const lip=new THREE.TorusGeometry(R*(KEMER_ORAN+.21), .016, 5, 22, Math.PI+0.30);
         EK("koyu", lip, [sx*(disYuz+.002), R, z], [0, sx*Math.PI/2, -0.15]);
       }
     }
