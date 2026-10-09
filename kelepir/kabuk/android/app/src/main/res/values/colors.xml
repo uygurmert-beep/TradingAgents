@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Kelepir petrol yeşili kimlik. Zemin oyunun bg değişkeniyle birebir aynı:
+         açılışta tek kare beyaz parlama olmaması için. -->
+    <color name="colorPrimary">#16B8AE</color>
+    <color name="colorPrimaryDark">#0E8E86</color>
+    <color name="colorAccent">#16B8AE</color>
+    <color name="kelepirZemin">#0E5E4B</color>
+    <color name="kelepirAltin">#F0B452</color>
+</resources>

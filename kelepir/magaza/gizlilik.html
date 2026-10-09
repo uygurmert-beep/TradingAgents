@@ -1,0 +1,214 @@
+<title>Kelepir Gizlilik Politikası</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+/* Tek sütun, 66ch ölçü; numaralı maddeler çünkü politika metni atıf alıyor
+   ("madde 4'e göre"). Petrol yeşili tek vurgu rengi, gerisi nötr. */
+:root{
+  --bg:#FBFBFA;
+  --surface:#FFFFFF;
+  --fg:#17201F;
+  --fg-2:#55615F;
+  --fg-3:#8A9593;
+  --line:#E2E6E5;
+  --accent:#0E8E86;
+  --accent-soft:#E6F4F2;
+  --font-bas:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-gov:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1012; --surface:#141B1D; --fg:#ECF2F1; --fg-2:#A3B2B1;
+    --fg-3:#6B7B79; --line:#232D2F; --accent:#2BCFC4; --accent-soft:#11302E;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1012; --surface:#141B1D; --fg:#ECF2F1; --fg-2:#A3B2B1;
+  --fg-3:#6B7B79; --line:#232D2F; --accent:#2BCFC4; --accent-soft:#11302E;
+  color-scheme:dark;
+}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--font-gov);
+     font-size:17px;line-height:1.65;margin:0}
+.wrap{max-width:none;padding:0 20px;padding-block:0 72px}
+.inner{max-width:68ch;margin:0 auto}
+
+header{border-bottom:1px solid var(--line);margin-bottom:40px;
+       padding-block:48px 28px}
+.eyebrow{font-family:var(--font-bas);font-weight:600;font-size:12px;
+         letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+         margin:0 0 14px}
+h1{font-family:var(--font-bas);font-weight:700;font-size:clamp(30px,6vw,44px);
+   line-height:1.1;letter-spacing:-.02em;margin:0 0 14px;text-wrap:balance}
+.lede{font-size:19px;color:var(--fg-2);margin:0 0 22px;text-wrap:balance}
+.meta{font-family:var(--font-bas);font-size:13px;color:var(--fg-3);
+      display:flex;flex-wrap:wrap;gap:6px 20px;margin:0}
+.meta b{color:var(--fg-2);font-weight:600}
+
+.ozet{background:var(--accent-soft);border:1px solid var(--line);
+      border-left:3px solid var(--accent);border-radius:4px;
+      padding:20px 22px;margin:0 0 44px}
+.ozet p{margin:0;font-size:17px}
+.ozet strong{font-weight:600}
+
+section{margin:0 0 38px}
+h2{font-family:var(--font-bas);font-weight:600;font-size:19px;
+   letter-spacing:-.01em;margin:0 0 12px;display:flex;gap:12px;
+   align-items:baseline;text-wrap:balance}
+h2 .no{color:var(--accent);font-variant-numeric:tabular-nums;
+       font-size:15px;font-weight:700;flex:none;min-width:1.6em}
+section p{margin:0 0 12px}
+section p:last-child{margin-bottom:0}
+ul{margin:0 0 12px;padding-left:1.15em}
+li{margin:0 0 7px}
+a{color:var(--accent)}
+
+.kv{display:grid;grid-template-columns:minmax(0,11em) minmax(0,1fr);
+    gap:4px 18px;font-family:var(--font-bas);font-size:15px;
+    border:1px solid var(--line);border-radius:4px;padding:18px 20px;
+    background:var(--surface)}
+.kv dt{color:var(--fg-3);min-width:0}
+.kv dd{margin:0;color:var(--fg);min-width:0;overflow-wrap:anywhere}
+@media (max-width:460px){ .kv{grid-template-columns:minmax(0,1fr)}
+  .kv dd{margin-bottom:8px} }
+
+.en{border-top:1px solid var(--line);margin-top:52px;padding-top:32px}
+.en h2{font-size:17px}
+.en p{color:var(--fg-2);font-size:16px}
+
+footer{border-top:1px solid var(--line);margin-top:48px;padding-top:22px;
+       font-family:var(--font-bas);font-size:13px;color:var(--fg-3)}
+</style>
+
+<div class="wrap"><div class="inner">
+
+<header>
+  <p class="eyebrow">Kelepir · Oto Galeri Simülasyonu</p>
+  <h1>Gizlilik Politikası</h1>
+  <p class="lede">Kelepir sizden hiçbir veri toplamaz. Bu metin, neden
+  toplayamayacağını da açıklıyor.</p>
+  <p class="meta">
+    <span><b>Yürürlük:</b> 5 Ekim 2026</span>
+    <span><b>Sürüm:</b> 1.0</span>
+    <span><b>Kapsam:</b> iOS ve Android</span>
+  </p>
+</header>
+
+<div class="ozet">
+  <p><strong>Özet:</strong> Kelepir çevrimdışı çalışır. Hesap açmazsınız,
+  giriş yapmazsınız. Uygulamada sunucu bağlantısı, analitik aracı, reklam
+  ağı ve çökme raporlayıcı bulunmaz. Oyun ilerlemeniz yalnızca cihazınızda
+  saklanır ve cihazdan çıkmaz.</p>
+</div>
+
+<section>
+  <h2><span class="no">1</span> <span>Veri sorumlusu</span></h2>
+  <p>Bu politika <strong>Kelepir</strong> adlı mobil oyun için geçerlidir.
+  Oyun hiçbir veri toplamadığı için ortada işlenen bir kişisel veri yoktur;
+  aşağıdaki bilgiler yine de mağaza gereği ve iletişim için verilmiştir.</p>
+  <dl class="kv">
+    <dt>Yayıncı</dt><dd>Kelepir</dd>
+    <dt>Yasal unvan</dt><dd><em>(mağaza hesabının açılacağı tüzel kişilik — yayından önce doldurulacak)</em></dd>
+    <dt>Adres</dt><dd><em>(yayından önce doldurulacak)</em></dd>
+    <dt>İletişim</dt><dd>destek@<em>(alan adı eklenecek)</em></dd>
+  </dl>
+</section>
+
+<section>
+  <h2><span class="no">2</span> <span>Toplanmayan veriler</span></h2>
+  <p>Uygulama aşağıdakilerin hiçbirini toplamaz, işlemez, saklamaz veya
+  üçüncü taraflara aktarmaz:</p>
+  <ul>
+    <li>Ad, soyad, e-posta adresi, telefon numarası veya başka bir kimlik bilgisi</li>
+    <li>Konum bilgisi (ne kaba ne hassas)</li>
+    <li>Cihaz tanımlayıcıları, reklam kimliği (IDFA / GAID), IP adresi</li>
+    <li>Kişiler, fotoğraflar, takvim, dosyalar</li>
+    <li>Kullanım istatistikleri, oturum süresi, ekran görüntüleme verisi</li>
+    <li>Çökme kayıtları ve hata raporları</li>
+    <li>Satın alma geçmişi veya ödeme bilgisi</li>
+  </ul>
+  <p>Bu bir tercih değil, uygulamanın yapısıdır: Kelepir'de ağ üzerinden veri
+  gönderen hiçbir bileşen yoktur.</p>
+</section>
+
+<section>
+  <h2><span class="no">3</span> <span>Cihazınızda saklananlar</span></h2>
+  <p>Oyun, oynadıkça oluşan ilerlemeyi cihazınızın yerel deposunda tutar:
+  nakit, araçlar, gün sayısı, itibar, görevler, istatistikler, galeri adı ve
+  ses/titreşim tercihleriniz.</p>
+  <p>Bu kayıt cihazınızdan çıkmaz. Tarafımızca görülemez, okunamaz ve
+  erişilemez. Uygulamayı sildiğinizde kayıt da silinir. Oyun içinden de
+  <em>Ayarlar → Baştan başla</em> ile her an silebilirsiniz.</p>
+  <p>Android cihazlarda, telefonunuzun <em>Otomatik Yedekleme</em> ayarı
+  açıksa işletim sistemi bu kaydı sizin Google hesabınıza yedekleyebilir.
+  Bu işlem Google ile sizin aranızdadır; biz bu yedeğe erişemeyiz.</p>
+</section>
+
+<section>
+  <h2><span class="no">4</span> <span>Üçüncü taraflar</span></h2>
+  <p>Uygulamanın içinde üçüncü taraf yazılım geliştirme kiti (SDK)
+  bulunmaz. Reklam ağı, analitik sağlayıcısı, sosyal medya eklentisi veya
+  veri işleyici kullanılmaz.</p>
+  <p>Tek istisna, uygulamayı indirdiğiniz mağazadır. Apple App Store veya
+  Google Play üzerinden yaptığınız satın alma işlemi, ilgili mağazanın
+  kendi gizlilik politikası kapsamında o şirket tarafından işlenir. Bizim
+  bu işleme erişimimiz yoktur; yalnızca kimliği belirsiz toplam satış
+  rakamlarını görürüz.</p>
+</section>
+
+<section>
+  <h2><span class="no">5</span> <span>Türkiye sıralaması hakkında</span></h2>
+  <p>Oyundaki "Türkiye sıralaması" ekranında gördüğünüz galeriler
+  <strong>gerçek oyuncu değildir.</strong> Bunlar oyunun kendi ürettiği,
+  her cihazda aynı olan kurgusal rakiplerdir. Hiçbir skor sunucuya
+  gönderilmez, hiçbir oyuncu başka bir oyuncunun verisini görmez.</p>
+</section>
+
+<section>
+  <h2><span class="no">6</span> <span>Çocukların gizliliği</span></h2>
+  <p>Kelepir her yaşa uygundur ve hiç kimseden — yaşı ne olursa olsun —
+  veri toplamadığı için çocuklardan da veri toplamaz. Uygulamada sohbet,
+  mesajlaşma, dış bağlantı, reklam ve uygulama içi satın alma yoktur.</p>
+</section>
+
+<section>
+  <h2><span class="no">7</span> <span>Haklarınız</span></h2>
+  <p>6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) ve Avrupa Birliği
+  Genel Veri Koruma Tüzüğü (GDPR), kişisel verilerinize erişme, düzeltme ve
+  silinmesini isteme hakkı tanır.</p>
+  <p>Kelepir sizden kişisel veri toplamadığı için elimizde silinecek,
+  düzeltilecek veya size aktarılacak bir veri bulunmamaktadır. Yine de bu
+  konuda bir sorunuz olursa yukarıdaki adresten bize yazabilirsiniz; en geç
+  30 gün içinde yanıtlıyoruz.</p>
+</section>
+
+<section>
+  <h2><span class="no">8</span> <span>Değişiklikler</span></h2>
+  <p>Bu politika değişirse yürürlük tarihi güncellenir ve değişiklik
+  uygulamanın yeni sürümüyle birlikte yayımlanır. Veri toplamaya başlamamızı
+  gerektirecek bir özellik eklenirse, bu durum bu sayfada açıkça belirtilir
+  ve mağaza sayfalarındaki veri beyanları güncellenir.</p>
+</section>
+
+<div class="en">
+  <h2>English summary</h2>
+  <p><strong>Kelepir collects no data.</strong> The game runs entirely
+  offline. There is no account, no login, no server connection, and no
+  analytics, advertising or crash-reporting SDK of any kind. Game progress
+  is stored only in the device's local storage; it never leaves the device
+  and the developer cannot access it. Deleting the app deletes the saved
+  game.</p>
+  <p>The only third party involved is the app store you bought the game
+  from. Purchases are processed by Apple or Google under their own privacy
+  policies; we receive only aggregate, anonymous sales figures.</p>
+  <p>The "Türkiye sıralaması" (Turkey ranking) screen shows fictional,
+  locally generated rival dealerships — not real players. No score is ever
+  transmitted.</p>
+  <p>Questions: see the contact address in section 1.</p>
+</div>
+
+<footer>
+  Kelepir · Oto Galeri Simülasyonu
+</footer>
+
+</div></div>
