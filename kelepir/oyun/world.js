@@ -2260,7 +2260,8 @@ const W3D=(()=>{
       }else
       EK("jant",   jantGeo(R,kolSay,sx), [sx*(lastikDis-R*.27),R,z], [donus,yon,0]);
       EK("disk",   diskGeo(R),   [sx*(lastikDis-R*.62),R,z]);
-      EK("kaliper",kutu(R*.11,R*.36,R*.17), [sx*(lastikDis-R*.72), R+R*.36, z+(z<0?-R*.30:R*.30)]);
+      // sac jantın arkasından kaliper taşıp jant yüzüne gri bir kutu gibi düşüyordu; sac jantlı araçta kampana fren
+      if(!sacJant) EK("kaliper",kutu(R*.11,R*.36,R*.17), [sx*(lastikDis-R*.72), R+R*.36, z+(z<0?-R*.30:R*.30)]);
       if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(R*.165,16),
         [sx*(lastikDis-R*.045), R, z], [0, sx*Math.PI/2, 0]);
       if(imza.kaplama){
