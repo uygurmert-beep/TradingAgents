@@ -492,11 +492,15 @@ const W3D=(()=>{
   /* Cam eskiden açık mavi-beyaz ve %64 opaktı: süt camı gibi duruyor, içerisi
      gri lekeler hâlinde görünüyordu. Gerçek araç camı koyu (füme) ve
      yansımalı; içerisi ancak yakından seçilir. */
+  /* Cam gövde derisinin parçası olunca ortamı çok güçlü yansıtıyor, süt gibi
+     açık görünüyordu; içerisi soluk seçiliyordu. Koyu füme, daha az yansıma,
+     biraz daha geçirgen: içi koyu bir camın arkasından net seçiliyor. */
   function matCam(koyu){
     if(fiziksel())
-      return new THREE.MeshPhysicalMaterial({color:koyu?0x10171C:0x0D151A, transparent:true,
-        opacity:koyu?.88:.86, side:THREE.DoubleSide, depthWrite:false,
-        metalness:0, roughness:.03, envMap:boyaOrtamTex(), envMapIntensity:.85});
+      return new THREE.MeshPhysicalMaterial({color:koyu?0x0E1418:0x080D11, transparent:true,
+        opacity:koyu?.80:.76, side:THREE.DoubleSide, depthWrite:false,
+        metalness:0, roughness:.04, envMap:boyaOrtamTex(), envMapIntensity:.36,
+        specularIntensity:.6});
     return new THREE.MeshPhongMaterial({color:0x1E2A31, transparent:true,
       opacity:.82, side:THREE.DoubleSide, depthWrite:false, shininess:230,
       specular:0xDCEAF4, envMap:boyaOrtamTex(), reflectivity:.55, combine:THREE.MixOperation});
@@ -1312,7 +1316,8 @@ const W3D=(()=>{
     const zs=new Set([-yarim, -yarim+.02]);
     for(let z=-yarim; z<=yarim; z+=L/28) zs.add(+z.toFixed(4));
     for(const zc of [pr.onZ, pr.arkaZ])
-      for(let k=-8;k<=8;k++) zs.add(+Math.max(-yarim,Math.min(yarim, zc+ra*k/8)).toFixed(4));
+      // 16 adım: 8'de kemer kenarı testere dişi gibi basamaklı görünüyordu
+      for(let k=-16;k<=16;k++) zs.add(+Math.max(-yarim,Math.min(yarim, zc+ra*k/16)).toFixed(4));
     for(const z of [pr.kaputZ, pr.camAlt, pr.bagajZ, yarim-.02, yarim]) zs.add(+z.toFixed(4));
     // cam evi sınırları: malzeme bölgeleri istasyonlara denk gelsin
     const van=s.cls==="van", HWg=s.W/2;
@@ -1330,7 +1335,7 @@ const W3D=(()=>{
     for(let z=onCam0; z<arkaCam1; z+=L/44) zs.add(+z.toFixed(4));
     const sirali=[...zs].sort((a,b)=>a-b);
     const list=[];
-    for(const z of sirali) if(!list.length || z-list[list.length-1]>.012 || z===yarim) list.push(z);
+    for(const z of sirali) if(!list.length || z-list[list.length-1]>.008 || z===yarim) list.push(z);
 
     /* Kesit eskiden 30 noktalı bir süperelipsti (üst n=9, alt n=3,6): alt yarı
        ortadan eşiğe kadar fıçı gibi içe kıvrılıyor, yan yüzey yastık gibi
@@ -1660,12 +1665,12 @@ const W3D=(()=>{
     const k=`las${R.toFixed(3)}`;
     if(geoCache[k]) return geoCache[k];
     const en=R*.52, p=[];
-    p.push({geo:new THREE.CylinderGeometry(R,R,en*.72,16,1,true),
+    p.push({geo:new THREE.CylinderGeometry(R,R,en*.72,32,1,true),
             mat:new THREE.Matrix4().makeRotationZ(Math.PI/2)});
     for(const sx of [-1,1]){        // omuz pahı
       const m=new THREE.Matrix4().makeRotationZ(Math.PI/2);
       m.setPosition(sx*en*.44,0,0);
-      p.push({geo:new THREE.CylinderGeometry(R,R*.965,en*.16,16,1,true), mat:
+      p.push({geo:new THREE.CylinderGeometry(R,R*.955,en*.16,32,1,true), mat:
         sx>0?m:new THREE.Matrix4().makeRotationZ(-Math.PI/2).setPosition(sx*en*.44,0,0)});
     }
     const g=birlestir(p); geoCache[k]=g; g.userData.paylasimli=true; return g;
@@ -1678,14 +1683,14 @@ const W3D=(()=>{
     for(const sx of [-1,1]){
       const m=new THREE.Matrix4().makeRotationY(Math.PI/2);
       m.setPosition(sx*en*.34,0,0);
-      p.push({geo:new THREE.TorusGeometry(rt,tt,6,16), mat:m});
+      p.push({geo:new THREE.TorusGeometry(rt,tt,8,32), mat:m});
       /* Yanağın düz yüzü. Eskiden yalnız dış kenarda bir simit vardı; jant
          dudağı (R*.74) ile simit (R*.79) arasında boşluk kalıyor, oradan arka
          plan görünüyordu — jant lastiğe takılı değil, önüne yapıştırılmış
          gibi duruyordu. */
       const mr=new THREE.Matrix4().makeRotationY(sx*Math.PI/2);
       mr.setPosition(sx*en*.30,0,0);
-      p.push({geo:new THREE.RingGeometry(R*.66, R*.93, 24, 1), mat:mr});
+      p.push({geo:new THREE.RingGeometry(R*.66, R*.93, 32, 1), mat:mr});
     }
     const g=birlestir(p); geoCache[k]=g; g.userData.paylasimli=true; return g;
   }
@@ -1700,10 +1705,10 @@ const W3D=(()=>{
     const p=[];
     // yalnız üst yarı: fazlası tekerin önünde ve arkasında paça gibi sarkıyordu
     const yay=Math.PI*1.02, bas=-yay/2;
-    const sil=new THREE.CylinderGeometry(ra, ra, derin, 22, 1, true, bas, yay);
+    const sil=new THREE.CylinderGeometry(ra, ra, derin, 32, 1, true, bas, yay);
     // silindir ekseni Y → X: üst yarı +Y'ye baksın
     p.push({geo:sil, mat:new THREE.Matrix4().makeRotationZ(Math.PI/2).multiply(new THREE.Matrix4().makeRotationY(Math.PI/2))});
-    const kap=new THREE.CircleGeometry(ra, 22, -Math.PI*.01, Math.PI*1.02);
+    const kap=new THREE.CircleGeometry(ra, 32, -Math.PI*.01, Math.PI*1.02);
     const mk=new THREE.Matrix4().makeRotationY(Math.PI/2); mk.setPosition(-derin/2,0,0);
     p.push({geo:kap, mat:mk});
     const g=birlestir(p); geoCache[k]=g; g.userData.paylasimli=true; return g;
@@ -1716,28 +1721,40 @@ const W3D=(()=>{
       g.fillStyle=rg; g.fillRect(0,0,w,h);
     });
   }
+  /* Alaşım jant. Kollar eskiden düz kutuydu ve uçlarında ikinci bir kutu
+     vardı: yakından bakınca jant oyuncak tekerleğine benziyordu. Artık kol
+     göbekte geniş, bilezikte dar (sivrilen) ve dışa bakan yüzü bileziğe
+     doğru geriye yatıyor (çanak); bilezik ve göbek daha yuvarlak. */
   function jantGeo(R, kol){                 // parlak yüzey: bilezik + kollar + göbek
-    const k=`jant${R.toFixed(3)}_${kol}`;
+    const k=`jant2${R.toFixed(3)}_${kol}`;
     if(geoCache[k]) return geoCache[k];
     const en=R*.46, p=[];
-    p.push({geo:new THREE.TorusGeometry(R*.695,R*.048,5,18),
+    p.push({geo:new THREE.TorusGeometry(R*.695,R*.042,8,40),
             mat:new THREE.Matrix4().makeRotationY(Math.PI/2).setPosition(en*.30,0,0)});
-    p.push({geo:new THREE.CylinderGeometry(R*.24,R*.24,en*.62,14),
+    p.push({geo:new THREE.CylinderGeometry(R*.235,R*.25,en*.62,28),
             mat:new THREE.Matrix4().makeRotationZ(Math.PI/2).setPosition(en*.10,0,0)});
-    for(let i=0;i<kol;i++){
-      const a=2*Math.PI*i/kol;
+    const ikiz = kol>=6;                       // 6 kollu jant: üçer çift kol
+    const say = ikiz ? kol : kol;
+    for(let i=0;i<say;i++){
+      const a=2*Math.PI*i/say + (ikiz && i%2 ? -.10 : 0) + (ikiz ? .05 : 0);
       const uz=R*.50;
-      const sp=new THREE.BoxGeometry(en*.44, uz, R*.155);
+      const sp=new THREE.BoxGeometry(en*.40, uz, R*.16, 1, 4, 1);
+      const pp=sp.attributes.position, v=new THREE.Vector3();
+      for(let j=0;j<pp.count;j++){
+        v.fromBufferAttribute(pp,j);
+        const t=v.y/uz+.5;                     // 0 göbek, 1 bilezik
+        v.z*= (ikiz? .72:1) * (1.18-.50*t);    // sivrilme
+        if(v.x>0) v.x-= en*.16*t*t;            // çanak: dış yüz bileziğe doğru geriye
+        pp.setXYZ(j,v.x,v.y,v.z);
+      }
+      sp.computeVertexNormals();
       const rot=new THREE.Matrix4().makeRotationX(a);
-      const tr=new THREE.Matrix4().makeTranslation(en*.22, Math.cos(a)*R*.47, Math.sin(a)*R*.47);
+      const tr=new THREE.Matrix4().makeTranslation(en*.22, Math.cos(a)*R*.46, Math.sin(a)*R*.46);
       p.push({geo:sp, mat:tr.multiply(rot)});
-      const sp2=new THREE.BoxGeometry(en*.30, R*.16, R*.105);   // kol ucu
-      const tr2=new THREE.Matrix4().makeTranslation(en*.26, Math.cos(a)*R*.66, Math.sin(a)*R*.66);
-      p.push({geo:sp2, mat:tr2.multiply(new THREE.Matrix4().makeRotationX(a))});
     }
     for(let i=0;i<5;i++){                    // bijon
       const a=2*Math.PI*i/5+.3;
-      const b=new THREE.CylinderGeometry(R*.036,R*.036,R*.05,6);
+      const b=new THREE.CylinderGeometry(R*.030,R*.034,R*.05,8);
       const rot=new THREE.Matrix4().makeRotationZ(Math.PI/2);
       const tr=new THREE.Matrix4().makeTranslation(en*.42, Math.cos(a)*R*.15, Math.sin(a)*R*.15);
       p.push({geo:b, mat:tr.multiply(rot)});
@@ -1988,18 +2005,23 @@ const W3D=(()=>{
       }));
     }
     // ön cam alt frit: camın kaputa değdiği yerde koyu bant
-    EK("koyuP", yuzey(8,2,(u,v)=>{
-      const z=pr.kaputZ+.035+.07*v, x=(-1+2*u)*xCam(z)*.97;
-      return [x, onCamY(z)+.004, z];
+    EK("koyu", yuzey(8,1,(u,v)=>{
+      const z=pr.kaputZ+.035+.035*v, x=(-1+2*u)*xCam(z)*.97;
+      return [x, onCamY(z)+.003, z];
     }));
     // silecekler: ön camın dibinde, camın eğimine yatık
     {
       const z0=pr.kaputZ+.09, egim=Math.atan2(onCamY(z0+.1)-onCamY(z0), .1);
       // park konumunda yatay: kol ve süpürgeç camın dibinde, enine uzanır
+      /* Eskiden iki kalın kutu yan yana: camın dibinde tek parça kalın bir
+         tahta gibi görünüyordu. Artık ince süpürgeç + daha da ince kol, iki
+         silecek arasında boşluk, her birinin dibinde pim. */
       for(const sx of [-1,1]){
-        const x=sx*hwCam*.36-.05;
-        EK("koyuP", kutu(Math.min(.62,hwCam*.70),.012,.022), [x, onCamY(z0)+.012, z0], [-egim,0,sx*.04]);
-        EK("koyuP", kutu(.03,.016,.05), [x+hwCam*.33, onCamY(z0-.03)+.010, z0-.03], [-egim,0,0]);
+        const uz=Math.min(.52,hwCam*.60), x=sx*hwCam*.42-.04;
+        const yz=onCamY(z0)+.010;
+        EK("koyuP", kutu(uz,.009,.014), [x, yz, z0], [-egim,0,sx*.035]);                  // süpürgeç
+        EK("koyuP", kutu(uz*.92,.006,.008), [x+.01, yz+.010, z0-.004], [-egim,0,sx*.035]); // kol
+        EK("koyuP", silindir(.014,.016,.02,10), [x+uz*.46, onCamY(z0-.02)+.006, z0-.02]);   // pim
       }
     }
     // köpekbalığı anten: kutu değil, arkaya yatık alçak bir kama
@@ -2049,10 +2071,13 @@ const W3D=(()=>{
     const gozY=tUst+.24, gozZ=kabinZ0+.84;    // sürücünün gözü
     const bolmeH=Math.max(.14, tUst-tabanY);
     // motor bölmesini kapatan ön duvar
-    KUTU("ic", s.W*.94, bolmeH, .06, [0, (tabanY+tUst)/2, kabinZ0+.05]);
+    KUTU("ic", Math.min(s.W*.94, xCam(kabinZ0+.05)*1.80), bolmeH, .06, [0, (tabanY+tUst)/2, kabinZ0+.05]);
     // torpido gövdesi + üst kaplama
-    KUTU("plastik", s.W*.90, bolmeH*.94, .32, [0, tUst-bolmeH*.47, kabinZ0+.18]);
-    KUTU("plastik", s.W*.88,.034,.32, [0, tUst+.010, kabinZ0+.19]);
+    // torpido camın iç genişliğini aşmasın: cam evi gövdeye katılınca uçları
+    // A direğinin dibinden dışarı taşıyıp bej bir kutu gibi görünüyordu
+    const torW=Math.min(s.W*.90, xCam(kabinZ0+.19)*1.86);
+    KUTU("plastik", torW, bolmeH*.94, .32, [0, tUst-bolmeH*.47, kabinZ0+.18]);
+    KUTU("plastik", torW*.98,.034,.32, [0, tUst+.010, kabinZ0+.19]);
     if(ahsapVar) KUTU("ahsap", s.W*.76,.06,.05, [0, tUst-.13, kabinZ0+.048]);
     // sürücüye dönük yüzeylerin eğimi
     const bak=(y,z)=>-Math.atan2(gozY-y, Math.max(.05,gozZ-z));
@@ -2196,7 +2221,8 @@ const W3D=(()=>{
       const x=sx*merkez;
       // davlumbaz kovuğu: dışta çamurluk dudağının hemen içinden lastiğin iç yüzünün ötesine
       const kovDis=disYuz-.006, kovIc=merkez-R*.42, kovDerin=kovDis-kovIc;
-      EK("kovuk", kovukGeo(R*KEMER_ORAN*.99, kovDerin), [sx*(kovIc+kovDerin/2), R, z], [0, sx>0?0:Math.PI, 0]);
+      // kovuk kemerin biraz içinde: kemerin alt yüzü (boya rengi) aşağıdan bakınca açık bir şerit gibi görünüyordu
+      EK("kovuk", kovukGeo(R*KEMER_ORAN*.975, kovDerin), [sx*(kovIc+kovDerin/2), R, z], [0, sx>0?0:Math.PI, 0]);
       // temas gölgesi: lastik zemine basıyor
       EK("temas", new THREE.PlaneGeometry(R*.95, R*1.55), [x, .004, z], [-Math.PI/2,0,0]);
       EK("lastik", lastikGeo(R), [x,R,z], [donus,0,0]);
@@ -2209,9 +2235,28 @@ const W3D=(()=>{
       EK("jantIc", jantIcGeo(R,sx), [sx*(lastikDis-R*.42),R,z], [donus,yon,0]);
       if(sacJant){
         // klasik ve ticari: sac jant + küçük göbek kapağı
-        EK("sacJant", new THREE.CylinderGeometry(R*.66,R*.66,R*.05,22), [sx*(lastikDis-R*.30),R,z], [0,0,Math.PI/2]);
-        EK("sacJant", new THREE.TorusGeometry(R*.50,R*.035,5,20), [sx*(lastikDis-R*.27),R,z], [0,Math.PI/2,0]);
-        EK("jant",    new THREE.CylinderGeometry(R*.30,R*.33,R*.10,18), [sx*(lastikDis-R*.24),R,z], [0,0,Math.PI/2]);
+        /* Jant kapağı eskiden düz bir disk + tek halkaydı; plastik tabak gibi
+           duruyordu. Klasikte tam kapak: dış bilezik, çevresinde havalandırma
+           yarıkları, kubbe göbek. Ticaride kapaksız sac jant: delikli disk ve
+           küçük göbek kapağı. */
+        const dx=lastikDis;
+        EK("sacJant", new THREE.CylinderGeometry(R*.66,R*.66,R*.05,32), [sx*(dx-R*.30),R,z], [0,0,Math.PI/2]);
+        if(car.model.cl){
+          EK("jant", new THREE.TorusGeometry(R*.60,R*.05,8,36), [sx*(dx-R*.26),R,z], [0,Math.PI/2,0]);
+          EK("jant", new THREE.CylinderGeometry(R*.54,R*.58,R*.05,32), [sx*(dx-R*.255),R,z], [0,0,Math.PI/2]);
+          for(let i=0;i<10;i++){
+            const a=donus+2*Math.PI*i/10;
+            EK("jantIc", kutu(R*.02,R*.13,R*.045), [sx*(dx-R*.225), R+Math.cos(a)*R*.43, z+Math.sin(a)*R*.43], [a,0,0]);
+          }
+          EK("jant", new THREE.SphereGeometry(R*.25,20,10,0,Math.PI*2,0,Math.PI/2), [sx*(dx-R*.24),R,z], [0,0,-sx*Math.PI/2], [1,.45,1]);
+        }else{
+          EK("sacJant", new THREE.TorusGeometry(R*.50,R*.035,6,32), [sx*(dx-R*.27),R,z], [0,Math.PI/2,0]);
+          for(let i=0;i<6;i++){
+            const a=donus+2*Math.PI*i/6;
+            EK("jantIc", new THREE.CircleGeometry(R*.055,12), [sx*(dx-R*.27+.002), R+Math.cos(a)*R*.38, z+Math.sin(a)*R*.38], [0,sx*Math.PI/2,0]);
+          }
+          EK("jant", new THREE.CylinderGeometry(R*.20,R*.24,R*.09,24), [sx*(dx-R*.25),R,z], [0,0,Math.PI/2]);
+        }
       }else
       EK("jant",   jantGeo(R,kolSay,sx), [sx*(lastikDis-R*.27),R,z], [donus,yon,0]);
       EK("disk",   diskGeo(R),   [sx*(lastikDis-R*.62),R,z]);
@@ -2293,8 +2338,11 @@ const W3D=(()=>{
     onPanel("izgara", 0, gY, hwOn*2*gwK*(imza.yuvarlakFar?.62:.55), gh, .012, 9,4);
     if(imza.izgaraTip==="yarik"||imza.izgaraTip==="kapali")   // alt hava girişi daha büyük
       onPanel("petek", 0, pr.sill+.20, hwAlt*1.20,.13, .010, 6,2);
-    if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(.075,20),
-      [0, gY+.01, zOn(0, gY+.01)-.026], [0,Math.PI,0]);
+    if(MAT.amblem){
+      let zm=1e9;
+      for(const dx of [-.075,0,.075]) for(const dy of [-.075,0,.075]) zm=Math.min(zm, zOn(dx, gY+.01+dy));
+      EK("amblem", new THREE.CircleGeometry(.075,24), [0, gY+.01, Math.min(zm, zOn(0,gY+.01))-.026], [0,Math.PI,0]);
+    }
     // tampon / hava girişi
     if(imza.tampon){
       for(const z of [zF-.030, yarim+.030]){
@@ -2387,9 +2435,22 @@ const W3D=(()=>{
     }
     if(imza.led && !car.model.cl)
       arkaPanel("stop", 0, stopY+.005, hwArka*1.35,.030, .016, 8,1);
-    EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zArka(0,pr.sill+.20)+.020]);
-    if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(.062,16),
-      [0, stopY+.15, zArka(0, stopY+.15)+.022]);
+    // krom tamponlu araçta plaka tamponun ÜSTÜNDE: eskiden tampon plakanın önünü kapatıyordu
+    const plakaY = imza.tampon ? pr.sill+.30 : pr.sill+.20;
+    EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, plakaY, zArka(0,plakaY)+.020]);
+    /* Arka amblem eskiden stop hizasının 15 cm üstündeydi; bu, arka yüzün üst
+       kenarını (pr.kuyruk) aşıyor, düz disk bagaj kapağının kavisine gömülüp
+       yarım ay gibi kesik görünüyordu. Artık arka yüzün dik bölgesinde, stop
+       lambalarının arasında; yüzeyin eğimine yatırılıyor ve en dışa çıkan
+       noktanın önüne konuyor. */
+    if(MAT.amblem){
+      const ar=.052, ay=Math.min(stopY+.07, pr.kuyruk-ar-.035);
+      let zm=-1e9;
+      for(const dx of [-ar,0,ar]) for(const dy of [-ar,0,ar]) zm=Math.max(zm, zArka(dx, ay+dy));
+      const egimA=Math.atan2(zArka(0,ay+.04)-zArka(0,ay-.04), .08);
+      EK("koyuP", new THREE.CylinderGeometry(ar*1.12,ar*1.12,.008,24), [0, ay, zm+.012], [Math.PI/2-egimA,0,0]);
+      EK("amblem", new THREE.CircleGeometry(ar,24), [0, ay, zm+.0175], [-egimA,0,0]);
+    }
     if(!car.model.cl){
       /* egzoz ucu tamponun altına gizli, yalnız 3–4 cm görünür; eskiden 12 cm
          dışarı taşıyor, arkadan bakınca araca sonradan takılmış bir çubuk gibiydi */
