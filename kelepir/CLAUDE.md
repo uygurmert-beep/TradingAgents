@@ -285,6 +285,16 @@ modelin kendi profilini aldığını ölçüyor.
   tampon parçaları `pr.sill+.06`'nın altına inmesin, yoksa gövdenin dışına düşer
 - direkler yuvarlak hortum: elips kesitli `direk()` — yandan geniş, önden ince
 - koltuklar kutu: `yastik()` (yuvarlatılmış, omuzda daralan) + yanaklar
+- araç kafes gibi, kabinde boyalı platform: gövde kuşak hizasında kapalı bir
+  tüptü, cam/direk/tavan üstüne ayrı parçalar olarak oturuyordu; camdan
+  bakınca koltuklar o kapağın altında kalıyordu → cam evi gövde derisinin
+  parçası (`govdeGeo` içinde kesitin tepe dalı 0..7 cam evine uzuyor). Ön cam,
+  yan cam, tavan, B direği ve cam fitili aynı loft'un malzeme grupları
+  (`camBolge`: 0 boya, 1 cam, 2 tavan, 3 koyu). Gövde mesh'inin malzemesi bu
+  yüzden DİZİ; `gov.material.color` gibi tek malzeme varsayan kod yazma.
+  İç kabukta (`detay`) cam grubu görünmez malzeme, yoksa camdan iç kaplama görünür.
+- sol jantların arka yüzü dışarı bakıyordu: `jantGeo` +x yüzüne göre kurulu,
+  solda y ekseninde yarım tur döndürülüyor
 
 Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
 

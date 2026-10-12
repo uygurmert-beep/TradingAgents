@@ -1135,17 +1135,21 @@ const W3D=(()=>{
   }
 
   /* --- loft: kapalı en kesitlerin z boyunca süpürülmesi --- */
-  function loft(kesitler, kapakli){
+  /** grupFn(i,j) verilirse her dörtgen bir malzeme grubuna düşer (0 = varsayılan);
+      gövde derisinde cam, tavan ve direk aynı yüzeyin bölgeleri. */
+  function loft(kesitler, kapakli, grupFn){
     const NS=kesitler.length, NC=kesitler[0].length;
-    const poz=[], idx=[];
+    const poz=[], gruplar=[[]];
     for(let i=0;i<NS;i++) for(let j=0;j<NC;j++){
       const p=kesitler[i][j]; poz.push(p[0],p[1],p[2]);
     }
     for(let i=0;i<NS-1;i++) for(let j=0;j<NC;j++){
       const j2=(j+1)%NC;
       const a=i*NC+j, b=i*NC+j2, c=(i+1)*NC+j2, d=(i+1)*NC+j;
-      idx.push(a,b,d, b,c,d);
+      const gi=grupFn?grupFn(i,j):0;
+      (gruplar[gi]||(gruplar[gi]=[])).push(a,b,d, b,c,d);
     }
+    const idx=[];
     const g=new THREE.BufferGeometry();
     if(kapakli){
       // kapaklar ayrı köşelerle — kırılma korunur
@@ -1163,7 +1167,12 @@ const W3D=(()=>{
       kap(kesitler[0], true); kap(kesitler[NS-1], false);
       const taban=poz.length/3;
       for(const p of ek) poz.push(p[0],p[1],p[2]);
-      for(let i=0;i<ek.length;i++) idx.push(taban+i);
+      for(let i=0;i<ek.length;i++) gruplar[0].push(taban+i);
+    }
+    for(let k=0;k<gruplar.length;k++){
+      const gr=gruplar[k]||[];
+      if(grupFn && gr.length) g.addGroup(idx.length, gr.length, k);
+      for(const v of gr) idx.push(v);
     }
     g.setAttribute("position", new THREE.Float32BufferAttribute(poz,3));
     g.setIndex(idx);
@@ -1305,6 +1314,20 @@ const W3D=(()=>{
     for(const zc of [pr.onZ, pr.arkaZ])
       for(let k=-8;k<=8;k++) zs.add(+Math.max(-yarim,Math.min(yarim, zc+ra*k/8)).toFixed(4));
     for(const z of [pr.kaputZ, pr.camAlt, pr.bagajZ, yarim-.02, yarim]) zs.add(+z.toFixed(4));
+    // cam evi sınırları: malzeme bölgeleri istasyonlara denk gelsin
+    const van=s.cls==="van", HWg=s.W/2;
+    const bz=pr.camUst+(pr.tavanArka-pr.camUst)*(van?.34:.42);
+    const onCam0=pr.kaputZ+.03;
+    const arkaCam1=van?yarim:pr.camAlt;
+    /* yan camın arka ucu: sedanda C direği yelkeni arka cam başlayınca,
+       hatch/SUV'da arka camın eğimine biraz girer (D direği dar kalsın) */
+    const cBit = van ? pr.camAlt-.05
+               : s.cls==="sedan" ? pr.tavanArka+.02
+               : pr.tavanArka+(pr.camAlt-pr.tavanArka)*(s.cls==="suv"?.30:.22);
+    for(const z of [onCam0, onCam0+.05, pr.camUst-.03, pr.camUst, pr.camUst+.03, pr.tavanArka-.03, pr.tavanArka,
+                    pr.tavanArka+.03, bz-.05, bz+.05, cBit, arkaCam1-.03])
+      if(z>-yarim && z<yarim) zs.add(+z.toFixed(4));
+    for(let z=onCam0; z<arkaCam1; z+=L/44) zs.add(+z.toFixed(4));
     const sirali=[...zs].sort((a,b)=>a-b);
     const list=[];
     for(const z of sirali) if(!list.length || z-list[list.length-1]>.012 || z===yarim) list.push(z);
@@ -1337,12 +1360,80 @@ const W3D=(()=>{
     for(let i=1;i<NP-1;i++) HALKA.push([-PROF[i][0],PROF[i][1]]);   // sol yan, aşağı
     HALKA.push(PROF[NP-1]);
     for(let i=NP-2;i>ki;i--) HALKA.push(PROF[i]);         // alt → sağ yan
+    // halka sırası → profil indeksi (cam evi profilin tepe dalını, 0..7, değiştiriyor)
+    const HALKA_P=[];
+    for(let i=ki;i>=0;i--) HALKA_P.push(i);
+    for(let i=1;i<NP-1;i++) HALKA_P.push(i);
+    HALKA_P.push(NP-1);
+    for(let i=NP-2;i>ki;i--) HALKA_P.push(i);
+    const GP=7;                                  // tepe dalında cam evine geçen son nokta
+    /* CAM EVİ GÖVDENİN DERİSİ. Eskiden gövde kuşak hizasında kapalı bir
+       tüptü; cam, direk ve tavan onun üstüne ayrı parçalar olarak oturuyordu.
+       İki sonucu vardı: araç tek parça değil, kutuya takılmış bir kafes gibi
+       duruyordu (yuvarlak direkler, kenarı düz tavan levhası, cama göre
+       içerde kalan çerçeve) ve kabinin içine bakınca kuşak hizasında boyalı
+       düz bir platform görünüyordu — koltuk ve kapı içleri onun altında
+       kalıyordu. Artık her istasyonda kesitin tepe dalı cam evine uzuyor:
+       kuşaktan içe yatan yan cam, köşede direk/tavan kenarı, kubbeli tavan.
+       Ön cam, tavan ve arka cam aynı yüzeyin bölgeleri (loft grupları). */
+    const tepe=(z)=>{                            // cam evinin orta tepe yüksekliği
+      const y0=pr.beltF-.03;
+      if(z<onCam0) return -1;
+      if(z<=pr.camUst) return y0+(s.roof-y0)*((z-onCam0)/Math.max(.05,pr.camUst-onCam0));
+      if(van || z<=pr.tavanArka) return s.roof+.008*Math.sin(Math.PI*Math.min(1,(z-pr.camUst)/Math.max(.1,pr.tavanArka-pr.camUst)));
+      if(z<=pr.camAlt){
+        const y1=pr.beltR-.03;
+        return s.roof+(y1-s.roof)*((z-pr.tavanArka)/Math.max(.05,pr.camAlt-pr.tavanArka));
+      }
+      return -1;
+    };
+    const camEvi=(z)=>{
+      const yT=ustHat(z), t=tepe(z);
+      return t<0 ? 0 : Math.max(0, t-(yT-.012));
+    };
+    const kavis=van?.04:.075;
     const kesitler=list.map(z=>{
       const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
       const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
       const kh=Math.min(kemerHat(z), yT-.10);
-      return HALKA.map(p=>[hw*p[0], Math.max(cy+hh*p[1], kh), z]);
+      const halka=HALKA.map(p=>[hw*p[0], Math.max(cy+hh*p[1], kh), z]);
+      const H=camEvi(z);
+      if(H<=0) return halka;
+      const kar=Math.min(1, H/.06);
+      const yb=yT-.012, top=yb+H, kv=kavis*Math.min(1,H/.30);
+      const xg=Math.min(HWg*.915, hw*.93), xr=Math.min(HWg*.862, xg-.02);
+      const kenar=top-kv;
+      const G=[[0,top],[.32*xr,top-kv*.10],[.64*xr,top-kv*.42],[.90*xr,top-kv*.82],[xr,kenar-.022*Math.min(1,H/.2)]];
+      const ust=G[4];
+      // 5 ince fitil (camın üst kenarı), 6 yan camın ortası
+      for(const k of [.10,.55]) G.push([ust[0]+(xg-ust[0])*k+.006*Math.sin(Math.PI*k), ust[1]+(yb-ust[1])*k]);
+      G.push([xg, yb]);                           // 7: camın oturduğu kuşak
+      return halka.map((q,r)=>{
+        const p=HALKA_P[r]; if(p>GP) return q;
+        const gx=G[p][0]*Math.sign(q[0]||1), gy=G[p][1];
+        return [q[0]+(gx-q[0])*kar, q[1]+(gy-q[1])*kar, z];
+      });
     });
+    // malzeme bölgeleri: 0 boya, 1 cam, 2 tavan, 3 koyu (B direği)
+    const camBolge=(i,j)=>{
+      const pa=HALKA_P[j], pb=HALKA_P[(j+1)%HALKA_P.length];
+      if(pa>GP || pb>GP) return 0;
+      const za=list[i], zb=list[i+1], zm=(za+zb)/2;
+      if(Math.min(camEvi(za),camEvi(zb))<.035) return 0;
+      const lo=Math.min(pa,pb);
+      const onCam=zm<pr.camUst, tavan=!onCam && (van || zm<=pr.tavanArka);
+      if(lo>=4){                                   // yan cam bandı
+        const camda=zm>onCam0+.02 && zm<cBit;
+        if(Math.abs(zm-bz)<.045 && !van) return 3;
+        /* camın üst kenarında ince koyu fitil: cam ile direk/tavan aynı
+           gökyüzünü yansıtınca sınır kayboluyor, tavan da cam sanılıyordu */
+        if(lo===4) return camda ? 3 : 0;
+        return camda ? 1 : 0;
+      }
+      if(lo===3) return tavan?2:0;                 // köşe: A/C direği, tavan kenarı
+      return tavan?2:1;                            // tepe: ön cam, tavan, arka cam
+    };
+
     /** Profilde y oranına karşılık gelen x oranı (yan dal). */
     const profX=(ey)=>{
       for(let i=1;i<NP;i++){
@@ -1394,37 +1485,15 @@ const W3D=(()=>{
     const zOn=(x,y)=>yuzeyZ(x,y,true);
     /** (x,y) noktasının gövdenin ARKA yüzeyine değdiği z. */
     const zArka=(x,y)=>yuzeyZ(x,y,false);
-    const g=loft(kesitler, true);
-    g.userData={genislik, ustHat, altHat, xAt, ustY, zOn, zArka};
+    const g=loft(kesitler, true, camBolge);
+    /** Ön camın z'deki orta yüksekliği (silecek ve iç parçalar için). */
+    const onCamY=(z)=>{ const t=tepe(z); return t<0?ustHat(z):t; };
+    g.userData={genislik, ustHat, altHat, xAt, ustY, zOn, zArka, onCamY, bz, xCam:(z)=>Math.min(HWg*.915, genislik(z)*.93)};
     geoCache[anahtar]=g; g.userData.paylasimli=true;
     return g;
   }
 
   /* Tavan kabuğu: enine kavisli ince kabuk */
-  function tavanGeo(anahtar, s, pr){
-    if(geoCache[anahtar]) return geoCache[anahtar];
-    const z0=pr.camUst, z1=pr.tavanArka, kal=.055, kavis=s.cls==="van"?.04:.075;
-    const NU=8, NC=9;
-    const kesitler=[];
-    for(let i=0;i<=NU;i++){
-      const u=i/NU, z=z0+(z1-z0)*u;
-      const uc=Math.sin(Math.PI*u);                   // uçlarda hafif daralma
-      const hw=(s.W/2)*(.942+.016*uc);
-      const pts=[];
-      for(let j=0;j<=NC;j++){                          // üst yay: sağdan sola
-        const t=1-2*j/NC;
-        pts.push([hw*t, s.roof-kavis*t*t, z]);
-      }
-      for(let j=NC;j>=0;j--){                          // alt yay: soldan sağa
-        const t=1-2*j/NC;
-        pts.push([hw*t*.985, s.roof-kavis*t*t-kal, z]);
-      }
-      kesitler.push(pts);
-    }
-    const g=loft(kesitler, true);
-    geoCache[anahtar]=g; g.userData.paylasimli=true; return g;
-  }
-
   /* --- yumuşak temas gölgesi --- */
   function golgeTex(){
     return tex("golge",128,128,(g)=>{
@@ -1825,9 +1894,12 @@ const W3D=(()=>{
     g.userData.camMat=MAT.cam;
     g.userData.detay=!!detay;
     const gGeo=govdeGeo(ad+"|"+car.model.seg+"|g", s, pr);
-    const gov=new THREE.Mesh(gGeo, MAT.boya); gov.name="govde"; g.add(gov);
+    // tek deri: boya, cam, tavan, B direği aynı yüzeyin grupları
+    const gov=new THREE.Mesh(gGeo, [MAT.boya, MAT.cam, MAT[tavanKey], MAT.koyuP]); gov.name="govde"; g.add(gov);
     if(detay){                       // içeriden bakınca boya değil, iç kaplama görünsün
-      const ik=new THREE.Mesh(gGeo, MAT.icKabuk);
+      // cam bölgesi iç kabukta boş kalmalı, yoksa camdan bakınca iç kaplama görünür
+      const gizli=new THREE.MeshBasicMaterial({visible:false});
+      const ik=new THREE.Mesh(gGeo, [MAT.icKabuk, gizli, MAT.icKabuk, MAT.icKabuk]);
       ik.scale.set(.975,.985,.998); ik.position.y=.004; g.add(ik);
     }
     const genislik=gGeo.userData.genislik, xAt=gGeo.userData.xAt;
@@ -1900,82 +1972,35 @@ const W3D=(()=>{
       g.add(mm); return mm;
     };
 
-    /* ================= TAVAN KABUĞU ================= */
-    const tGeo=tavanGeo(ad+"|"+car.model.seg+"|t", s, pr);
-    const tavM=new THREE.Mesh(tGeo, MAT[tavanKey]); tavM.name="tavanPanel"; g.add(tavM);
-    if(detay){ const tk=new THREE.Mesh(tGeo, MAT.icKabuk); tk.scale.set(.97,.99,.99); g.add(tk); }
-
-    /* ================= DİREKLER, CAMLAR ================= */
-    const hwCam=HW*.942, tum=.085;
+    /* ================= CAM EVİ DETAYI =================
+       Cam, direkler ve tavan artık gövde derisinin bölgeleri (govdeGeo).
+       Burada yalnız derinin üstüne oturan ince parçalar kalıyor. */
     const camTepe=s.roof-.055;
-    const direkR=s.cls==="van"?.034:.027;
-    const boru=(k, p0, p1, r, seg)=>{
-      const om=new THREE.Vector3((p0.x+p1.x)/2, (p0.y+p1.y)/2, (p0.z+p1.z)/2);
-      const cv=new THREE.CatmullRomCurve3([p0,om,p1]);
-      EK(k, new THREE.TubeGeometry(cv, seg||5, r, 8, false));
-    };
+    const onCamY=gGeo.userData.onCamY, xCam=gGeo.userData.xCam;
+    const hwCam=HW*.915;
     const V=(x,y,z)=>new THREE.Vector3(x,y,z);
-    /* Direk: yuvarlak boru değil, yassı elips kesitli bir çubuk. Boru her
-       yönden aynı kalınlıkta görünüyordu; önden bakınca A direkleri 5,4 cm'lik
-       iki kalın hortum gibi duruyordu. Gerçek direk yandan geniş (camı
-       taşıyan yüz), önden ince. yanda: cam düzlemindeki yarı genişlik,
-       kal: dışa doğru yarı kalınlık. */
-    const direk=(k, p0, p1, yanda, kal)=>{
-      const d=new THREE.Vector3().subVectors(p1,p0), uz=d.length(); d.normalize();
-      const X=new THREE.Vector3(1,0,0).addScaledVector(d,-d.x).normalize();
-      const Z=new THREE.Vector3().crossVectors(X,d);
-      const e=new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X,d,Z));
-      EK(k, silindir(1,1,1,12), [(p0.x+p1.x)/2,(p0.y+p1.y)/2,(p0.z+p1.z)/2], [e.x,e.y,e.z], [kal, uz, yanda]);
-    };
+    // pencere fitili: camın kuşağa oturduğu yerde ince koyu şerit
     for(const sx of [-1,1]){
-      const dx0=sx*(hwCam-.020), dx1=sx*(hwCam*(1-tum)-.016);
-      direk(boyaKey, V(dx0, pr.beltF-.02, pr.kaputZ+.03),
-                     V(dx1, camTepe, pr.camUst+.02), direkR*1.05, direkR*.62);          // A
-      direk(boyaKey, V(dx0, pr.beltR-.02, pr.camAlt-.03),
-                     V(dx1, camTepe, pr.tavanArka-.02), direkR*1.30, direkR*.66);       // C
-      boru(tavanKey, V(dx1, camTepe-.006, pr.camUst+.02),
-                     V(dx1, camTepe+.006, pr.tavanArka-.02), direkR*.70, 3);
-      const bz=pr.camUst+(pr.tavanArka-pr.camUst)*(s.cls==="van"?.34:.42);
-      const by=pr.beltF+(pr.beltR-pr.beltF)*((bz-pr.kaputZ)/Math.max(.1,pr.camAlt-pr.kaputZ));
-      direk("koyuP", V(dx0, by-.02, bz), V(dx1, camTepe, bz), direkR*.95, direkR*.55);
-      // pencere fitili
-      boru("koyu", V(sx*hwCam, pr.beltF-.028, pr.kaputZ+.06),
-                   V(sx*hwCam, pr.beltR-.028, pr.camAlt-.05), .024, 3);
-    }
-    // cam panelleri
-    const P0=[pr.kaputZ+.06, pr.beltF-.03], P1=[pr.camUst+.05, camTepe-.02];
-    const P2=[pr.tavanArka-.05, camTepe-.02], P3=[pr.camAlt-.05, pr.beltR-.03];
-    for(const sx of [-1,1]){
-      EK("cam", yuzey(7,3,(u,v)=>{
-        const az=P0[0]+(P3[0]-P0[0])*u, ay=P0[1]+(P3[1]-P0[1])*u;
-        const uz=P1[0]+(P2[0]-P1[0])*u, uy=P1[1]+(P2[1]-P1[1])*u;
-        const z=az+(uz-az)*v, y=ay+(uy-ay)*v;
-        return [sx*hwCam*(1-tum*v*v)-sx*.004, y, z];
+      EK("koyu", yuzey(10,1,(u,v)=>{
+        const z=pr.kaputZ+.08+(pr.camAlt-.06-(pr.kaputZ+.08))*u;
+        const yb=ustHat(z)-.012;
+        return [sx*(xCam(z)+.004), yb-.006+.016*v, z];
       }));
     }
-    EK("cam", yuzey(6,3,(u,v)=>{           // ön cam
-      const t=u*2-1;
-      const z=pr.kaputZ+.03+(pr.camUst+.02-(pr.kaputZ+.03))*v;
-      const y=pr.beltF-.03+(camTepe-.02-(pr.beltF-.03))*v;
-      const hw=hwCam*(.965-.085*v);
-      return [hw*t, y, z-.035*(1-t*t)*(1-v*.4)];
+    // ön cam alt frit: camın kaputa değdiği yerde koyu bant
+    EK("koyuP", yuzey(8,2,(u,v)=>{
+      const z=pr.kaputZ+.035+.07*v, x=(-1+2*u)*xCam(z)*.97;
+      return [x, onCamY(z)+.004, z];
     }));
-    EK("cam", yuzey(6,3,(u,v)=>{           // arka cam
-      const t=u*2-1;
-      const z=pr.tavanArka-.02+((pr.camAlt-.03)-(pr.tavanArka-.02))*v;
-      const y=camTepe-.02+((pr.beltR-.03)-(camTepe-.02))*v;
-      const hw=hwCam*(.955-.075*(1-v));
-      return [hw*t, y, z+.030*(1-t*t)*(1-v*.4)];
-    }));
-    // cam çerçevesi (siyah frit): ön cam altı + tavan ön/arka kenar
-    KUTU("koyuP", hwCam*1.82,.035,.055, [0, pr.beltF-.035, pr.kaputZ+.055]);
-    KUTU("koyuP", hwCam*1.72,.030,.050, [0, camTepe+.004, pr.camUst+.03]);
-    KUTU("koyuP", hwCam*1.70,.030,.050, [0, camTepe+.004, pr.tavanArka-.03]);
-    // silecekler
-    for(const sx of [-1,1]){
-      // silecek kolu cam genişliğinin içinde kalsın (eskiden A direğinin dışına taşıyordu)
-      EK("koyuP", kutu(.024,.018,Math.min(.40,hwCam*.62)), [sx*hwCam*.30, pr.beltF-.012, pr.kaputZ+.13], [0,sx*.30,0]);
-      EK("koyuP", kutu(.018,.032,.24), [sx*hwCam*.30, pr.beltF+.02, pr.kaputZ+.22], [.35,sx*.30,0]);
+    // silecekler: ön camın dibinde, camın eğimine yatık
+    {
+      const z0=pr.kaputZ+.09, egim=Math.atan2(onCamY(z0+.1)-onCamY(z0), .1);
+      // park konumunda yatay: kol ve süpürgeç camın dibinde, enine uzanır
+      for(const sx of [-1,1]){
+        const x=sx*hwCam*.36-.05;
+        EK("koyuP", kutu(Math.min(.62,hwCam*.70),.012,.022), [x, onCamY(z0)+.012, z0], [-egim,0,sx*.04]);
+        EK("koyuP", kutu(.03,.016,.05), [x+hwCam*.33, onCamY(z0-.03)+.010, z0-.03], [-egim,0,0]);
+      }
     }
     // köpekbalığı anten: kutu değil, arkaya yatık alçak bir kama
     if(!car.model.cl) EK("koyuP", new THREE.ConeGeometry(.032,.15,4,1), [0, s.roof+.022, pr.tavanArka-.14], [-Math.PI/2+.35,Math.PI/4,0], [1,1,.55]);
@@ -2176,14 +2201,19 @@ const W3D=(()=>{
       EK("temas", new THREE.PlaneGeometry(R*.95, R*1.55), [x, .004, z], [-Math.PI/2,0,0]);
       EK("lastik", lastikGeo(R), [x,R,z], [donus,0,0]);
       EK("yanak",  yanakGeo(R, !!car.model.cl), [x,R,z], [donus,0,0]);
-      EK("jantIc", jantIcGeo(R,sx), [sx*(lastikDis-R*.42),R,z], [donus,0,0]);
+      /* Jant geometrisi +x (sağ) yüzüne göre kurulu. Sol tekerlekte aynı
+         geometri yalnız yer değiştiriyordu: dışa bakan yüz içe dönüyor,
+         araç sol arkadan görülünce jantın arka yüzü (üç kalın kol, kara
+         disk) görünüyordu. Solda y ekseninde yarım tur döndürülüyor. */
+      const yon = sx>0 ? 0 : Math.PI;
+      EK("jantIc", jantIcGeo(R,sx), [sx*(lastikDis-R*.42),R,z], [donus,yon,0]);
       if(sacJant){
         // klasik ve ticari: sac jant + küçük göbek kapağı
         EK("sacJant", new THREE.CylinderGeometry(R*.66,R*.66,R*.05,22), [sx*(lastikDis-R*.30),R,z], [0,0,Math.PI/2]);
         EK("sacJant", new THREE.TorusGeometry(R*.50,R*.035,5,20), [sx*(lastikDis-R*.27),R,z], [0,Math.PI/2,0]);
         EK("jant",    new THREE.CylinderGeometry(R*.30,R*.33,R*.10,18), [sx*(lastikDis-R*.24),R,z], [0,0,Math.PI/2]);
       }else
-      EK("jant",   jantGeo(R,kolSay,sx), [sx*(lastikDis-R*.27),R,z], [donus*(sx>0?1:-1),0,0]);
+      EK("jant",   jantGeo(R,kolSay,sx), [sx*(lastikDis-R*.27),R,z], [donus,yon,0]);
       EK("disk",   diskGeo(R),   [sx*(lastikDis-R*.62),R,z]);
       EK("kaliper",kutu(R*.11,R*.36,R*.17), [sx*(lastikDis-R*.72), R+R*.36, z+(z<0?-R*.30:R*.30)]);
       if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(R*.165,16),
@@ -2361,9 +2391,13 @@ const W3D=(()=>{
     if(MAT.amblem) EK("amblem", new THREE.CircleGeometry(.062,16),
       [0, stopY+.15, zArka(0, stopY+.15)+.022]);
     if(!car.model.cl){
-      EK("krom", silindir(.038,.042,.14,10), [hwArka*.55, pr.sill-.02, arkaYuz+.05], [Math.PI/2,0,0]);
-      if(car.model.seg==="lux"||car.model.seg==="suv")
-        EK("krom", silindir(.038,.042,.14,10), [-hwArka*.55, pr.sill-.02, arkaYuz+.05], [Math.PI/2,0,0]);
+      /* egzoz ucu tamponun altına gizli, yalnız 3–4 cm görünür; eskiden 12 cm
+         dışarı taşıyor, arkadan bakınca araca sonradan takılmış bir çubuk gibiydi */
+      const ex=[hwArka*.55]; if(car.model.seg==="lux"||car.model.seg==="suv") ex.push(-hwArka*.55);
+      for(const x of ex){
+        EK("krom", silindir(.036,.040,.12,12), [x, pr.sill+.035, arkaYuz-.025], [Math.PI/2,0,0]);
+        EK("koyuP", new THREE.CircleGeometry(.028,12), [x, pr.sill+.035, arkaYuz+.036]);
+      }
     }
     // yakıt kapağı
     {
