@@ -399,7 +399,10 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
     closeSheet(); S.cash=1200000; S.slots=8; S.cars=[]; S.senetler=[]; S.rep=70;
     refreshMarket();
     const tavan=senetTavanNakit();
-    const c=S.market.find(x=>x.ask>S.cash && x.ask<tavan);
+    /* Rastgele pazarda nakit ile senet tavanı arasında ilan çıkmayınca bölüm
+       "atlandı" deyip dokuz kontrolü sessizce geçiyordu. Yoksa üret. */
+    let c=S.market.find(x=>x.ask>S.cash && x.ask<tavan);
+    for(let i=0;i<600 && !c;i++){ const d=genCar(); if(d.ask>S.cash && d.ask<tavan){ S.market.push(d); c=d; } }
     if(!c) return {atlandi:true};
     const fiyat=c.ask;
     const alindi=buyCar(c, fiyat, null, true);

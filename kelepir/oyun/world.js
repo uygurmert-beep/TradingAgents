@@ -409,17 +409,63 @@ const W3D=(()=>{
   }
   /** Boya: açık havada cila yansıması belirgin. Koyu renkler daha çok yansıtır,
       açık/mat renkler daha az — gerçek boyada da böyle okunur. */
-  function matBoya(hex, parlak){
-    const c=new THREE.Color(hex);
-    const parlaklik=(c.r*.299+c.g*.587+c.b*.114);          // 0 koyu, 1 açık
-    /* Yansıma eskiden .20–.31'di: ortam dokusundaki çim bandı kavisli
-       panellerde yeşil lekeler halinde yansıyor, düz renkli bir panelvan
-       kamuflaj boyalı gibi görünüyordu. Parlaklık spekülerden geliyor. */
-    const yans=0.17-0.06*parlaklik;                         // .11 … .17
-    return new THREE.MeshPhongMaterial({color:hex,
-      shininess:parlak===undefined?96:parlak,
-      specular:0x5A646E, envMap:ortamTex(),
-      reflectivity:yans, combine:THREE.MixOperation});
+  /* Boyanın yansıttığı dünya. Sahne ortamında çim bandı vardı; yansıma
+     ancak %11–17'ye kısılarak yeşil lekeden kurtulunuyordu ve gövde kil gibi
+     mat kalıyordu. Boya artık kendi nötr ortamını yansıtıyor: açık gökyüzü,
+     keskin bir ufuk çizgisi ve iki yumuşak ışık kutusu. Gerçek araç
+     fotoğrafındaki "kapı boyunca uzanan ufuk yansıması" bu çizgiden geliyor. */
+  const METALIK_RENK=["Gümüş","Gri","Füme","Lacivert","Mavi"];
+  /* Cilalı boya (MeshPhysical + clearcoat) bir araçta iki kat ışık hesabı demek.
+     2 GB ve altı bellek ya da 2 çekirdekli eski telefonlarda sahne 9 araçla
+     takılmasın diye orada Phong + aynı boya ortamı kullanılıyor: yansıma
+     yine var, cila katı yok. */
+  const HAFIF_CIZIM = typeof navigator!=="undefined" &&
+    ((navigator.deviceMemory && navigator.deviceMemory<=2) ||
+     (navigator.hardwareConcurrency && navigator.hardwareConcurrency<=2));
+  // tembel: bu kapsam sayfa yüklenirken çalışıyor, three.js henüz yoksa THREE tanımsız
+  const fiziksel = ()=> typeof THREE!=="undefined" && !!THREE.MeshPhysicalMaterial && !HAFIF_CIZIM;
+  function boyaOrtamTex(){
+    if(texCache.__boyaEnv) return texCache.__boyaEnv;
+    const W=1024, H=512, c=document.createElement("canvas"); c.width=W; c.height=H;
+    const g=c.getContext("2d");
+    const gok=g.createLinearGradient(0,0,0,H*.5);
+    gok.addColorStop(0,"#9FB4C6"); gok.addColorStop(.7,"#DCE5EC"); gok.addColorStop(1,"#F4F7F9");
+    g.fillStyle=gok; g.fillRect(0,0,W,H*.5);
+    const yer=g.createLinearGradient(0,H*.5,0,H);
+    yer.addColorStop(0,"#5E646A"); yer.addColorStop(.12,"#3E4348"); yer.addColorStop(1,"#26292D");
+    g.fillStyle=yer; g.fillRect(0,H*.5,W,H*.5);
+    // ışık kutuları: tavanda iki uzun yumuşak şerit
+    for(const [x,w] of [[.18,.20],[.58,.26]]){
+      const lg=g.createLinearGradient(0,H*.08,0,H*.30);
+      lg.addColorStop(0,"rgba(255,255,255,0)"); lg.addColorStop(.5,"rgba(255,255,255,.95)"); lg.addColorStop(1,"rgba(255,255,255,0)");
+      g.fillStyle=lg; g.fillRect(W*x,H*.08,W*w,H*.22);
+    }
+    const t=new THREE.CanvasTexture(c);
+    t.mapping=THREE.EquirectangularReflectionMapping;
+    if(THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding;
+    return (texCache.__boyaEnv=t);
+  }
+  /** Cilalı boya. parlak: 76 bakımlı, 34 yıpranmış, 14 komple boya isteyen
+      (eski Phong parlaklık ölçeği korunuyor ki çağıranlar değişmesin).
+      metalik: gümüş/gri/füme gibi metalik renkler. */
+  function matBoya(hex, parlak, metalik){
+    const p=parlak===undefined?76:parlak;
+    if(!fiziksel()){
+      return new THREE.MeshPhongMaterial({color:hex, shininess:p, specular:0x5A646E,
+        envMap:boyaOrtamTex(), reflectivity:.25, combine:THREE.MixOperation});
+    }
+    const yeni=clamp((p-14)/62, 0, 1);                       // 0 mat … 1 cilalı
+    /* Renk tablosu sRGB yazıldı (#581E23 koyu bordo) ama malzemeye çevrilmeden
+       veriliyordu; çizici sonucu bir kez daha sRGB'ye çevirince bütün boyalar
+       soluyordu: bordo pembe, kırmızı somon, lacivert gök mavisi. */
+    const renk=new THREE.Color(hex); if(renk.convertSRGBToLinear) renk.convertSRGBToLinear();
+    return new THREE.MeshPhysicalMaterial({color:renk,
+      metalness: metalik ? .55 : .04,
+      // Taban pürüzü yüksek olunca bulanık yansıma koyu boyayı griye çekiyordu;
+      // parlaklık cila katından (clearcoat) gelsin, taban sakin kalsın.
+      roughness: metalik ? .34-.10*yeni : .62-.14*yeni,
+      clearcoat: .15+.85*yeni, clearcoatRoughness: .04+.25*(1-yeni),
+      envMap:boyaOrtamTex(), envMapIntensity: metalik ? .95 : .70});
   }
   /* Krom için ayrı, nötr bir stüdyo ortamı. Sahne ortamında çim bandı
      var; .92 yansıtıcılıkla krom ızgara ve tamponlar yeşil görünüyordu. */
@@ -443,10 +489,17 @@ const W3D=(()=>{
     return new THREE.MeshPhongMaterial({color:0xD3D8DD, shininess:180, specular:0xFFFFFF,
       envMap:kromOrtamTex(), reflectivity:.80, combine:THREE.MixOperation});
   }
+  /* Cam eskiden açık mavi-beyaz ve %64 opaktı: süt camı gibi duruyor, içerisi
+     gri lekeler hâlinde görünüyordu. Gerçek araç camı koyu (füme) ve
+     yansımalı; içerisi ancak yakından seçilir. */
   function matCam(koyu){
-    return new THREE.MeshPhongMaterial({color:koyu?0x243038:0x3D5059, transparent:true,
-      opacity:koyu?.74:.64, side:THREE.DoubleSide, depthWrite:false, shininess:230,
-      specular:0xDCEAF4, envMap:ortamTex(), reflectivity:.72, combine:THREE.MixOperation});
+    if(fiziksel())
+      return new THREE.MeshPhysicalMaterial({color:koyu?0x10171C:0x0D151A, transparent:true,
+        opacity:koyu?.88:.86, side:THREE.DoubleSide, depthWrite:false,
+        metalness:0, roughness:.03, envMap:boyaOrtamTex(), envMapIntensity:.85});
+    return new THREE.MeshPhongMaterial({color:0x1E2A31, transparent:true,
+      opacity:.82, side:THREE.DoubleSide, depthWrite:false, shininess:230,
+      specular:0xDCEAF4, envMap:boyaOrtamTex(), reflectivity:.55, combine:THREE.MixOperation});
   }
   const matKara=(h,sh)=>new THREE.MeshPhongMaterial({color:h===undefined?0x191D22:h,
     shininess:sh===undefined?18:sh, specular:0x14181C});
@@ -527,8 +580,10 @@ const W3D=(()=>{
       if(ayna){ g.translate(W,0); g.scale(-1,1); }
       g.save(); _farSekil(g,tip,W,H); g.clip();
       // gövde içi: koyu krom çanak
+      /* İç gövde eskiden siyaha yakındı: far kör bir delik gibi duruyordu.
+         Gerçek farın içi gümüş reflektör ve grafit plastik — ışığı geri verir. */
       const ic=g.createLinearGradient(0,0,0,H);
-      ic.addColorStop(0,"#3B434B"); ic.addColorStop(.5,"#161B20"); ic.addColorStop(1,"#2C3339");
+      ic.addColorStop(0,"#8A949D"); ic.addColorStop(.35,"#4A535C"); ic.addColorStop(.7,"#262C32"); ic.addColorStop(1,"#5C656E");
       g.fillStyle=ic; g.fillRect(0,0,W,H);
       if(tip==="dilim"){
         _reflektor(g,W*.30,H*.52,H*.30); _reflektor(g,W*.62,H*.52,H*.26);
@@ -548,8 +603,8 @@ const W3D=(()=>{
         g.beginPath(); g.moveTo(W*.12,H*.20); g.lineTo(W*.12,H*.80); g.lineTo(W*.86,H*.80); g.stroke();
         g.shadowBlur=0; g.fillStyle="#E8A13A"; g.fillRect(W*.84,H*.16,W*.10,H*.14);
       }else{ // ince
-        for(const x of [.38,.54,.70]){ g.fillStyle="#1E252B"; _yuvarlakYol(g,W*x-H*.13,H*.38,H*.26,H*.30,4); g.fill();
-          _projektor(g,W*x,H*.53,H*.11); }
+        for(const x of [.36,.53,.70]){ g.fillStyle="#1E252B"; _yuvarlakYol(g,W*x-H*.17,H*.32,H*.34,H*.42,6); g.fill();
+          _projektor(g,W*x,H*.53,H*.15); }
         g.strokeStyle="#F6FBFF"; g.lineCap="round"; g.lineWidth=H*.08;
         g.shadowColor="rgba(205,232,255,.95)"; g.shadowBlur=12;
         g.beginPath(); g.moveTo(W*.06,H*.30); g.lineTo(W*.90,H*.12); g.stroke();
@@ -621,13 +676,28 @@ const W3D=(()=>{
       g.strokeStyle=cerceve; g.lineWidth=7; yol(); g.stroke();
     });
   }
+  /* Stop lambası eskiden düz kırmızı bir kutuydu. Gerçek lamba katmanlı:
+     koyu yakut gövde, içinde parlayan bir C/şerit, beyaz geri vites ve
+     turuncu sinyal bölmesi, üstte camın parlaması. */
   function stopTex(){
-    return tex("stop",128,64,(g)=>{
-      g.fillStyle="#150C0C"; g.fillRect(0,0,128,64);
-      g.fillStyle="#B4231C"; g.fillRect(3,3,122,58);
-      g.fillStyle="rgba(255,120,100,.75)";
-      for(let i=0;i<4;i++) g.fillRect(10+i*29,12,18,40);
-      g.fillStyle="rgba(255,220,200,.55)"; g.fillRect(3,3,122,7);
+    return tex("stop2",256,128,(g,W,H)=>{
+      g.fillStyle="#1A0A0A"; g.fillRect(0,0,W,H);
+      const gov=g.createLinearGradient(0,0,0,H);
+      gov.addColorStop(0,"#7A1712"); gov.addColorStop(.5,"#4A0D0B"); gov.addColorStop(1,"#6A1410");
+      g.fillStyle=gov; g.fillRect(4,4,W-8,H-8);
+      // ışık şeridi: parlayan C
+      g.strokeStyle="#FF4A3A"; g.lineWidth=H*.10; g.lineCap="round";
+      g.shadowColor="rgba(255,70,50,.95)"; g.shadowBlur=14;
+      g.beginPath(); g.moveTo(W*.88,H*.22); g.lineTo(W*.22,H*.22); g.quadraticCurveTo(W*.10,H*.22,W*.10,H*.50);
+      g.quadraticCurveTo(W*.10,H*.78,W*.22,H*.78); g.lineTo(W*.60,H*.78); g.stroke();
+      g.shadowBlur=0;
+      // geri vites (beyaz) ve sinyal (turuncu) bölmeleri
+      g.fillStyle="#D8DDE2"; g.fillRect(W*.66,H*.62,W*.16,H*.20);
+      g.fillStyle="#C9781E"; g.fillRect(W*.66,H*.36,W*.16,H*.18);
+      // camın parlaması
+      const p=g.createLinearGradient(0,0,0,H*.45);
+      p.addColorStop(0,"rgba(255,220,210,.35)"); p.addColorStop(1,"rgba(255,220,210,0)");
+      g.fillStyle=p; g.fillRect(4,4,W-8,H*.45);
     });
   }
   const PLAKA_EYALET=["CALIFORNIA","TEXAS","FLORIDA","ARIZONA","NEVADA","OREGON","GEORGIA","OHIO"];
@@ -1609,7 +1679,7 @@ const W3D=(()=>{
     const dYan =new THREE.Color(icRenk).offsetHSL(0,0, dTip==="deri"?.03:.12);
     const ahsapVar = car.model.seg==="lux" || car.model.cl;
     const MAT={
-      boya:  matBoya(c0.getHex(), kompleBoya?14:(kaportaAsn>26?34:76)),
+      boya:  matBoya(c0.getHex(), kompleBoya?14:(kaportaAsn>26?34:76), METALIK_RENK.includes(car.color)),
       tavan: imza.kontrastTavan?matBoya(imza.kontrastTavan,44):null,
       koyu:  matKara(0x171B20, 24),
       koyuP: matKara(0x101418, 62),
@@ -1665,11 +1735,21 @@ const W3D=(()=>{
       led:   new THREE.MeshBasicMaterial({color:0xE9F4FF}),
       sinyal:new THREE.MeshBasicMaterial({color:0xE8A63A}),
       geri:  new THREE.MeshBasicMaterial({color:0xE6EAEE}),
-      lens:  new THREE.MeshPhongMaterial({color:0xBCCEDA, transparent:true, opacity:.30,
-               shininess:200, specular:0xFFFFFF, envMap:ortamTex(), reflectivity:.55,
-               combine:THREE.MixOperation, depthWrite:false}),
-      lensK: new THREE.MeshPhongMaterial({color:0xB4322A, transparent:true, opacity:.42,
-               shininess:180, specular:0xFFD9D0, depthWrite:false}),
+      lens:  fiziksel()
+               ? new THREE.MeshPhysicalMaterial({color:0xE8EEF2, transparent:true, opacity:.22,
+                   roughness:.02, metalness:0, clearcoat:1, clearcoatRoughness:.02,
+                   envMap:boyaOrtamTex(), envMapIntensity:1.6, depthWrite:false})
+               : new THREE.MeshPhongMaterial({color:0xBCCEDA, transparent:true, opacity:.30,
+                   shininess:200, specular:0xFFFFFF, envMap:boyaOrtamTex(), reflectivity:.55,
+                   combine:THREE.MixOperation, depthWrite:false}),
+      lensK: fiziksel()
+               ? new THREE.MeshPhysicalMaterial({color:0x9A1E18, transparent:true, opacity:.38,
+                   roughness:.03, clearcoat:1, clearcoatRoughness:.03,
+                   envMap:boyaOrtamTex(), envMapIntensity:1.2, depthWrite:false})
+               : new THREE.MeshPhongMaterial({color:0xB4322A, transparent:true, opacity:.42,
+                   shininess:180, specular:0xFFD9D0, depthWrite:false}),
+      sisLens:new THREE.MeshPhongMaterial({color:0x7E8890, shininess:160, specular:0xFFFFFF,
+               envMap:boyaOrtamTex(), reflectivity:.35, combine:THREE.MixOperation}),
       plaka: new THREE.MeshBasicMaterial({map:plakaTex(car.plate)}),
       amblem:ambT?new THREE.MeshBasicMaterial({map:ambT, transparent:true}):null,
       cizgi: new THREE.MeshBasicMaterial({color:0x07090C, transparent:true, opacity:.30, side:THREE.DoubleSide}),
@@ -2048,13 +2128,36 @@ const W3D=(()=>{
     }else{
       // Far: biçimi dokunun saydamlığından gelen tek panel. Eskiden koyu kutu
       // + iki küre + ayrı LED şeritleri üst üste biniyordu.
-      const FAR_OLCU={dilim:[.40,.16], bumerang:[.44,.15], L:[.40,.15], ince:[.46,.085]};
+      /* Far ünitesi: kaput çizgisinin hemen altında, köşeye kadar. Eskiden
+         kaputun 17 cm altında, 8,5 cm boyunda bir şeritti; ön yüz boş bir
+         duvar gibi kalıyor, araç oyuncak gibi görünüyordu. Üç katman:
+         koyu çerçeve (gövdeye gömülü görünsün), iç (reflektör dokusu),
+         parlak lens camı (ortamı yansıtır). */
+      const FAR_OLCU={dilim:[.48,.20], bumerang:[.52,.19], L:[.48,.19], ince:[.54,.13]};
       const [fw0,fh]=FAR_OLCU[imza.far]||FAR_OLCU.dilim;
-      for(const sx of [-1,1]){
-        const fw=Math.min(fw0, hwOn*.48), fx=sx*(hwOn-fw/2-.05);
-        onPanel(sx>0?"far":"farA", fx, farY+(imza.far==="ince"?.03:0), fw, fh, .010, 6,3);
-        onPanel("lens", fx, farY+(imza.far==="ince"?.03:0), fw*.98, fh*.94, .018, 6,3);
+      // Üst kenar kaputun kavisine binmesin: orada yüzey yukarı bakıyor, çerçeve
+      // kaputun üstüne kara bir kaş gibi yayılıyordu. Üst kenar kaputtan 8 cm aşağıda.
+      let fy=Math.min(farY+.03, s.hood-fh/2-.08);
+      /* Burnu eğik araçlarda (panelvan, bazı hatch) ön yüz o yükseklikte hâlâ
+         geriye yatıyor; panel yüzeye yapıştığı için kaputa doğru uzayıp kaş gibi
+         görünüyordu. Üst ve alt kenar arasındaki derinlik farkı 5 cm'yi
+         aşıyorsa far, yüzeyin dikleştiği yere kadar iner. */
+      {
+        const ox=hwOn*.55;
+        for(let k=0;k<8;k++){
+          const egim=zOn(ox, fy+fh/2)-zOn(ox, fy-fh/2);
+          if(egim<=.05 || fy-fh/2<=pr.sill+.30) break;
+          fy-=.025;
+        }
       }
+      for(const sx of [-1,1]){
+        const fw=Math.min(fw0, hwOn*.54), fx=sx*(hwOn-fw/2-.02);
+        onPanel("koyuP", fx, fy, fw+.030, fh+.026, .006, 6,3);
+        onPanel(sx>0?"far":"farA", fx, fy, fw, fh, .012, 6,3);
+        onPanel("lens", fx, fy, fw*.99, fh*.96, .022, 6,3);
+      }
+      // kaput derzi ve tampon ayrımı: ön yüz tek parça bir duvar gibi durmasın
+      onPanel("cizgi", 0, s.hood-.055, hwOn*1.80, .006, .004, 14,1);
     }
     // ızgara: tek panel, biçimi dokudan
     const izgaraY=farY-.045;
@@ -2079,22 +2182,28 @@ const W3D=(()=>{
       onPanel("koyu", 0, pr.sill+.035, hwAlt*1.55,.05, .014, 7,1);
       for(const sx of [-1,1]){
         const gx=sx*(hwAlt-.10), gy=pr.sill+.13;
-        EK("koyuP", new THREE.CylinderGeometry(.050,.050,.024,10),
-          [gx, gy, zOn(gx,gy)-.008], [Math.PI/2,0,0]);
-        EK("led", new THREE.CircleGeometry(.034,10), [gx, gy, zOn(gx,gy)-.021],[0,Math.PI,0]);
+        // sis farı: koyu yuva içinde küçük lens. Eskiden parlak beyaz bir disk
+        // tampona yapıştırılmış düğme gibi duruyordu.
+        EK("koyuP", new THREE.CylinderGeometry(.058,.058,.024,14),
+          [gx, gy, zOn(gx,gy)-.006], [Math.PI/2,0,0], [1.35,1,.80]);
+        EK("sisLens", new THREE.CircleGeometry(.030,14), [gx, gy, zOn(gx,gy)-.019],[0,Math.PI,0], [1.25,.85,1]);
       }
       arkaPanel("koyu", 0, pr.sill+.035, xAt(yarim-.06, pr.sill+.13)*1.70,.05, .014, 7,1);
     }
     EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
+    if(!imza.tampon){
+      onPanel("cizgi", 0, pr.sill+.33, hwAlt*1.86, .006, .004, 14,1);
+      arkaPanel("cizgi", 0, pr.sill+.33, xAt(yarim-.06, pr.sill+.33)*1.86, .006, .004, 14,1);
+    }
 
     /* ================= ARKA YÜZ ================= */
     const arkaYuz=yarim-.02, stopY=pr.kuyruk-.14;
     const hwArka=xAt(arkaYuz-.05, stopY);
     for(const sx of [-1,1]){
-      const tx=sx*(hwArka-.20);
-      arkaPanel("koyuP", tx, stopY, .40,.20, .006, 4,3);
-      arkaPanel("stop",  tx, stopY, .35,.155, .016, 4,3);
-      arkaPanel("lensK", tx, stopY, .36,.165, .028, 4,3);
+      const tx=sx*(hwArka-.22);
+      arkaPanel("koyuP", tx, stopY, .46,.21, .006, 5,3);
+      arkaPanel("stop",  tx, stopY, .42,.175, .016, 5,3);
+      arkaPanel("lensK", tx, stopY, .43,.185, .028, 5,3);
       arkaPanel("geri",  tx-sx*.115, stopY-.050, .09,.030, .034, 2,1);
     }
     if(imza.led && !car.model.cl)

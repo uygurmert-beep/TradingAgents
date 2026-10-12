@@ -258,6 +258,18 @@ modelin kendi profilini aldığını ölçüyor.
   lastik zemine `temas` gölgesiyle basıyor, lastik çamurluktan 1–2 cm içeride
 - jantla lastik arasında açık halka: yanağın düz yüzü yoktu → `yanakGeo` içine
   halka; klasik ve ticari araçta yıldız alaşım yerine sac jant
+- boyalar soluk (bordo pembe, kırmızı somon): renk tablosu sRGB yazılı ama
+  malzemeye doğrusala çevrilmeden veriliyordu → `matBoya` içinde
+  `convertSRGBToLinear()`. Yeni renk eklerken tabloya sRGB yaz, çevirme orada.
+- araç plastik/kil gibi: boya %11–17 yansımalı Phong'du (sahne ortamındaki çim
+  yeşil leke yapmasın diye kısılmıştı) → boya kendi nötr ortamını yansıtıyor
+  (`boyaOrtamTex`: gök, keskin ufuk, iki ışık kutusu), `MeshPhysicalMaterial`
+  + clearcoat; metalik renkler `METALIK_RENK`. Zayıf cihazda (`HAFIF_CIZIM`)
+  Phong'a düşer; `fiziksel()` tembel, çünkü bu kapsam THREE yüklenmeden çalışır.
+- cam süt beyazı: %64 opak açık mavi → koyu füme, %86, yansımalı
+- far kaputun 17 cm altında 8,5 cm'lik şerit: ön yüz boş duvar → far kaput
+  çizgisinin 8 cm altında, büyük, koyu çerçeve + aydınlık iç + parlak lens;
+  burnu eğik araçta yüzey dikleşene kadar iner (kaputa "kaş" gibi taşmasın)
 
 Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
 
