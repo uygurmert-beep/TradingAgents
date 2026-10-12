@@ -270,6 +270,21 @@ modelin kendi profilini aldığını ölçüyor.
 - far kaputun 17 cm altında 8,5 cm'lik şerit: ön yüz boş duvar → far kaput
   çizgisinin 8 cm altında, büyük, koyu çerçeve + aydınlık iç + parlak lens;
   burnu eğik araçta yüzey dikleşene kadar iner (kaputa "kaş" gibi taşmasın)
+- gövde yastık gibi şişkin: kesit 30 noktalı süperelipsti, alt yarı fıçı gibi
+  içe kıvrılıyordu → açık profil (`PROF_YUM`/`PROF_KUT`, `kut` ile karışır):
+  taç, dar omuz, karakter kırığı, dik kapı, yalnız eşikte kıvrım. Profilin y
+  değerleri kesin azalan olmalı; `xAt` ve `ustY` ters aramaları buna dayanıyor.
+  Gövdenin üst yüzeyine oturan her şey (derz, boyalı panel yaması) `ustY(z,x)`
+  kullanır — süperelips formülünü bir yere geri kopyalama.
+- kaput düz masa: burundan cama 4–8 cm yükselen kavis (`egim`), ön uç `s.hood`'da
+  sabit (far, ızgara, derz ona göre); kaputun yan derzleri çamurlukla ayrımı verir
+- far dış üst köşesi kaputun omzuna tırmanıp üstten kara üçgen: eğim döngüsü
+  dış köşeyi de ölçüyor
+- ön tampon her modelde aynıydı: model adından sabit tip (`uclu`, `genis`,
+  `spor`, `arazi`, `ticari`); burnun altı eşikten 8,5 cm yukarıda bittiği için
+  tampon parçaları `pr.sill+.06`'nın altına inmesin, yoksa gövdenin dışına düşer
+- direkler yuvarlak hortum: elips kesitli `direk()` — yandan geniş, önden ince
+- koltuklar kutu: `yastik()` (yuvarlatılmış, omuzda daralan) + yanaklar
 
 Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
 

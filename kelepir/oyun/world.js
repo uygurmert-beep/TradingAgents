@@ -1084,6 +1084,26 @@ const W3D=(()=>{
     if(!geoCache[k]){ geoCache[k]=new THREE.BoxGeometry(w,h,d); geoCache[k].userData.paylasimli=true; }
     return geoCache[k];
   }
+  /** Köşeleri r yarıçapında yuvarlanmış kutu; daral>0 ise üst kenar o oranda
+      dar (koltuk sırtı omuzda incelir). Koltuklar düz kutuyken iç mekân
+      karton maket gibi duruyordu. */
+  function yastik(w,h,d,r,daral){
+    const k=`y${w.toFixed(3)},${h.toFixed(3)},${d.toFixed(3)},${r.toFixed(3)},${(daral||0).toFixed(2)}`;
+    if(geoCache[k]) return geoCache[k];
+    const g=new THREE.BoxGeometry(w,h,d,5,5,5), p=g.attributes.position, v=new THREE.Vector3();
+    const ic=[Math.max(0,w/2-r), Math.max(0,h/2-r), Math.max(0,d/2-r)];
+    for(let i=0;i<p.count;i++){
+      v.fromBufferAttribute(p,i);
+      const c=[Math.max(-ic[0],Math.min(ic[0],v.x)), Math.max(-ic[1],Math.min(ic[1],v.y)), Math.max(-ic[2],Math.min(ic[2],v.z))];
+      const dx=v.x-c[0], dy=v.y-c[1], dz=v.z-c[2], l=Math.hypot(dx,dy,dz)||1;
+      let x=c[0]+dx/l*r, y=c[1]+dy/l*r, z=c[2]+dz/l*r;
+      if(daral) x*=1-daral*Math.max(0,(y/h+.5));
+      p.setXYZ(i,x,y,z);
+    }
+    g.computeVertexNormals();
+    g.userData.paylasimli=true;
+    return (geoCache[k]=g);
+  }
   function silindir(r1,r2,h,seg){
     const k=`c${r1.toFixed(3)},${r2.toFixed(3)},${h.toFixed(3)},${seg}`;
     if(!geoCache[k]){ geoCache[k]=new THREE.CylinderGeometry(r1,r2,h,seg); geoCache[k].userData.paylasimli=true; }
@@ -1214,13 +1234,20 @@ const W3D=(()=>{
         const t=(z+yarim-L*.008)/(L*.044);
         return pr.burun + (s.hood-pr.burun)*(1-(1-t)*(1-t));   // hızlı, küt çıkış
       }
-      // kaputun arka yarısı kuşağa doğru yumuşakça yükselir (cowl)
+      /* Kaput eskiden burundan cama kadar düz bir masaydı (ortada 1,6 cm'lik
+         tümsek): yandan bakınca kutu kapağı gibi duruyordu. Gerçek kaput
+         burundan cam dibine 4–8 cm yükselir, önde dik, arkada yatık bir kavisle.
+         Ön uç s.hood'da kalıyor: far, ızgara ve derzler o yüksekliğe göre. */
       const kaputArka=pr.kaputZ-L*.15, cowlBit=pr.kaputZ+L*.03;
-      if(z<=kaputArka)
-        return s.hood + .016*Math.sin(Math.PI*(z+yarim-L*.052)/(kaputArka+yarim-L*.052));
+      const egim=s.dik?.03:(s.cls==="van"?.04:(s.cls==="suv"?.05:.07));
+      const kaputUc=s.hood+egim;
+      if(z<=kaputArka){
+        const t=(z+yarim-L*.052)/Math.max(.05,kaputArka+yarim-L*.052);
+        return s.hood + egim*Math.sin(t*Math.PI/2);
+      }
       if(z<=cowlBit){
         const t=(z-kaputArka)/(cowlBit-kaputArka);
-        return s.hood + (pr.beltF-s.hood)*t*t*(3-2*t);
+        return kaputUc + (Math.max(kaputUc,pr.beltF)-kaputUc)*t*t*(3-2*t);
       }
       if(z<=pr.camAlt)
         return pr.beltF + (pr.beltR-pr.beltF)*((z-cowlBit)/Math.max(.05,pr.camAlt-cowlBit));
@@ -1282,33 +1309,68 @@ const W3D=(()=>{
     const list=[];
     for(const z of sirali) if(!list.length || z-list[list.length-1]>.012 || z===yarim) list.push(z);
 
+    /* Kesit eskiden 30 noktalı bir süperelipsti (üst n=9, alt n=3,6): alt yarı
+       ortadan eşiğe kadar fıçı gibi içe kıvrılıyor, yan yüzey yastık gibi
+       şişkin, ışık üzerinde yuvarlak bir leke olarak kayıyordu; karakter çizgisi
+       de yumuşak bir tümsekti. Artık kesit açık bir profil: tepede hafif taç
+       (kaput/bagaj kubbesi), dar omuz yarıçapı, omuzdan karakter kırığına içe
+       yatan bel (tumblehome), kırığın altında hafif basamak, dik kapı yüzü ve
+       yalnız eşikte toplanan alt kıvrım. Kutu gövdede (klasik, SUV, van)
+       yarıçaplar küçülüyor. Profil yarım: (x oranı, y oranı), tepe ortadan
+       eşik ortasına; y kesin azalan — xAt/ustY ters aramaları buna dayanıyor. */
     const kut = s.dik?1:(s.cls==="suv"||s.cls==="van"?.5:0);
-    const NC=30, nUst=9+7*kut, nAlt=3.6+3.2*kut;
+    const PROF_YUM=[[0,1],[.22,.998],[.42,.993],[.60,.984],[.72,.972],[.81,.953],[.87,.928],[.91,.895],
+      [.935,.855],[.955,.80],[.972,.72],[.985,.62],[.994,.52],[.999,.455],[1.0,.43],[.993,.405],[.991,.37],
+      [.994,.25],[.996,.10],[.995,-.08],[.990,-.28],[.981,-.47],[.968,-.63],[.950,-.76],[.922,-.86],
+      [.880,-.93],[.810,-.975],[.680,-.993],[.45,-.998],[.20,-.999],[0,-1]];
+    const PROF_KUT=[[0,1],[.22,.999],[.42,.997],[.60,.993],[.72,.988],[.81,.982],[.87,.974],[.91,.963],
+      [.935,.950],[.955,.928],[.970,.895],[.982,.84],[.991,.74],[.998,.60],[1.0,.52],[.995,.49],[.994,.44],
+      [.996,.30],[.998,.10],[.998,-.08],[.996,-.28],[.992,-.47],[.986,-.63],[.977,-.76],[.962,-.86],
+      [.935,-.93],[.88,-.975],[.75,-.993],[.50,-.998],[.22,-.999],[0,-1]];
+    const PROF=PROF_YUM.map((a,i)=>[a[0]+(PROF_KUT[i][0]-a[0])*kut, a[1]+(PROF_KUT[i][1]-a[1])*kut]);
+    const NP=PROF.length;
+    /* Halka sırası eski süperelipsle aynı yönde (sağ orta → tepe → sol → alt),
+       yüz yönleri ve normaller değişmesin. */
+    const HALKA=[];
+    const ki=PROF.findIndex(p=>p[1]<=.10);             // sağ yan orta noktası
+    for(let i=ki;i>=0;i--) HALKA.push(PROF[i]);           // sağ yan → tepe
+    for(let i=1;i<NP-1;i++) HALKA.push([-PROF[i][0],PROF[i][1]]);   // sol yan, aşağı
+    HALKA.push(PROF[NP-1]);
+    for(let i=NP-2;i>ki;i--) HALKA.push(PROF[i]);         // alt → sağ yan
     const kesitler=list.map(z=>{
       const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
       const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
       const kh=Math.min(kemerHat(z), yT-.10);
-      const pts=[];
-      for(let j=0;j<NC;j++){
-        const th=2*Math.PI*j/NC;
-        const ct=Math.cos(th), st=Math.sin(th);
-        const n=st>=0?nUst:nAlt;
-        const ex=Math.sign(ct)*Math.pow(Math.abs(ct),2/n);
-        const ey=Math.sign(st)*Math.pow(Math.abs(st),2/n);
-        let fx=1-(.055-.030*kut)*Math.pow(Math.max(0,st),2.2); // omuz daralması
-        fx+= .013*Math.exp(-Math.pow((st+.02)/.17,2));     // karakter çizgisi
-        pts.push([hw*ex*fx, Math.max(cy+hh*ey, kh), z]);
-      }
-      return pts;
+      return HALKA.map(p=>[hw*p[0], Math.max(cy+hh*p[1], kh), z]);
     });
+    /** Profilde y oranına karşılık gelen x oranı (yan dal). */
+    const profX=(ey)=>{
+      for(let i=1;i<NP;i++){
+        const a=PROF[i-1], b=PROF[i];
+        if(ey<=a[1] && ey>=b[1]){ const t=(a[1]-ey)/Math.max(1e-6,a[1]-b[1]); return a[0]+(b[0]-a[0])*t; }
+      }
+      return 0;
+    };
+    const kirikI=PROF.reduce((e,p,i)=>p[0]>PROF[e][0]?i:e,0);   // en geniş nokta (karakter kırığı)
+    /** Profilde x oranına karşılık gelen üst yüzey y oranı (tepe → kırık). */
+    const profUstY=(ex)=>{
+      for(let i=1;i<=kirikI;i++){
+        const a=PROF[i-1], b=PROF[i];
+        if(ex>=a[0] && ex<=b[0]){ const t=(ex-a[0])/Math.max(1e-6,b[0]-a[0]); return a[1]+(b[1]-a[1])*t; }
+      }
+      return PROF[kirikI][1];
+    };
     const xAt=(z,y)=>{
       const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
       const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
-      let ey=(y-cy)/hh; ey=Math.max(-.995,Math.min(.995,ey));
-      const n=ey>=0?nUst:nAlt;
-      const st=Math.sign(ey)*Math.pow(Math.abs(ey),n/2);
-      const fx=1-(.055-.030*kut)*Math.pow(Math.max(0,st),2.2)+.013*Math.exp(-Math.pow((st+.02)/.17,2));
-      return hw*Math.pow(Math.max(0,1-Math.pow(Math.abs(ey),n)),1/n)*fx;
+      const ey=Math.max(-.995,Math.min(.995,(y-cy)/hh));
+      return hw*profX(ey);
+    };
+    /** Gövdenin z kesitinde, yanal x'teki üst yüzey yüksekliği (kaput, bagaj, tavan altı kuşak). */
+    const ustY=(z,x)=>{
+      const yT=ustHat(z), yB=altHat0(z), hw=genislik(z);
+      const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
+      return cy+hh*profUstY(Math.min(1,Math.abs(x)/Math.max(.01,hw)));
     };
     /* (x,y) noktasının gövde yüzeyine değdiği z. Nokta siluetin tam kenarına
        denk gelirse (ör. ızgaranın üst sırası) kayan nokta gürültüsü yüzünden
@@ -1333,7 +1395,7 @@ const W3D=(()=>{
     /** (x,y) noktasının gövdenin ARKA yüzeyine değdiği z. */
     const zArka=(x,y)=>yuzeyZ(x,y,false);
     const g=loft(kesitler, true);
-    g.userData={genislik, ustHat, altHat, xAt, nUst, zOn, zArka};
+    g.userData={genislik, ustHat, altHat, xAt, ustY, zOn, zArka};
     geoCache[anahtar]=g; g.userData.paylasimli=true;
     return g;
   }
@@ -1770,7 +1832,7 @@ const W3D=(()=>{
     }
     const genislik=gGeo.userData.genislik, xAt=gGeo.userData.xAt;
     const ustHat=gGeo.userData.ustHat, altHat=gGeo.userData.altHat;
-    const nUst=gGeo.userData.nUst;
+    const ustY=gGeo.userData.ustY;
     const zOn=gGeo.userData.zOn, zArka=gGeo.userData.zArka;
     /** Gövdenin ön yüzeyine yapışan panel (far, ızgara, şerit...). */
     /** Panelin köşesi gövdenin dışına taşarsa yüzey örneklemesi başarısız olur;
@@ -1815,6 +1877,17 @@ const W3D=(()=>{
       if(MAT[k]) MAT[k].side=THREE.DoubleSide;
       g.add(mm); return mm;
     };
+    /** Ön yüzde alt kenarı üst kenarından farklı genişlikte panel (tampon ağzı). */
+    const onTrapez=(k, xm, ym, wUst, wAlt, h, derz)=>{
+      const gg=yuzey(6, 2, (u,v)=>{
+        const y=ym-h/2+h*v, w=wAlt+(wUst-wAlt)*v;
+        const [x,z]=onNokta(kirp(xm-w/2+w*u, y), y);
+        return [x, y, z-(derz||.012)];
+      });
+      const mm=new THREE.Mesh(gg, MAT[k]); mm.name=k;
+      if(MAT[k]) MAT[k].side=THREE.DoubleSide;
+      g.add(mm); return mm;
+    };
     /** Gövdenin arka yüzeyine yapışan panel. */
     const arkaPanel=(k, xm, ym, w, h, derz, nu, nv)=>{
       const gg=yuzey(nu||5, nv||3, (u,v)=>{
@@ -1842,17 +1915,29 @@ const W3D=(()=>{
       EK(k, new THREE.TubeGeometry(cv, seg||5, r, 8, false));
     };
     const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+    /* Direk: yuvarlak boru değil, yassı elips kesitli bir çubuk. Boru her
+       yönden aynı kalınlıkta görünüyordu; önden bakınca A direkleri 5,4 cm'lik
+       iki kalın hortum gibi duruyordu. Gerçek direk yandan geniş (camı
+       taşıyan yüz), önden ince. yanda: cam düzlemindeki yarı genişlik,
+       kal: dışa doğru yarı kalınlık. */
+    const direk=(k, p0, p1, yanda, kal)=>{
+      const d=new THREE.Vector3().subVectors(p1,p0), uz=d.length(); d.normalize();
+      const X=new THREE.Vector3(1,0,0).addScaledVector(d,-d.x).normalize();
+      const Z=new THREE.Vector3().crossVectors(X,d);
+      const e=new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X,d,Z));
+      EK(k, silindir(1,1,1,12), [(p0.x+p1.x)/2,(p0.y+p1.y)/2,(p0.z+p1.z)/2], [e.x,e.y,e.z], [kal, uz, yanda]);
+    };
     for(const sx of [-1,1]){
       const dx0=sx*(hwCam-.020), dx1=sx*(hwCam*(1-tum)-.016);
-      boru(boyaKey, V(dx0, pr.beltF-.02, pr.kaputZ+.03),
-                    V(dx1, camTepe, pr.camUst+.02), direkR);                            // A
-      boru(boyaKey, V(dx0, pr.beltR-.02, pr.camAlt-.03),
-                    V(dx1, camTepe, pr.tavanArka-.02), direkR*1.10);                    // C
+      direk(boyaKey, V(dx0, pr.beltF-.02, pr.kaputZ+.03),
+                     V(dx1, camTepe, pr.camUst+.02), direkR*1.05, direkR*.62);          // A
+      direk(boyaKey, V(dx0, pr.beltR-.02, pr.camAlt-.03),
+                     V(dx1, camTepe, pr.tavanArka-.02), direkR*1.30, direkR*.66);       // C
       boru(tavanKey, V(dx1, camTepe-.006, pr.camUst+.02),
                      V(dx1, camTepe+.006, pr.tavanArka-.02), direkR*.70, 3);
       const bz=pr.camUst+(pr.tavanArka-pr.camUst)*(s.cls==="van"?.34:.42);
       const by=pr.beltF+(pr.beltR-pr.beltF)*((bz-pr.kaputZ)/Math.max(.1,pr.camAlt-pr.kaputZ));
-      boru("koyuP", V(dx0, by-.02, bz), V(dx1, camTepe, bz), direkR*.86, 3);
+      direk("koyuP", V(dx0, by-.02, bz), V(dx1, camTepe, bz), direkR*.95, direkR*.55);
       // pencere fitili
       boru("koyu", V(sx*hwCam, pr.beltF-.028, pr.kaputZ+.06),
                    V(sx*hwCam, pr.beltR-.028, pr.camAlt-.05), .024, 3);
@@ -1988,38 +2073,45 @@ const W3D=(()=>{
         KUTU("krom", .052,.012,.085, [dirX+dx, tabanY+.085, kabinZ0+.26], [-.35,0,0]);
     }
     /* --- koltuklar --- */
+    /* Koltuk: yuvarlatılmış yastıklar. Oturak öne doğru hafif kalkık, iki
+       yanında yükselen yanaklar; sırt omuzda daralıyor ve yan yanakları
+       içe dönük (sarıyor); baş dayama iki çubuk üstünde ayrı bir yastık.
+       Eskiden altı düz kutuydu, iç mekân karton maket gibi görünüyordu. */
     const koltuk=(x,z,en)=>{
-      KUTU("doseme", en*.74,.15,.50, [x, tabanY+.12, z]);                 // oturak (orta)
-      KUTU("doseme", en*.74,.54,.14, [x, tabanY+.44, z+.29], [-.17,0,0]); // sırt (orta)
-      KUTU("dosemeYan", en*.52,.18,.12, [x, tabanY+.78, z+.32]);          // baş dayama
+      const ot=-.07, sr=-.20;                                        // oturak / sırt eğimi
+      EK("doseme", yastik(en*.62,.12,.50,.045), [x, tabanY+.12, z], [ot,0,0]);
+      EK("doseme", yastik(en*.60,.50,.11,.045,.12), [x, tabanY+.45, z+.28], [sr,0,0]);
       for(const sx2 of [-1,1]){
-        KUTU("dosemeYan", en*.17,.44,.14, [x+sx2*en*.42, tabanY+.42, z+.27], [-.17,0,0]);
-        KUTU("dosemeYan", en*.17,.12,.48, [x+sx2*en*.40, tabanY+.145, z]);
+        EK("dosemeYan", yastik(en*.17,.15,.48,.05), [x+sx2*en*.38, tabanY+.155, z], [ot,0,sx2*.18]);
+        EK("dosemeYan", yastik(en*.16,.46,.15,.05,.10), [x+sx2*en*.37, tabanY+.43, z+.25], [sr,-sx2*.38,0]);
       }
-      // dikiş hatları
+      EK("dosemeYan", yastik(en*.46,.17,.09,.042), [x, tabanY+.83, z+.37], [sr*.6,0,0]);   // baş dayama
+      for(const sx2 of [-1,1]) EK("plastik", silindir(.008,.008,.10,6), [x+sx2*en*.12, tabanY+.73, z+.355], [sr,0,0]);
+      // dikiş hatları: sırtın ve oturağın orta panelini ayıran iki çizgi
       for(const sx2 of [-1,1]){
-        KUTU("dikis", .008,.40,.012, [x+sx2*en*.23, tabanY+.44, z+.216], [-.17,0,0]);
-        KUTU("dikis", .008,.012,.44, [x+sx2*en*.22, tabanY+.197, z]);
+        EK("dikis", kutu(.007,.40,.010), [x+sx2*en*.20, tabanY+.45, z+.222], [sr,0,0]);
+        EK("dikis", kutu(.007,.010,.42), [x+sx2*en*.20, tabanY+.183, z], [ot,0,0]);
       }
-      KUTU("plastik", en*.20,.022,.055, [x, tabanY+.70, z+.32]);          // baş dayama sapı
       if(detay){
         KUTU("plastik", en*.86,.030,.22, [x, tabanY+.035, z-.02]);        // ray/altlık
       }
       if(dosemeEski){
-        const y=new THREE.Mesh(new THREE.PlaneGeometry(en*.8,.34),
+        const y=new THREE.Mesh(new THREE.PlaneGeometry(en*.7,.34),
           new THREE.MeshBasicMaterial({map:dokuDoseme(), transparent:true, opacity:.8}));
-        y.position.set(x, tabanY+.46, z+.215); y.rotation.x=-.17+Math.PI; g.add(y);
+        y.position.set(x, tabanY+.47, z+.217); y.rotation.x=sr+Math.PI; g.add(y);
       }
     };
     const onKz=kabinZ0+.66, arkaKz=Math.min(kabinZ1-.44, onKz+.90);
     koltuk(-s.W*.23, onKz, .48); koltuk(s.W*.23, onKz, .48);
     if(arkaKz>onKz+.35){
-      KUTU("doseme", s.W*.72,.15,.46, [0, tabanY+.12, arkaKz]);
-      KUTU("doseme", s.W*.72,.50,.14, [0, tabanY+.42, arkaKz+.27], [-.14,0,0]);
+      // arka kanepe: iki oturma yeri belli olsun diye iki yastık + orta dolgu
+      EK("doseme", yastik(s.W*.70,.13,.46,.05), [0, tabanY+.12, arkaKz], [-.06,0,0]);
       for(const sx of [-1,1]){
-        KUTU("dosemeYan", .25,.16,.11, [sx*s.W*.21, tabanY+.74, arkaKz+.30]);
-        KUTU("dikis", .008,.40,.012, [sx*s.W*.20, tabanY+.42, arkaKz+.205], [-.14,0,0]);
+        EK("doseme", yastik(s.W*.30,.48,.12,.05,.08), [sx*s.W*.19, tabanY+.42, arkaKz+.27], [-.14,0,0]);
+        EK("dosemeYan", yastik(.24,.15,.09,.04), [sx*s.W*.20, tabanY+.75, arkaKz+.32], [-.10,0,0]);
+        EK("dikis", kutu(.007,.38,.010), [sx*s.W*.19, tabanY+.42, arkaKz+.207], [-.14,0,0]);
       }
+      EK("dosemeYan", yastik(s.W*.14,.44,.11,.04), [0, tabanY+.40, arkaKz+.28], [-.14,0,0]);
     }
     // emniyet kemerleri
     if(detay) for(const sx of [-1,1]){
@@ -2142,10 +2234,13 @@ const W3D=(()=>{
          geriye yatıyor; panel yüzeye yapıştığı için kaputa doğru uzayıp kaş gibi
          görünüyordu. Üst ve alt kenar arasındaki derinlik farkı 5 cm'yi
          aşıyorsa far, yüzeyin dikleştiği yere kadar iner. */
+      /* Dış köşe de ölçülür: kesitin omzu orada üst kenarı aşağı çekiyor;
+         yalnız ortaya bakılınca farın dış üst köşesi kaputun yanına tırmanıp
+         yukarıdan kara bir üçgen gibi görünüyordu. */
       {
-        const ox=hwOn*.55;
+        const ox=hwOn*.55, ox2=hwOn-.05;
         for(let k=0;k<8;k++){
-          const egim=zOn(ox, fy+fh/2)-zOn(ox, fy-fh/2);
+          const egim=Math.max(zOn(ox, fy+fh/2)-zOn(ox, fy-fh/2), zOn(ox2, fy+fh/2)-zOn(ox2, fy-fh/2)-.02);
           if(egim<=.05 || fy-fh/2<=pr.sill+.30) break;
           fy-=.025;
         }
@@ -2178,17 +2273,71 @@ const W3D=(()=>{
         for(const sx of [-1,1]) KUTU(kromKey, .045,.13,.045, [sx*w*.30, pr.sill+.24, z]);
       }
     }else{
-      onPanel("petek", 0, pr.sill+.10, hwAlt*1.30,.12, .010, 6,2);
-      onPanel("koyu", 0, pr.sill+.035, hwAlt*1.55,.05, .014, 7,1);
-      for(const sx of [-1,1]){
-        const gx=sx*(hwAlt-.10), gy=pr.sill+.13;
+      /* Ön tampon. Eskiden her modelde aynı: plakanın altında tek bir petek
+         şerit ve iki sis farı; plakanın iki yanı boş boya duvarıydı. Gerçek
+         tamponda hava girişleri yüzün yarısıdır ve markayı ayırt ettirir.
+         Model adından sabit bir tip seçiliyor (her araç hep aynı yüz):
+           uclu  — orta alt giriş + iki köşe girişi, sis farı köşede
+           genis — plakanın altında tek geniş trapez ağız, sis uçlarda
+           spor  — büyük trapez ağız + köşelerde dikey hava perdesi yarıkları
+           arazi — koyu plastik alt bant + gümüş karter koruma (SUV)
+           ticari— boyasız koyu plastik alt tampon, kare sis
+         Her girişin arkasında biraz daha büyük koyu bir çerçeve var: tek
+         katman düz bir çıkartma gibi duruyordu, iki katman derinlik veriyor. */
+      const tr=tohum(_tohumAd(car.model.n+"|tampon"));
+      const seg=car.model.seg;
+      const tTip = seg==="ticari" ? "ticari"
+                 : (seg==="suv" || imza.kaplama) ? "arazi"
+                 : ["uclu","uclu","genis","spor"][Math.floor(tr()*4)] ;
+      const sis=(gx, gy, kare)=>{
         // sis farı: koyu yuva içinde küçük lens. Eskiden parlak beyaz bir disk
         // tampona yapıştırılmış düğme gibi duruyordu.
-        EK("koyuP", new THREE.CylinderGeometry(.058,.058,.024,14),
+        if(kare) onPanel("koyuP", gx, gy, .13,.075, .008, 2,1);
+        else EK("koyuP", new THREE.CylinderGeometry(.058,.058,.024,14),
           [gx, gy, zOn(gx,gy)-.006], [Math.PI/2,0,0], [1.35,1,.80]);
         EK("sisLens", new THREE.CircleGeometry(.030,14), [gx, gy, zOn(gx,gy)-.019],[0,Math.PI,0], [1.25,.85,1]);
+      };
+      // ağız: çerçeve + petek, alt kenar üst kenardan geniş (trapez)
+      const agiz=(xm, ym, wUst, wAlt, h)=>{
+        onTrapez("koyuP", xm, ym, wUst+.035, wAlt+.035, h+.030, .006);
+        onTrapez("petek", xm, ym, wUst, wAlt, h, .011);
+      };
+      const y0=pr.sill;
+      if(tTip==="uclu"){
+        agiz(0, y0+.10, hwAlt*.80, hwAlt*.92, .085);
+        for(const sx of [-1,1]){
+          const gx=sx*(hwAlt-.15);
+          agiz(gx, y0+.165, .19, .22, .15);
+          sis(gx, y0+.165);
+        }
+      }else if(tTip==="genis"){
+        agiz(0, y0+.095, hwAlt*1.25, hwAlt*1.48, .11);
+        for(const sx of [-1,1]) sis(sx*(hwAlt-.12), y0+.205);
+      }else if(tTip==="spor"){
+        agiz(0, y0+.115, hwAlt*1.05, hwAlt*1.30, .17);
+        for(const sx of [-1,1]){
+          const gx=sx*(hwAlt-.07);
+          onTrapez("koyuP", gx, y0+.17, .05, .075, .21, .008);       // hava perdesi
+        }
+        // spor ağızda plaka ağzın üstünde durur, ince bir dudak altta
+        onPanel("koyu", 0, y0+.022, hwAlt*1.70,.03, .016, 7,1);
+      }else if(tTip==="arazi"){
+        // burnun altı eşikten 8,5 cm yukarıda bitiyor; karter koruma onun üstünde
+        onPanel("koyu", 0, y0+.155, hwAlt*1.90,.16, .010, 9,2);
+        agiz(0, y0+.185, hwAlt*.95, hwAlt*1.05, .06);
+        onTrapez("jant", 0, y0+.112, hwAlt*.95, hwAlt*.80, .045, .018);  // karter koruma
+        for(const sx of [-1,1]) sis(sx*(hwAlt-.13), y0+.17);
+      }else{
+        // burnun altı eşikten 8,5 cm yukarıda bitiyor; bant onun üstünde
+        onPanel("koyu", 0, y0+.175, hwAlt*1.94,.18, .010, 9,2);
+        agiz(0, y0+.135, hwAlt*1.10, hwAlt*1.16, .06);
+        for(const sx of [-1,1]) sis(sx*(hwAlt-.14), y0+.20, true);
       }
+      if(tTip!=="spor" && tTip!=="ticari") onPanel("koyu", 0, y0+.022, hwAlt*1.55,.04, .014, 7,1);
       arkaPanel("koyu", 0, pr.sill+.035, xAt(yarim-.06, pr.sill+.13)*1.70,.05, .014, 7,1);
+      // arka difüzör: tampon altında koyu, ince kanatçıklı şerit
+      if(seg==="lux"||tTip==="spor") for(let i=-2;i<=2;i++)
+        arkaPanel("koyuP", i*.11, pr.sill+.07, .018,.06, .020, 1,1);
     }
     EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
     if(!imza.tampon){
@@ -2269,14 +2418,22 @@ const W3D=(()=>{
       const kaputHat=(z)=>{
         EK("cizgi", yuzey(6,1,(u,v)=>{
           const xx=(-1+2*u)*genislik(z)*.86;
-          const yT=ustHat(z), yB=altHat(z), cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
-          const ex=Math.min(.99,Math.abs(xx)/Math.max(.01,genislik(z)));
-          const yy=cy+hh*Math.pow(Math.max(0,1-Math.pow(ex,nUst)),1/nUst);
-          return [xx, yy+.012, z-.006+.012*v];
+          return [xx, ustY(z,xx)+.004, z-.006+.012*v];
         }));
       };
       kaputHat(pr.kaputZ-.02);
       if(s.cls==="sedan") kaputHat(pr.camAlt+.03);
+      /* Kaputun yan derzleri (çamurlukla birleştiği yer). Yoktu: kaput
+         çamurluklarla tek bir kalıp gibi duruyor, üstten bakınca ön kısım
+         "kapak" değil yekpare bir tümsek okunuyordu. */
+      const kz0=-yarim+L*.03, kz1=pr.kaputZ-.03;
+      if(kz1-kz0>.25) for(const sx of [-1,1]){
+        EK("cizgi", yuzey(1,10,(u,v)=>{
+          const zz=kz0+(kz1-kz0)*v;
+          const xx=sx*(genislik(zz)*(.80+.03*v)+(u-.5)*.010);
+          return [xx, ustY(zz,xx)+.004, zz];
+        }));
+      }
     }
 
     /* ================= HASAR KATMANI ================= */
@@ -2309,13 +2466,10 @@ const W3D=(()=>{
     const ustKaplama=(z, w, d, y, mat)=>{
       const geo=yuzey(7,5,(u,v)=>{
         const zz=z-d/2+d*u;
-        const yT=ustHat(zz), yB=altHat(zz), hw=genislik(zz);
+        const hw=genislik(zz);
         // x, o z'deki yarı genişliği aşarsa yama kaputun yanından taşar
         const xx=Math.max(-hw*.97, Math.min(hw*.97, -w/2+w*v));
-        const cy=(yT+yB)/2, hh=Math.max(.03,(yT-yB)/2);
-        const ex=Math.min(.99,Math.abs(xx)/Math.max(.01,hw));
-        const yy=cy+hh*Math.pow(Math.max(0,1-Math.pow(ex,nUst)),1/nUst);
-        return [xx, yy+.008, zz];
+        return [xx, ustY(zz,xx)+.006, zz];
       });
       const m=new THREE.Mesh(geo, mat); m.material.side=THREE.DoubleSide;
       m.renderOrder=2;
