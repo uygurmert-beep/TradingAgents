@@ -304,3 +304,11 @@ ul, ol { margin: 0; padding: 0; }
 .site-footer__legal p { margin-bottom: .6em; }
 @media (min-width: 760px) { .site-footer__grid { grid-template-columns: 1.4fr 1fr; } }
 .faq + p { margin-top: 1.25rem; }
+
+/* Invite landing (/davet/KOD) */
+.invite-code { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 8px auto 4px; padding: 14px 18px; border: 1.5px dashed color-mix(in srgb, var(--gold, #FFD200) 55%, transparent); border-radius: 16px; }
+.invite-code[hidden] { display: none; }
+.invite-code__label { font-size: .85rem; color: var(--muted); }
+.invite-code strong { font-family: "Barlow Condensed", sans-serif; font-size: 2rem; letter-spacing: .2em; }
+.invite-steps { text-align: left; max-width: 34ch; margin: 18px auto; padding-left: 1.3em; display: grid; gap: 6px; }
+.invite-fine { font-size: .85rem; color: var(--muted); margin-top: 14px; }

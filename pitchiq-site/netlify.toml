@@ -63,3 +63,9 @@
   from = "/app"
   to = "/play/"
   status = 301
+
+# Friend invites: pitchiq.app/davet/KOD shows the invite page (the code is read in the browser).
+[[redirects]]
+  from = "/davet/*"
+  to = "/davet/"
+  status = 200

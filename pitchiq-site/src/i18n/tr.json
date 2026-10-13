@@ -294,5 +294,22 @@
   "notFound": {
     "title": "Ofsayt!",
     "text": "Aradığın sayfa sahada değil."
+  },
+  "invite": {
+    "metaTitle": "Davetin var — Pitch IQ",
+    "metaDescription": "Arkadaşın seni Pitch IQ'ya davet etti. Davet koduyla katıl, ikinize de 1 ay Pro.",
+    "eyebrow": "Arkadaş daveti",
+    "title": "Arkadaşın seni maça çağırıyor",
+    "text": "Oyunu indir, davet kodunu gir: sana hemen 1 ay Pro. 3 oyun oynayınca arkadaşın da 1 ay Pro kazanır.",
+    "codeLabel": "Davet kodun",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "steps": [
+      "Google Play'den Pitch IQ'yu indir.",
+      "Açılışta “Davet kodum var” de ve kodu gir.",
+      "1 ay Pro hemen açılır; tadını çıkar."
+    ],
+    "cta": "Google Play'den indir",
+    "fine": "Davet kodu oyunu ilk açtığın 7 gün içinde, cihaz başına bir kez kullanılabilir."
   }
 }

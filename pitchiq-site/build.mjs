@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { renderHome } from "./src/pages/home.mjs";
 import { renderPrivacy } from "./src/pages/privacy.mjs";
 import { renderSupport } from "./src/pages/support.mjs";
+import { renderInvite } from "./src/pages/invite.mjs";
 import { renderPlay } from "./src/pages/play.mjs";
 import { renderNotFound } from "./src/pages/not-found.mjs";
 
@@ -41,6 +42,7 @@ const pages = [
   { path: "privacy/", render: renderPrivacy, priority: "0.5" },
   { path: "support/", render: renderSupport, priority: "0.6" },
   { path: "play/", render: renderPlay, priority: "0.4" },
+  { path: "davet/", render: renderInvite, sitemap: false },
 ];
 
 const sitemap = [];
@@ -55,7 +57,7 @@ for (const locale of config.locales) {
 
   for (const page of pages) {
     write(prefix.slice(1) + page.path, page.render({ ...ctx, path: prefix + page.path }));
-    sitemap.push({ loc: siteUrl + prefix + page.path, priority: page.priority });
+    if (page.sitemap !== false) sitemap.push({ loc: siteUrl + prefix + page.path, priority: page.priority });
   }
   if (locale === config.defaultLocale) write("404.html", renderNotFound({ ...ctx, path: "/404" }));
 }
