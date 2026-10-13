@@ -1005,7 +1005,8 @@ function renderTabs(){
 
 /* ---- kart ---- */
 function rivalInterest(seg){
-  return RIVAL_DEFS.filter((d,i)=>d.segs.includes(seg) && S.rivals[i].stock.length<d.cap).length;
+  // oyundaki rakipler (tanım listesi sırası değil — bkz. resolveAuction)
+  return (S.rivals||[]).filter((st,i)=>{ const d=rivalDef(st,i); return d.segs.includes(seg) && (st.stock||[]).length<d.cap; }).length;
 }
 function cardHtml(c, mode){
   let price, plabel;
