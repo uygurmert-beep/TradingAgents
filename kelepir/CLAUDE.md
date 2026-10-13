@@ -357,6 +357,24 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   tekliflerdeki `takas.car` ve `S.canli.car` bu yüzden orada;
   yeni bir "araç tutan teklif" eklersen oraya da ekle, yoksa model nesnesi
   JSON'a kopyalanır ve `MODELS.includes` sessizce yanlış döner.
+- **Pazarlık kuralları** (`sellerReply`/`saleReply`, oyun testi kararı): karşı
+  teklif oyuncunun teklifini geçmez/altına inmez, turdan tura tek yönde gider,
+  "altına inmem" yalnız gerçek tabanda (`taban:true`). Satıcı tarafı önceki
+  karşı teklifi `S.neg.sonKarsi`'de, alıcı tarafı `S.sale.counter`'da tutar.
+  Değiştirirsen 10.000 turluk simülasyonla (ihlal 0) doğrula.
+- **Rakipler `S.rivals`'tan okunur, `RIVAL_DEFS` sırasıyla değil.** Oyunda 4
+  rakip var, tanım listesi 10; `RIVAL_DEFS.forEach((d,i)=>S.rivals[i]…)`
+  müzayedeyi çökertiyordu. Tanım için `rivalDef(st,i)`.
+- **Kasaya giren/çıkan her önemli tutar `kasaHareket(t, etiket)` ile** (ya da kasa
+  zaten değiştiyse `kasaNot`). Durum sayfasındaki kasa defteri buradan dolar;
+  `S.cash+=` ile sessiz ödül ekleme.
+- **Bildirimler kuyrukta** (`toast` → `TOAST_Q`): aynı anda tek bildirim, satış
+  özeti (`.satildi`) açıkken bekler. Testte bildirim metni arıyorsan bekle.
+- **Üst şeritteki gider = bugün kasadan çıkan** (otopark, maaş, faiz). Kira
+  sezon sonunda kesilir; şeritte ayrı birikme sayacı. İkisini birleştirme.
+- **Satış sahnesinde eski fotoğraflı yer tutucu** (`.fotobekle.eskifoto`)
+  `height:100%` ile yüksekliksiz kapta resmin doğal boyuna uzuyordu; kap
+  `aspect-ratio` veriyor. Yeni bir fotoğraf kabı yazarsan yükseklik ver.
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir
   sayfa yazarken bu ikisini anlamlı doldur.

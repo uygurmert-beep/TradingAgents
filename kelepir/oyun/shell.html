@@ -403,6 +403,11 @@ body.ogret-ac main{padding-bottom:218px}
   background:radial-gradient(80% 90% at 50% 75%, rgba(14,94,75,0.128), transparent 70%), var(--surface)}
 .satis-sahne.zarar{background:radial-gradient(80% 90% at 50% 75%, rgba(200,50,60,.12), transparent 70%), var(--surface)}
 .satis-sahne img.aracfoto,.satis-sahne svg{width:100%;aspect-ratio:3/1;object-fit:contain;display:block}
+/* fotoğraf yenilenirken eski fotoğraflı yer tutucu (eskifoto) height:100% ile
+   yüksekliği olmayan sahnede resmin doğal boyuna (~850px) uzuyor, satış
+   özeti ekranın tamamını boş bir alanla kaplıyordu */
+.satis-sahne .fotobekle,.satis-sahne .fotobekle.eskifoto{display:block;width:100%;height:auto;aspect-ratio:3/1}
+.satis-sahne .fotobekle.eskifoto img.aracfoto,.satis-sahne .fotobekle img.aracfoto{width:100%;height:100%;object-fit:contain}
 .satildi{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-8deg);
   font-family:var(--imza-font);font-weight:700;font-size:26px;letter-spacing:.12em;color:var(--tint);
   border:3px solid var(--tint);border-radius:10px;padding:3px 14px;background:rgba(255,255,255,.9);

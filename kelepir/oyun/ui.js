@@ -992,7 +992,7 @@ function renderHud(){
       <span class="hs-oge"><em>Stok</em><b>${S.cars.length}/${S.slots}</b></span>
       <span class="hs-oge"><em>İtibar</em><b style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</b></span>
       <span class="hs-oge"><em>Sv</em><b>${l}${bekleyen?'<span class="dot-badge"></span>':''}</b><u><i style="width:${Math.round(xpOran*100)}%"></i></u></span>
-      <span class="hs-oge gider"><b>&minus;${tlk(bugun)}</b><em>bugün</em></span>
+      <span class="hs-oge gider"><b>${bugun?"&minus;"+tlk(bugun):"₺0"}</b><em>bugün</em></span>
       <span class="hs-oge gider kira" title="Sezon sonunda kesilecek kira: ${tl(kiraBiriken)} / ${tl(kiraSezon)}"><em>Kira</em><b>${kisaTl(kiraBiriken)}/${kisaTl(kiraSezon)}</b></span>
     </button>`;
   HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar,bugun,kiraBiriken,kiraSezon};
@@ -1011,7 +1011,7 @@ function openDurum(){
       <div class="kv"><span>Vergi (sezon kârının %8'i, şimdilik)</span><b>${tl(Math.round(Math.max(0,S.seasonProfit||0)*.08))}</b></div>
       <div class="sec-note" style="margin-top:6px">Kira ve vergi her gün değil, ${h.kalan} gün sonra sezon kapanışında tek seferde kasadan düşer.${S.cash<h.kiraSezon?` <b style="color:var(--red)">Kasadaki nakit kiradan az.</b>`:""}</div></div>
     <div class="block"><h4>KASA DEFTERİ &middot; SON HAREKETLER</h4>
-      ${(S.kasa||[]).slice(-12).reverse().map(k=>`<div class="kv"><span>${k.g}. gün &middot; ${k.e}</span><b class="${k.t>=0?"pos":"neg"}">${k.t>=0?"+":"&minus;"}${tl(Math.abs(k.t))}</b></div>`).join("")||`<div class="sec-note">Henüz hareket yok.</div>`}</div>
+      ${(S.kasa||[]).slice(-12).reverse().map(k=>`<div class="kv"><span>${k.g}. gün &middot; ${k.e}</span><b class="${k.t>=0?"pos":"neg"}" style="white-space:nowrap">${k.t>=0?"+":"&minus;"}${tl(Math.abs(k.t))}</b></div>`).join("")||`<div class="sec-note">Henüz hareket yok.</div>`}</div>
     <div class="block"><h4>KARİYER</h4>
       <div class="kv"><span>Seviye</span><b>Sv ${l} &middot; ${S.xp}/${next} XP</b></div>
       <div class="kv"><span>İtibar</span><b>${Math.round(S.rep)} / 100</b></div>
@@ -3324,7 +3324,7 @@ function openDealSummary(d){
     </div>
     <div class="block"><h4>KAZANIM</h4>
       <div class="kv"><span>Deneyim</span><b class="pos">+${d.xp} xp</b></div>
-      <div class="kv"><span>İtibar</span><b class="${d.rep>=0?"pos":"neg"}">${d.rep>0?"+":""}${String(d.rep).replace(".",",")}</b></div>
+      <div class="kv"><span>İtibar</span><b class="${(+d.rep||0)>=0?"pos":"neg"}">${(+d.rep||0)>0?"+":""}${String(+d.rep||0).replace(".",",")}</b></div>
       <div class="kv"><span>Elde tuttuğun g&uuml;n</span><b>${d.days}</b></div>
     </div>
     ${d.lesson?`<div class="block" style="border-color:var(--sodium-dim)">
