@@ -702,7 +702,7 @@ function sellCar(car, price, note){
   if(profit>(S.stats.rekorKar||0)) S.stats.rekorKar=profit;
   SON_SATILAN=car;   // özet fotoğrafı için — geçici, kayda yazılmaz
   S.lastDeal={n:`${car.model.n} ${car.year}`, buy:car.boughtFor, repair:car.spent, extra, rekor, carId:car.id,
-    sell:price, profit, xp:gain, rep:repDelta?("+"+String(Math.round(repDelta*10)/10).replace(".",",")):0, days:car.daysListed, note:note||"", lesson};
+    sell:price, profit, xp:gain, rep:Math.round((repDelta||0)*10)/10, days:car.daysListed, note:note||"", lesson};
   cGain("yilmaz");
   cal(profit>=0?"satis":"reddet");
   dokun(profit>=0?"sat":"hata"); nefes(profit>=0?"good":"bad");
@@ -3226,7 +3226,7 @@ function openDealSummary(d){
     </div>
     <div class="block"><h4>KAZANIM</h4>
       <div class="kv"><span>Deneyim</span><b class="pos">+${d.xp} xp</b></div>
-      <div class="kv"><span>İtibar</span><b class="${d.rep>=0?"pos":"neg"}">${d.rep>=0?"+":""}${d.rep}</b></div>
+      <div class="kv"><span>İtibar</span><b class="${d.rep>=0?"pos":"neg"}">${d.rep>0?"+":""}${String(d.rep).replace(".",",")}</b></div>
       <div class="kv"><span>Elde tuttuğun g&uuml;n</span><b>${d.days}</b></div>
     </div>
     ${d.lesson?`<div class="block" style="border-color:var(--sodium-dim)">
@@ -3244,7 +3244,7 @@ function openBid(c){
     <div class="block"><div class="help">
       <p>Rakip galericiler de zarf veriyor. En yüksek zarf alır, <strong>verdiğin rakamı ödersin</strong>.</p>
       <p>Kaputun altını kimse görmedi — bu yüzden ucuz, bu yüzden riskli.</p></div></div>
-    <div class="sec-note" style="text-align:center;margin-bottom:5px">Zarfın ($)</div>
+    <div class="sec-note" style="text-align:center;margin-bottom:5px">Zarfın (₺)</div>
     ${c.whisper?`<div class="note" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-6 6c0 4 3 5 3 8h6c0-3 3-4 3-8a6 6 0 0 0-6-6z"></path></svg>
       <div>Vedat fısıldadı: en y&uuml;ksek rakip zarfı <b class="mono">${tl(c.whisper.best)}</b> — ${c.whisper.who}.</div></div>`
