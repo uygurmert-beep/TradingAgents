@@ -30,7 +30,12 @@ function gunlukKur(zorla){
   gunSayacSifirla();
   // günün fırsatı: pazardaki bir araç, tabanı düşük ve ekspertizi bedava
   for(const c of S.market) c.gunun=false;
-  const aday=S.market.filter(c=>!c.inspected);
+  /* Rozet yalnız gerçekten ucuz ve ağır hasarsız araca. Eskiden rastgele bir
+     araca veriliyordu: "~%17 pahalı (tahmin)" yazan araçta da, ağır hasarlı
+     araçta da "Günün fırsatı" çıkıyor, oyuncunun rozetlere güvenini kırıyordu.
+     Uygun aday yoksa o gün rozet yok. */
+  const aday=S.market.filter(c=>!c.inspected && c.ask && c.ask<valueOf(c,false)*0.95
+    && !(c.tramer>valueOf(c,false)*0.12 || c.degisen>=3));
   if(aday.length){
     const c=pick(aday);
     c.gunun=true;

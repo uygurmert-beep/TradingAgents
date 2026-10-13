@@ -39,7 +39,21 @@ const SANAYI={ aralik:10, indirim:0.30 };
 /* Hedef kendini yükseltiyor: kiranın katı ile geçen sezonun kârının
    %10 fazlasından büyük olanı. Sabit kat denenmişti; denge botu bile
    8 sezonun 7'sinde tutturuyordu, hedef bir yarış değil formaliteydi. */
-const HEDEF={ kiraKat:3.2, taban:250000, indirim:0.25, artis:1.10 };
+/* Hedef kademeli: bronz %60, gümüş %100 (asıl hedef), altın %160.
+   Oyun testinde ₺350K'lık hedef 3.–5. günde bitiyor, sezonun geri kalanı
+   gerilimsiz kalıyordu; hedefi kaçıran ise hiçbir şey almıyordu. Taban
+   ₺520K (başlangıç nakdinin ~%20'si); bronz kirayı dondurur, gümüş
+   dondurur + indirir, altın daha çok indirir. */
+const HEDEF={ kiraKat:3.2, taban:520000, indirim:0.25, altinIndirim:0.40, artis:1.10,
+              kademe:[{k:"bronz",n:"Bronz",x:.6},{k:"gumus",n:"G&uuml;m&uuml;ş",x:1},{k:"altin",n:"Altın",x:1.6}] };
+/** Ulaşılan en yüksek kademe (yoksa null). */
+function hedefKademe(kar, tutar){
+  let en=null; for(const k of HEDEF.kademe) if(kar>=tutar*k.x) en=k; return en;
+}
+function hedefKademeHtml(h){
+  const kar=S.seasonProfit||0;
+  return `<div class="hedef-kademe">${HEDEF.kademe.map(k=>`<span class="${kar>=h.tutar*k.x?"ok":""} ${k.k}"><b>${k.n}</b>${tlk(h.tutar*k.x)}</span>`).join("")}</div>`;
+}
 
 /* ---------------- TOPTAN PARTİ ---------------- */
 function partiUret(){
@@ -164,21 +178,25 @@ function kapanisKirasi(rep){
   let kira=sezonKirasi();
   if(S.kiraDonuk){
     const eski=kira;
-    kira=Math.round(Math.min(kira, S.kiraDonuk)*(1-HEDEF.indirim)/500)*500;
+    const ind = S.kiraIndirim!=null ? S.kiraIndirim : HEDEF.indirim;
+    kira=Math.round(Math.min(kira, S.kiraDonuk)*(1-ind)/500)*500;
     rep.events.push({t:`Mal sahibi s&ouml;z&uuml;n&uuml; tuttu: kira donuk ve indirimli &mdash; ${tl(kira)} (normali ${tl(eski)}).`});
-    S.kiraDonuk=null;
+    S.kiraDonuk=null; S.kiraIndirim=null;
   }
   // Biten sezonun hedefi. Ekran hiç çizilmediyse (simülasyon, arka plan)
   // hedef henüz kurulmamış olabilir — burada kuruluyor ki dönem atlanmasın.
   const h=S.hedef||hedef();
   if(h){
-    if((S.seasonProfit||0)>=h.tutar){
+    const kd=hedefKademe(S.seasonProfit||0, h.tutar);
+    S.sonKademe=kd?kd.k:null;
+    if(kd){
       S.kiraDonuk=sezonKirasi();
-      S.stats.hedefTuttu=(S.stats.hedefTuttu||0)+1;
-      rep.events.push({t:`<b>Sezon hedefi tuttu.</b> ${tl(S.seasonProfit)} k&acirc;r, hedef ${tl(h.tutar)}. `+
-        `Gelecek sezon kiran donuk ve %${Math.round(HEDEF.indirim*100)} indirimli.`});
+      S.kiraIndirim = kd.k==="altin" ? HEDEF.altinIndirim : (kd.k==="gumus" ? HEDEF.indirim : 0);
+      if(kd.k!=="bronz") S.stats.hedefTuttu=(S.stats.hedefTuttu||0)+1;
+      rep.events.push({t:`<b>Sezon hedefi: ${kd.n}.</b> ${tl(S.seasonProfit)} k&acirc;r (g&uuml;m&uuml;ş hedef ${tl(h.tutar)}). `+
+        `Gelecek sezon kiran donuk${S.kiraIndirim?` ve %${Math.round(S.kiraIndirim*100)} indirimli`:""}.`});
     }else{
-      rep.events.push({bad:true, t:`Sezon hedefi ka&ccedil;tı: ${tl(S.seasonProfit||0)} / ${tl(h.tutar)}. Kira normal işleyecek.`});
+      rep.events.push({bad:true, t:`Sezon hedefi ka&ccedil;tı: ${tl(S.seasonProfit||0)} / bronz ${tl(h.tutar*.6)}. Kira normal işleyecek.`});
     }
     S.hedefSon=S.seasonProfit||0;
     S.hedef=null;

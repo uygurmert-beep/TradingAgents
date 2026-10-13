@@ -108,6 +108,7 @@ function yerBlok(){
       return `<div class="yer-hedef" data-act="hedefac" role="button">
         <div class="yh-ust"><span>Sezon hedefi</span><b>${tlk(S.seasonProfit||0)} / ${tlk(h.tutar)}</b></div>
         <div class="hedefcubuk"><i style="width:${Math.round(il*100)}%"></i></div>
+        ${hedefKademeHtml(h)}
         <div class="yh-alt">${il>=1?"Tuttu &mdash; gelecek sezon kira donuk ve indirimli."
           :S.kiraDonuk?"Bu sezon kiran donuk. Yeni hedefi de tut, indirim s&uuml;rs&uuml;n."
           :"Tutarsa gelecek sezonun kirası donar ve indirilir."}</div></div>`; })()}

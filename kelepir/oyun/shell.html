@@ -384,6 +384,15 @@ body.ogret-ac main{padding-bottom:218px}
 .hs-oge.gider{margin-left:auto}
 .hs-oge.gider b{color:var(--label-2);font-size:12.5px}
 .hs-oge.gider.kira{margin-left:0}
+.takas-ayrim{margin-top:6px;padding:7px 10px;border-radius:9px;background:var(--gold-soft,rgba(154,98,0,.10));font-size:13px;color:var(--label)}
+.takas-ozet{border-color:var(--gold-soft,rgba(154,98,0,.25))}
+.hedef-kademe{display:flex;gap:6px;margin:8px 0 4px}
+.hedef-kademe span{flex:1;display:flex;flex-direction:column;align-items:center;padding:5px 2px;border-radius:9px;background:var(--fill);font-size:11.5px;color:var(--label-3);font-variant-numeric:tabular-nums}
+.hedef-kademe span b{font-size:11px;letter-spacing:.04em;color:var(--label-2)}
+.hedef-kademe span.ok{background:var(--tint-soft,rgba(19,138,78,.12));color:var(--label)}
+.hedef-kademe span.ok b{color:var(--tint)}
+.kademe-rozet{display:inline-block;margin-top:6px;font-style:normal;font-size:12px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:99px;background:#C08A2E;color:#fff}
+.kademe-rozet.gumus{background:#8A939C}.kademe-rozet.bronz{background:#A0663A}
 .ilansec .ilan-risk{display:block;font-style:normal;font-size:11px;color:var(--red);margin-top:3px}
 /* sipariş teslim düğmesi: uzun model adı 390px'te taşıyordu; iki satır */
 .btn.siparis-tus{flex-direction:column;gap:1px;line-height:1.2;white-space:normal;height:auto;padding-top:9px;padding-bottom:9px}
@@ -584,7 +593,7 @@ body.ogret-ac main{padding-bottom:218px}
 /* Sohbet kendi kutusunda kayar: hamleler ve fiyat alanı hep ekranda kalır,
    son mesaj da hep görünür. */
 .talk{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;
-  max-height:min(40vh,320px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  max-height:min(46vh,360px);min-height:120px;overflow-y:auto;-webkit-overflow-scrolling:touch;
   scroll-behavior:smooth;padding-right:2px;
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16px);
   mask-image:linear-gradient(180deg,transparent 0,#000 16px)}
@@ -621,6 +630,21 @@ input[type=range]{width:100%;accent-color:var(--tint)}
   pointer-events:none;background:linear-gradient(90deg,rgba(242,242,247,0),var(--bg))}
 .moverail{display:flex;gap:9px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
 .moverail::-webkit-scrollbar{display:none}
+/* Pazarlık düzeni (oyun testi: 390×844'te sabit panel ekranın %40'ını
+   yiyor, hamleler yatay şeritte 1,5 kart görünüyor, sohbet 100px kalıyordu).
+   Hamleler 2 sütunlu ızgarada, panel: tek satır hızlı tuş + tutar ve düğme yan yana. */
+.movegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}
+.movegrid .mv{width:auto;min-height:0}
+.actionbar.kompakt .ruler{height:40px;margin:0}
+.actionbar.kompakt .ruler .line,.actionbar.kompakt .ruler .won{top:14px}
+.actionbar.kompakt .ruler .m{top:9px;height:15px}
+.actionbar.kompakt .quick{margin:2px 0 8px;gap:6px}
+.actionbar.kompakt .quick button{min-height:36px;padding:7px 0;font-size:14px}
+.actionbar.kompakt .quick .oneri-kisa{flex:1.6;color:var(--label-2);font-size:12.5px}
+.teklifsatir{display:flex;gap:8px;align-items:stretch}
+.teklifsatir .offer-input{flex:1;min-width:0;font-size:23px;padding:10px 12px}
+.teklifsatir .btn{flex:none;width:auto;padding:0 18px;min-height:50px;white-space:nowrap}
+.actionbar.kompakt>.btn.primary.full{margin-bottom:8px}
 .mv{flex:none;width:164px;background:var(--surface);border:none;box-shadow:var(--shadow);
   border-radius:12px;padding:11px 13px;text-align:left}
 .mv b{display:block;font-size:15px;font-weight:600;margin-bottom:3px;line-height:1.25}
