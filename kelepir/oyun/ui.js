@@ -3260,11 +3260,15 @@ function resolveAuction(){
     if(!my) continue;
     const av=valueOf(c,true);
     let best=0, winner="";
-    RIVAL_DEFS.forEach((def,i)=>{
-      const st=S.rivals[i];
+    /* Rakipler S.rivals'tan (oyundaki 4 galerici) okunur. Eskiden 10 kayıtlı
+       RIVAL_DEFS dolaşılıp S.rivals[i] isteniyordu; 5. tanımda st tanımsız
+       kalıyor, "Zarfları aç" TypeError ile duruyor ve müzayede hiç
+       sonuçlanmıyordu. */
+    (S.rivals||[]).forEach((st,i)=>{
+      const def=rivalDef(st,i);
       const fits=def.segs.includes(c.model.seg);
       const bid=Math.round(av*def.bid*rnd(fits?.94:.72, fits?1.10:.88)/500)*500;
-      if(bid>st.cash*.6) return;
+      if(bid>(st.cash||def.cash)*.6) return;
       if(bid>best){ best=bid; winner=def.n; }
     });
     if(my>best){
@@ -3744,7 +3748,9 @@ document.addEventListener("click",e=>{
     const c=findCar(id); if(!c) return;
     const av=valueOf(c,true);
     let best=0,who="";
-    RIVAL_DEFS.forEach((def,i)=>{
+    // yalnız oyundaki rakiplerin zarfı (tanım listesinin tamamı değil)
+    (S.rivals||[]).forEach((st,i)=>{
+      const def=rivalDef(st,i);
       const fits=def.segs.includes(c.model.seg);
       const bid=Math.round(av*def.bid*(fits?1.02:.80)/500)*500;
       if(bid>best){best=bid;who=def.n;}

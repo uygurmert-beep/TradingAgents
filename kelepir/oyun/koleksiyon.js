@@ -82,7 +82,7 @@ function ligRakipGun(){
   const r=S.rivals||[];
   for(let i=0;i<r.length;i++){
     // Rakipler her gün satış yaptıkça kâr biriktirir; seviyene göre ölçeklenir.
-    const def=RIVAL_DEFS[i]||{aggr:.6};
+    const def=rivalDef(r[i],i)||{aggr:.6};   // sırayla değil rakibin kendi tanımı
     const taban=19000+level()*8500;
     S.lig.rakip[i]=(S.lig.rakip[i]||0)+Math.round(taban*def.aggr*rnd(.25,1.35));
   }
