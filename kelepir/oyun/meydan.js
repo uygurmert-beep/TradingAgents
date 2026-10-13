@@ -125,7 +125,7 @@ function meydanCevapla(){
   m.enIyi=Math.max(m.enIyi||0, puan);
   const seriPrim = Math.min(5, m.seri-1)*0.06;
   const nakit=Math.round(odul.nakit*(1+seriPrim)/10)*10;
-  S.cash+=nakit; S.xp+=odul.xp;
+  kasaHareket(nakit, "Günün vakası ödülü"); S.xp+=odul.xp;
   const sonuc={ad:`${c.model.n} ${c.year}`, cevap, hedef, puan, nakit, xp:odul.xp,
     seri:m.seri, gercek:Math.round(valueOf(c,false)),
     sap:Math.round((cevap-hedef)/Math.max(1,hedef)*1000)/10};

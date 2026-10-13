@@ -35,7 +35,7 @@ function kolOdulKontrol(){
     S.kolOdul++;
     S.perkPts=(S.perkPts||0)+1;
     const nakit=60000+S.kolOdul*40000;
-    S.cash+=nakit;
+    kasaHareket(nakit, `Koleksiyon ödülü (${S.kolOdul*10} model)`);
     toast(`Defterde ${S.kolOdul*10} model tamam — +1 uzmanlık puanı, +${tl(nakit)}.`,"good");
   }
 }
@@ -100,7 +100,7 @@ function ligKapat(){
   const t=ligTablo();
   const sira=t.findIndex(x=>x.me);
   const o=LIG_ODUL[Math.min(sira, LIG_ODUL.length-1)];
-  S.cash+=o.nakit; S.xp+=o.xp;
+  kasaHareket(o.nakit, `Sezon ligi ödülü (${sira+1}.)`); S.xp+=o.xp;
   if(o.rep) S.rep=clamp(S.rep+o.rep,0,100);
   S.sonLig={sira:sira+1, tablo:t, odul:o};
   ligBaslat();

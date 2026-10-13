@@ -46,14 +46,14 @@ function gorevIlerle(sayac, adet){
     if(g.odendi || g.sayac!==sayac) continue;
     if((S.gunSayac[sayac]||0)>=g.n){
       g.odendi=true; degisti=true;
-      S.cash+=g.nakit; S.xp+=g.xp;
+      kasaHareket(g.nakit, `Görev: ${g.bas}`); S.xp+=g.xp;
       cal("seviye"); titre(HAPTIK.basari);
       toast(`Görev tamam: ${g.bas} &middot; +${tl(g.nakit)}`,"good");
     }
   }
   if(degisti && !S.gunluk.hepsiOdendi && S.gunluk.gorevler.every(g=>g.odendi)){
     S.gunluk.hepsiOdendi=true;
-    S.cash+=24000; S.xp+=40;
+    kasaHareket(24000, "Üç görev ikramiyesi"); S.xp+=40;
     toast("Günün üç görevi de tamam — +₺24.000 ikramiye.","good");
   }
   if(degisti){ save(); renderHud(); }
@@ -69,7 +69,7 @@ function seriGuncelle(){
   S.seri.son=b;
   if(S.seri.n<2){ save(); return true; }     // ilk gün ikramiye yok
   const odul=Math.min(S.seri.n,7)*6000;
-  S.cash+=odul;
+  kasaHareket(odul, `${S.seri.n}. gün seri ikramiyesi`);
   save();
   setTimeout(()=>toast(`${S.seri.n}. gün üst üste — +${tl(odul)} seri ikramiyesi.`,"good"), 700);
   return true;

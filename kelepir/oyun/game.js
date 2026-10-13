@@ -689,7 +689,9 @@ function genOrder(day, seviye, ozel){
                fuel:"Benzin", cosmetic:false};
   for(const k of COMPKEYS) ornek.wear[k]=30;
   const taban=valueOf(ornek,false);
-  const butce=Math.round(taban*rnd(1.20,1.42)/2500)*2500;
+  /* Bütçe çarpanı 1,20–1,42'ydi: tek sipariş üç normal satışın kârını
+     getiriyor, pazarlık/tamir/ilan döngüsünü gereksiz kılıyordu (oyun testi). */
+  const butce=Math.round(taban*rnd(1.05,1.20)/2500)*2500;
   return {
     id:Math.round(Math.random()*1e9), who:cust.n, line:cust.line,
     seg, minYear, maxKm, gear, butce,
@@ -877,9 +879,16 @@ let NOTER=null;    // ()=>noter tanıdığının ilan hızlandırma yüzdesi
      abartili şişir              · çok alıcı, pazarlıkçı, ekspertize götürür */
 const ILAN_DILI={
   durust:   {n:"D&uuml;r&uuml;st",  d:"Kusurları ilanda yazarsın",         akis:.86, kalite:1.035, supheli:0.70},
-  muglak:   {n:"Muğlak",            d:"Yazmazsın, sorarlarsa s&ouml;ylersin", akis:1.00, kalite:1.000, supheli:1.00},
+  muglak:   {n:"Muğlak",            d:"Yazmazsın; alıcı ekspertize g&ouml;t&uuml;r&uuml;rse &ccedil;ıkar", akis:1.00, kalite:1.000, supheli:1.00},
   abartili: {n:"Abartılı",          d:"&#8220;Hatasız boyasız&#8221; dersin", akis:1.32, kalite:0.955, supheli:1.45}
 };
+/** Gizli kusurlu araçta bir alıcının ekspertize götürüp yakalama olasılığı (arketip ortalaması). */
+function yakalanmaRiski(car, dilK){
+  if(!hiddenIssues(car).length) return 0;
+  const d=ILAN_DILI[dilK]||ILAN_DILI.muglak;
+  const ins=BUYERS.reduce((a,b)=>a+b.insp,0)/BUYERS.length;
+  return clamp(ins*d.supheli, 0, .97);
+}
 const ILAN_SUNUM=[
   {n:"Olduğu gibi", d:"Telefonla &ccedil;ekilmiş iki foto",        bedel:0,     akis:1.00, kalite:1.000},
   {n:"Temiz foto",  d:"Yıkanmış ara&ccedil;, d&uuml;zg&uuml;n kadraj", bedel:2500,  akis:1.10, kalite:1.020},
@@ -908,6 +917,8 @@ function leadChance(car, S){
   if(acikArz===0){ p*=1.18; if(car.disclosed) p*=1.08; }
   // ilanın dili ve sunumu akışı değiştiriyor
   p*=ilanDili(car).akis * ilanSunum(car).akis;
+  // yakalanan ilan iki gün "soğuk": haber yayılıyor, alıcı yarıya iniyor
+  if(car.sogukGun && car.sogukGun>S.day) p*=.5;
   // kendi çektiğin ilan fotoğrafı (ilanfoto.js); çekmediysen etkisiz
   if(typeof ilanFotoAkis==="function") p*=ilanFotoAkis(car);
   // Acemi dönemi: ilk satışa kadar alıcı akışı belirgin şekilde yüksek.
@@ -967,3 +978,22 @@ function makeBuyer(car, S){
   return out;
 }
 //</CORE>
+
+/* ============ kasa defteri ============
+   Oyun testinde altı oyuncunun altısı da "para nereden geldi / nereye
+   gitti" diye takıldı: ödüller kasaya sessizce giriyor, üstteki gider
+   rakamı gün sonu raporuyla tutmuyordu. Kasaya giren ve çıkan her önemli
+   hareket buradan geçer ve Durum sayfasındaki defterde etiketiyle görünür. */
+const KASA_SINIR=40;
+function kasaHareket(tutar, etiket){
+  if(!tutar) return;
+  S.cash+=tutar;
+  kasaNot(tutar, etiket);
+}
+/** Kasa zaten değiştiyse yalnız deftere yazar. */
+function kasaNot(tutar, etiket){
+  if(!tutar || typeof S==="undefined" || !S) return;
+  if(!S.kasa) S.kasa=[];
+  S.kasa.push({g:S.day, t:Math.round(tutar), e:String(etiket||"")});
+  if(S.kasa.length>KASA_SINIR) S.kasa.splice(0, S.kasa.length-KASA_SINIR);
+}

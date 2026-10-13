@@ -353,6 +353,7 @@ function nextDay(){
     if(vergi) rep.costs.push(["Sezon kapanışı — vergi (%8)", vergi]);
     rep.season={from:seasonOf(S.day-1).k, to:seasonOf(S.day).k};
     S.cash-=kira+vergi;
+    kasaNot(-kira, "Sezon kirası"); if(vergi) kasaNot(-vergi, "Sezon vergisi (%8)");
     rep.total+=kira+vergi;
   }
   // taksit tahsilatı
@@ -364,7 +365,7 @@ function nextDay(){
       S.rep=clamp(S.rep-3,0,100);
       rep.events.push({bad:true, t:`${r.who} taksitini ödemedi — ${r.n} satışından ${tl(r.amount*r.left)} tahsil edilemedi. İtibar −3.`});
     }else{
-      S.cash+=r.amount;
+      kasaHareket(r.amount, `Taksit tahsilatı: ${r.n}`);
       S.receivables=S.receivables.filter(x=>x!==r);
       rep.events.push({t:`${r.who} taksitini yatırdı — ${tl(r.amount)} (${r.n}).`});
     }
@@ -381,6 +382,7 @@ function nextDay(){
   try{ senetGun(rep); }catch(e){}
   const totalCost=park+salary+interest;
   S.cash-=totalCost;
+  kasaNot(-totalCost, "Günlük gider (otopark, maaş, faiz)");
   rep.total+=totalCost;
   S.giderToplam=(S.giderToplam||0)+rep.total;
 
@@ -392,8 +394,16 @@ function nextDay(){
       c.leadsSeen++;
       const b=makeBuyer(c,S);
       if(b.walk){
-        S.rep=clamp(S.rep-4,0,100); S.stats.caught++;
-        rep.events.push({bad:true, t:`${c.model.n} — ${b.type?b.type.n.toLocaleLowerCase("tr"):"alıcı"} ekspertize götürdü, "${b.issues[0].t}" çıktı. Gizlediğin için vazgeçti. İtibar −4.`});
+        /* Yakalanmanın bedeli eskiden yalnız itibar −4'tü; abartılı ilanın
+           beklenen kârı dürüst ilanın üç katı çıkıyordu (oyun testi). Artık:
+           itibar −5 (muğlak) / −8 (abartılı), ilan iki gün yarı alıcı çeker,
+           abartılı ilanda piyasa değerinin %3'ü kadar ceza (yanıltıcı ilan). */
+        const ceza = b.abartili ? Math.round(valueOf(c,false)*.03/500)*500 : 0;
+        const rd = b.abartili ? 8 : 5;
+        S.rep=clamp(S.rep-rd,0,100); S.stats.caught++;
+        c.sogukGun=S.day+2;
+        if(ceza){ S.cash-=ceza; kasaNot(-ceza, `Yanıltıcı ilan cezası: ${c.model.n}`); }
+        rep.events.push({bad:true, t:`${c.model.n} — ${b.type?b.type.n.toLocaleLowerCase("tr"):"alıcı"} ekspertize götürdü, "${b.issues[0].t}" çıktı. Gizlediğin için vazgeçti. İtibar −${rd}${ceza?`, yanıltıcı ilan cezası ${tl(ceza)}`:""}; ilan 2 gün az alıcı çeker.`});
       }else{
         const teklif={oid:S.oidSeq++, carId:c.id, amount:b.offer, caught:b.caught, issues:b.issues,
                       inspects:b.inspects, type:b.type, takas:b.takas||null, taksit:b.taksit||null,
@@ -602,7 +612,7 @@ function checkMilestones(){
     if(S.milestones[m.k]) continue;
     if(test[m.k] && test[m.k]()){
       S.milestones[m.k]=S.day;
-      if(m.odul.cash){ S.cash+=m.odul.cash; }
+      if(m.odul.cash){ kasaHareket(m.odul.cash, `Kilometre taşı: ${m.n||m.k}`); }
       if(m.odul.perk){ S.perkPts=(S.perkPts||0)+m.odul.perk; }
       if(m.odul.slot){ S.slots+=m.odul.slot; }
       const odulTxt = m.odul.cash?tl(m.odul.cash)
@@ -635,7 +645,7 @@ function buyCar(car, price, via, senetli){
   } else if(price>S.cash){ toast("Nakit yetmiyor.","bad"); return false; }
   const odenen = senet ? senet.pesin : price;
   const kalan=S.cash-odenen;
-  S.cash-=odenen;
+  kasaHareket(-odenen, `Alış: ${car.model.n}`);
   car.boughtFrom = car.seller ? car.seller.n : (via==="müzayede"?"Müzayede":"Takas");
   car.boughtVia = via || "pazarlık";
   car.askedAt = car.ask || null;
@@ -661,7 +671,7 @@ function buyCar(car, price, via, senetli){
 }
 function sellCar(car, price, note){
   price=Math.round(price*prestijSatisCarpani());
-  S.cash+=price;
+  kasaHareket(price, `Satış: ${car.model.n}`);
   if(car.konsinye) konsSatildi(car);
   const extra=(car.inspected?PARA.ekspertiz:0)+car.daysListed*PARA.otoparkGun;
   const cost=car.boughtFor+car.spent+extra;
@@ -937,6 +947,12 @@ function renderHud(){
   const maas=(S.staff.eksper?PARA.maasEksper:0)+(S.staff.satis?PARA.maasSatis:0);
   const faiz=S.debt>0?Math.round(S.debt*(perk("banka")?0.0018:0.0035)):0;
   const kira=gunlukKira();
+  /* Üst şeritteki gider eskiden kira PAYINI da içeriyordu (−₺9.717/gün),
+     oysa kasadan her gün yalnız otopark/maaş/faiz çıkıyor; kira sezon
+     sonunda tek seferde kesiliyor. Altı testçinin altısı bu farkı "hata"
+     sandı. Artık şeritte yalnız bugün kasadan çıkan; kira ayrı bir sayaç. */
+  const bugun=park+maas+faiz;
+  const kiraBiriken=kira*(i+1), kiraSezon=sezonKirasi();
   const yakim=park+maas+faiz+kira;
   const parts=[[park,"var(--zarar)"],[maas,"#D98C8F"],[faiz,"#E6AFB1"],[kira,"#F0CFD0"]];
   const dolu=clamp(yakim/Math.max(S.cash,1)*2000,3,100);   // nakdinin %5'i = tam çubuk
@@ -974,21 +990,26 @@ function renderHud(){
       <span class="hs-oge"><em>Stok</em><b>${S.cars.length}/${S.slots}</b></span>
       <span class="hs-oge"><em>İtibar</em><b style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</b></span>
       <span class="hs-oge"><em>Sv</em><b>${l}${bekleyen?'<span class="dot-badge"></span>':''}</b><u><i style="width:${Math.round(xpOran*100)}%"></i></u></span>
-      <span class="hs-oge gider"><b>&minus;${tlk(yakim)}</b><em>/gün</em></span>
+      <span class="hs-oge gider"><b>&minus;${tlk(bugun)}</b><em>bugün</em></span>
+      <span class="hs-oge gider kira" title="Sezon sonunda kesilecek kira"><em>Kira</em><b>${tlk(kiraBiriken)}/${tlk(kiraSezon)}</b></span>
     </button>`;
-  HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar};
+  HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar,bugun,kiraBiriken,kiraSezon};
 }
 let HUD_SON=null;   // Durum sayfası için son hesap — geçici, kayda yazılmaz
 function openDurum(){
   renderHud(); const h=HUD_SON||{}; const l=level(), next=nextXp(), sez=seasonOf(S.day);
   openBilgi("Durum", `${sez.k} · ${S.day}. gün · sezon bitimine ${h.kalan} gün`, `
     <div class="block"><h4>SEZON</h4><div class="rail">${h.ticks}</div></div>
-    <div class="block"><h4>GÜNLÜK GİDER &middot; ${tl(h.yakim)}</h4>
-      <div class="burnbar" style="margin:4px 0 10px">${h.bar}<i style="flex:1;background:var(--asphalt-3)"></i></div>
-      <div class="kv"><span>Otopark</span><b>${tl(h.park)}</b></div>
+    <div class="block"><h4>BUGÜN KASADAN ÇIKAN &middot; ${tl(h.bugun)}</h4>
+      <div class="kv"><span>Otopark (${S.cars.length} araç)</span><b>${tl(h.park)}</b></div>
       ${h.maas?`<div class="kv"><span>Personel</span><b>${tl(h.maas)}</b></div>`:""}
-      ${h.faiz?`<div class="kv"><span>Kredi faizi</span><b>${tl(h.faiz)}</b></div>`:""}
-      <div class="kv"><span>Dükkân kirası (günlük pay)</span><b>${tl(h.kira)}</b></div></div>
+      ${h.faiz?`<div class="kv"><span>Kredi faizi</span><b>${tl(h.faiz)}</b></div>`:""}</div>
+    <div class="block"><h4>SEZON SONUNDA KESİLECEK</h4>
+      <div class="kv"><span>Dükkân kirası (biriken / toplam)</span><b>${tl(h.kiraBiriken)} / ${tl(h.kiraSezon)}</b></div>
+      <div class="kv"><span>Vergi (sezon kârının %8'i, şimdilik)</span><b>${tl(Math.round(Math.max(0,S.seasonProfit||0)*.08))}</b></div>
+      <div class="sec-note" style="margin-top:6px">Kira ve vergi her gün değil, ${h.kalan} gün sonra sezon kapanışında tek seferde kasadan düşer.${S.cash<h.kiraSezon?` <b style="color:var(--red)">Kasadaki nakit kiradan az.</b>`:""}</div></div>
+    <div class="block"><h4>KASA DEFTERİ &middot; SON HAREKETLER</h4>
+      ${(S.kasa||[]).slice(-12).reverse().map(k=>`<div class="kv"><span>${k.g}. gün &middot; ${k.e}</span><b class="${k.t>=0?"pos":"neg"}">${k.t>=0?"+":"&minus;"}${tl(Math.abs(k.t))}</b></div>`).join("")||`<div class="sec-note">Henüz hareket yok.</div>`}</div>
     <div class="block"><h4>KARİYER</h4>
       <div class="kv"><span>Seviye</span><b>Sv ${l} &middot; ${S.xp}/${next} XP</b></div>
       <div class="kv"><span>İtibar</span><b>${Math.round(S.rep)} / 100</b></div>
@@ -1154,18 +1175,27 @@ function plBlock(c){
 
 /* ---- PAZAR ---- */
 /** Sipariş müşterisi aracı gözden geçirir: kalitesizse fiyat kırar ya da reddeder. */
-function orderQuality(o, car){
+/* Sipariş ödemesi aracın piyasa değerine bağlı: müşteri bütçesini en çok
+   piyasanın %15 üstüne kadar kullanır, prim dahil toplam piyasanın %20
+   üstünü geçmez. Eskiden araç ne olursa olsun bütçe+prim ödeniyordu
+   (₺1,33M'lik araca ₺1,77M). Ön izleme (teslim düğmesi) zar atmaz: gizli
+   kusur yakalanma riski olarak yazılır, kesinti gerekçesiyle görünür. */
+function orderQuality(o, car, onizleme){
   const kalite=condIndex(compsOf(car,false));
   const gizli=!car.disclosed && hiddenIssues(car).length>0;
+  const piyasa=valueOf(car,false);
+  const taban=Math.min(o.butce, Math.round(piyasa*1.15/500)*500);
+  const prim=Math.max(0, Math.min(o.prim, Math.round(piyasa*1.20)-taban));
+  const gerekce = taban<o.butce ? `Araç piyasada ~${tlk(piyasa)} eder; m&uuml;şteri en fazla piyasanın %15 &uuml;st&uuml;n&uuml; &ouml;der.` : "";
   if(kalite<0.52) return {red:true, not:"Bu ara&ccedil; aradığım durumda değil, kusura bakma."};
-  if(gizli && chance(.7)){
-    return {tutar:Math.round(o.butce*0.85/500)*500, rep:-4,
+  if(gizli && (onizleme ? false : chance(.7))){
+    return {tutar:Math.round(taban*0.85/500)*500, rep:-4,
             not:`${o.who} ekspertize g&ouml;t&uuml;rd&uuml;, gizlediğin kusuru buldu. Fiyat kırıldı, itibar −4.`};
   }
-  if(kalite<0.66) return {tutar:Math.round(o.butce*0.94/500)*500, rep:1,
+  if(kalite<0.66) return {tutar:Math.round(taban*0.94/500)*500, rep:1, gerekce:(gerekce+" Durumu orta: %6 kesinti, prim yok.").trim(), risk:gizli,
             not:`${o.who} aracı aldı ama durumu i&ccedil;in fiyat kırdı. Prim yok.`};
-  return {tutar:o.butce+o.prim, rep:3,
-          not:`${o.who} aracı teslim aldı. Prim d&acirc;hil ${tl(o.butce+o.prim)}. İtibar +3.`};
+  return {tutar:taban+prim, rep:3, gerekce, risk:gizli,
+          not:`${o.who} aracı teslim aldı. Prim d&acirc;hil ${tl(taban+prim)}. İtibar +3.`};
 }
 const SEGLBL={hatch:"Hatchback",sedan:"Sedan",suv:"SUV",ticari:"Ticari",lux:"L&uuml;ks",klasik:"Klasik"};
 const FILTERS=[["hepsi","Hepsi"],["butce","B&uuml;t&ccedil;eme uygun"],["hatch","Hatchback"],
@@ -1367,10 +1397,12 @@ function siparisKart(o){
           <span class="plabel">B&uuml;t&ccedil;e + prim</span>
           <span class="pval" style="color:var(--sodium)">${tl(o.butce+o.prim)}</span>
         </div>
-        ${eslesen.length?(()=>{const q=orderQuality(o,eslesen[0]);
-            return `<button class="btn ${q.red?"":"primary"} full" data-act="deliver" data-o="${o.id}" data-c="${eslesen[0].id}"
+        ${eslesen.length?(()=>{const q=orderQuality(o,eslesen[0],true);
+            return `<button class="btn ${q.red?"":"primary"} full siparis-tus" data-act="deliver" data-o="${o.id}" data-c="${eslesen[0].id}"
               style="margin-top:10px">${q.red?"Durumu yetersiz: "+eslesen[0].model.n
-              :`${eslesen[0].model.n} ile teslim et &middot; ${tl(q.tutar)}`}</button>
+              :`<span>Teslim et &middot; ${tl(q.tutar)}</span><small>${eslesen[0].model.n}</small>`}</button>
+              ${q.gerekce?`<div class="sec-note" style="margin-top:6px">${q.gerekce}</div>`:""}
+              ${q.risk?`<div class="sec-note" style="margin-top:4px;color:var(--red)">Gizli kusuru var: m&uuml;şteri ekspertize g&ouml;t&uuml;r&uuml;rse %15 kırar, itibar −4.</div>`:""}
               <div class="sec-note" style="margin-top:6px;display:flex;justify-content:space-between">
                 <span>Bu ara&ccedil; piyasada ~${tlk(valueOf(eslesen[0],false))} eder</span>
                 <span class="${q.tutar-valueOf(eslesen[0],false)>=0?"pos":"neg"}">${q.tutar-valueOf(eslesen[0],false)>=0?"+":""}${tlk(q.tutar-valueOf(eslesen[0],false))}</span>
@@ -1944,7 +1976,8 @@ function valueBlock(c){
         <span class="asklbl" style="left:${p(ask)}%">${c.owned?"ilan":"istenen"} ${tlk(ask)}</span>
       </div>
       <div class="kv"><span>Ger&ccedil;ek piyasa değeri</span><b style="color:var(--sodium)">${tl(tv)}</b></div>
-      ${av>tv*1.02?`<div class="kv"><span>Kusurları bilmeyen alıcıya</span><b>${tl(av)}</b></div>`:""}
+      ${av>tv*1.02?`<div class="kv"><span>Kusurları bilmeyen alıcıya</span><b>${tl(av)}</b></div>
+        <div class="sec-note" style="margin:-2px 0 6px">Gizli kusuru g&ouml;rmeyen alıcının vereceği. Ekspertize g&ouml;t&uuml;ren alıcı kusuru bulur; o zaman ger&ccedil;ek değer ge&ccedil;erli ve itibarın d&uuml;şer.</div>`:""}
     </div>`;
   }
   const lo=av*0.82, hi=av*1.08;
@@ -2104,15 +2137,17 @@ function openOwnCar(c){
       <div class="ilan-alt">İLANIN DİLİ</div>
       <div class="ilan-secim">
         ${Object.keys(ILAN_DILI).map(k=>{const o=ILAN_DILI[k];
+          const rk=gizli&&k!=="durust"?Math.round(yakalanmaRiski(c,k)*100):0;
           return `<button class="ilansec ${dil===k?"on":""}" data-act="ilandil" data-id="${c.id}" data-k="${k}">
-            <b>${o.n}</b><span>${o.d}</span></button>`;}).join("")}
+            <b>${o.n}</b><span>${o.d}</span>${rk?`<em class="ilan-risk">alıcı başına yakalanma ~%${rk}</em>`:""}</button>`;}).join("")}
       </div>
       <div class="ilan-not">${
         dil==="durust" ? "Az alıcı gelir ama ciddi gelir &mdash; ve kimse seni yakalayamaz."
         : dil==="abartili" ? (gizli
-            ? "&Ccedil;ok alıcı gelir, pazarlık eder. Gizli kusurun var: ekspertize g&ouml;t&uuml;r&uuml;rse pahalıya patlar."
+            ? "&Ccedil;ok alıcı gelir, pazarlık eder. Gizli kusurun var: yakalanırsan itibar −8, piyasa değerinin %3'ü ceza, ilan 2 g&uuml;n soğur."
             : "&Ccedil;ok alıcı gelir, pazarlık eder. Gizleyecek kusurun yok &mdash; risk d&uuml;ş&uuml;k.")
-        : "Dengeli. Sorarlarsa s&ouml;ylersin."}</div>
+        : (gizli ? "Kusuru yazmazsın. Ekspertize g&ouml;t&uuml;ren alıcı bulursa vazge&ccedil;er: itibar −5, ilan 2 g&uuml;n az alıcı &ccedil;eker."
+                 : "Dengeli. Gizleyecek kusurun yok.")}</div>
       <div class="ilan-alt">SUNUM</div>
       <div class="ilan-secim">
         ${ILAN_SUNUM.map((o,i)=>`<button class="ilansec ${sun===i?"on":""}" data-act="ilansunum" data-id="${c.id}" data-i="${i}"

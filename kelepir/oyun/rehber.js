@@ -44,7 +44,7 @@ function ogretBitir(odul){
   ogretIsikTemizle();
   const el=document.getElementById("ogret"); if(el) el.classList.add("hidden");
   document.body.classList.remove("ogret-ac");
-  if(odul){ S.cash+=30000; S.xp+=40; toast("Rehber tamam — ilk işin için ₺30.000 ikramiye.","good"); }
+  if(odul){ kasaHareket(30000, "Rehber ikramiyesi"); S.xp+=40; toast("Rehber tamam — ilk işin için ₺30.000 ikramiye.","good"); }
   save();
 }
 function ogretCiz(){
