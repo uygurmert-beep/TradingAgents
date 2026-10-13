@@ -231,8 +231,8 @@ const PARCA={
 
 /* ============ satıcı arketipleri ============ */
 const SELLERS=[
- {k:"acil",   n:"Acil nakit lazım",  d:"İhtiyaçtan satılık. Pazarlık payı geniş.",  ask:1.02, res:0.78, pat:4, sert:.20, w:18, savvy:.30, motiv:.80, ego:.3,  pesin:.055},
- {k:"acemi",  n:"Acemi satıcı",      d:"Piyasayı bilmiyor. Fiyatı rastgele koymuş.",ask:0.95, res:0.80, pat:5, sert:.18, w:14, savvy:.12, motiv:.62, ego:.5,  pesin:.045},
+ {k:"acil",   n:"Acil nakit lazım",  d:"İhtiyaçtan satılık. Pazarlık payı geniş.",  ask:1.02, res:0.84, pat:4, sert:.20, w:18, savvy:.30, motiv:.80, ego:.3,  pesin:.055},
+ {k:"acemi",  n:"Acemi satıcı",      d:"Piyasayı bilmiyor. Fiyatı rastgele koymuş.",ask:0.95, res:0.86, pat:5, sert:.18, w:14, savvy:.12, motiv:.62, ego:.5,  pesin:.045},
  {k:"filo",   n:"Filo çıkışı",       d:"Şirket aracı. Bakımlı ama km yüksek.",      ask:1.05, res:0.87, pat:3, sert:.50, w:16, savvy:.55, motiv:.50, ego:.15, pesin:.030},
  {k:"duygusal",n:"Duygusal sahibi",  d:"Arabasına kıyamıyor, fiyatı da öyle.",      ask:1.13, res:0.92, pat:3, sert:.72, w:18, savvy:.35, motiv:.30, ego:1.0, pesin:.012},
  {k:"galerici",n:"Galerici",         d:"İşini bilir, fiyatı ezberlemiş.",           ask:1.14, res:0.94, pat:3, sert:.88, w:22, savvy:.88, motiv:.25, ego:-1,  pesin:.015},
@@ -499,19 +499,44 @@ function hiddenIssues(car){
 }
 
 /* ============ pazarlık ============ */
+/* Oyun testinde altı oyuncunun dördü alımın "hep ilk teklifte, hep %20
+   altına" bittiğini yazdı: kozlar rezervi %30'a kadar eritiyordu ve acil /
+   acemi satıcının tabanı çok düşüktü. Tavan %15'e, tabanlar yukarı çekildi. */
 function effReserve(car, leverage){
   let cut=0; for(const l of leverage) cut+=l.cut;
-  return Math.round(car.reserve*(1-Math.min(zorGercek()?.24:.30,cut)));
+  return Math.round(car.reserve*(1-Math.min(zorGercek()?.12:.15,cut)));
 }
-function sellerReply(car, offer, er){
+/** Satıcının cevabı. Kurallar (test/yeni-test.js 16. bölüm ölçüyor):
+    • karşı teklif oyuncunun teklifinin altına inmez,
+    • turdan tura yalnız düşer (önceki karşı teklifin üstüne çıkmaz),
+    • oyuncu önceki karşı teklife geldiyse anlaşma olur,
+    • "altına inmem" yalnız gerçek tabanda söylenir (taban:true),
+    • sert satıcı ilk turda kolay kabul etmez, en az bir karşı teklif verir.
+    Eskiden her tur karşı teklif rastgele yeniden çekiliyordu: daha yüksek
+    teklife daha düşük karşı teklif geliyor, "bundan aşağısı yok" diyen
+    satıcı sonra daha da iniyordu. n: pazarlık durumu (S.neg). */
+function sellerReply(car, offer, er, n){
   const s=car.seller, r=offer/er;
-  if(r>=1) return {act:"accept", price:offer};
-  if(r>=.955) return chance(.55-s.sert*.25)
+  const onceki=(n&&n.sonKarsi)||car.ask;
+  if(offer>=onceki) return {act:"accept", price:offer};
+  let sonuc;
+  if(r>=1){
+    // tabanın üstünde: sert satıcı ilk turda yine de bir pazarlık payı ister
+    if(n && !n.tur && s.sert>=.5 && offer<car.ask*.97)
+      sonuc={act:"counter", price:Math.round((offer+car.ask)/2/500)*500, pat:0};
+    else return {act:"accept", price:offer};
+  }
+  else if(r>=.955) sonuc = chance(.55-s.sert*.25)
       ? {act:"accept", price:offer}
       : {act:"counter", price:Math.round((offer+er)/2/500)*500, pat:0};
-  if(r>=.87) return {act:"counter", price:Math.round(er*rnd(1.0,1.04)/500)*500, pat:1};
-  if(r>=.75) return {act:"counter", price:Math.round(er*rnd(1.05,1.12)/500)*500, pat:1};
-  return {act:"insult", price:Math.round(car.ask*.98/500)*500, pat:2};
+  else if(r>=.87) sonuc={act:"counter", price:Math.round(er*rnd(1.0,1.04)/500)*500, pat:1};
+  else if(r>=.75) sonuc={act:"counter", price:Math.round(er*rnd(1.05,1.12)/500)*500, pat:1};
+  else sonuc={act:"insult", price:Math.round(car.ask*.98/500)*500, pat:2};
+  if(sonuc.act==="accept") return sonuc;
+  sonuc.price=Math.min(sonuc.price, onceki);
+  if(sonuc.price<=offer) return {act:"accept", price:offer};
+  sonuc.taban = sonuc.price<=er*1.01;
+  return sonuc;
 }
 
 
@@ -764,17 +789,26 @@ function buyerCeiling(sale){
   return Math.round(Math.min(ham, tavanCap)/500)*500;
 }
 /** Alıcının fiyata tepkisi. */
+/** Alıcının fiyata tepkisi. Kurallar:
+    • karşı teklif oyuncunun istediğini aşmaz (eskiden (fiyat+tavan)/2
+      oyuncunun fiyatından YÜKSEKTİ: "Bak ₺801.000, ortada buluşalım"),
+    • alıcının önceki teklifinin (ilk tur: açılış) altına inmez; tek istisna
+      ilgisi bitmek üzere olan alıcının en çok %5 geri çekilmesi (doSaleOffer),
+    • oyuncu alıcının son teklifine indiyse anlaşma olur. */
 function saleReply(sale, price){
   const tavan=buyerCeiling(sale), bt=sale.bt.sat;
+  const taban=Math.max(sale.base||0, sale.counter||0);
+  if(price<=taban) return {act:"accept", price};
   if(price<=tavan){
     const rahat=(tavan-price)/Math.max(tavan,1);
     const p=clamp(.50+rahat*3.2+(sale.guven-45)/260+(sale.ilgi-60)/300, .25, .97);
     if(chance(p)) return {act:"accept", price};
-    return {act:"counter", price:Math.round((price+tavan)/2/500)*500, drop:4};
+    const karsi=Math.round((price+taban)/2/500)*500;
+    return karsi>=price ? {act:"accept", price} : {act:"counter", price:Math.max(taban,karsi), drop:4};
   }
   const asim=(price-tavan)/tavan;
   const drop=Math.round(bt.kacma*100*clamp(asim*4.5,.25,3.2));
-  const karsi=Math.round(tavan*rnd(.93,1.0)/500)*500;
+  const karsi=Math.max(taban, Math.min(price-500, Math.round(tavan*rnd(.93,1.0)/500)*500));
   return {act: asim>.16?"offended":"counter", price:karsi, drop};
 }
 

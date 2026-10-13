@@ -98,5 +98,7 @@ function onerilenTeklif(c){
   const deger=valueOf(c, !c.inspected);
   const net=openFaults(c).filter(f=>known(c,f)).reduce((a,f)=>a+Math.max(0, repairGain(c,f)-repairCost(f)),0);
   const masraf=PARA.ekspertiz+PARA.otoparkGun*6;
-  return Math.max(500, Math.round((deger+net-masraf)/KOLAY.hedefPay/500)*500);
+  const tavan=Math.round((deger+net-masraf)/KOLAY.hedefPay/500)*500;
+  // istenen fiyatı aşmaz: öneri istenenin üstüne çıkınca oyuncu fazladan ödüyordu
+  return Math.max(500, c.ask ? Math.min(tavan, c.ask) : tavan);
 }

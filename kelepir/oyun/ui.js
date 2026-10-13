@@ -2411,9 +2411,14 @@ function doOffer(){
   if(offer>senetTavanNakit()){ toast("Senetle bile yetmiyor.","bad"); return; }
   say("you", tl(offer));
   const er=negReserve();
-  const r=sellerReply(c,offer,er);
+  const r=sellerReply(c,offer,er,n);
+  n.tur=(n.tur||0)+1;
   if(r.act==="accept"){
     say("them", pick(["Hayırlı olsun, anlaştık.","Tamam, senin olsun.","Bu fiyata verdim gitti.","El sıkıştık."]));
+    /* Masada kalan: ilk teklifte anlaşan oyuncu ne kadar fazla verdiğini hiç
+       öğrenmiyordu. Satıcının o anki tabanı gösteriliyor. */
+    const kalan=offer-Math.max(er, Math.round(c.reserve*.85));
+    if(kalan>=5000) setTimeout(()=>toast(`Satıcı ${tl(Math.round((offer-kalan)/500)*500)}'e de inerdi.`,"warn"),900);
     n.done=true; n.counter=null;
     renderNeg();
     setTimeout(()=>{ if(buyCar(c,offer,null,n.senet)){ S.neg=null; closeSheet(); S.tab="garaj"; render(); } },600);
@@ -2428,11 +2433,15 @@ function doOffer(){
       `Vaktimi alma usta. ${tl(r.price)}.`]));
   }else{
     moodShift(offer>=er*.94?5:-6);
-    say("them", pick([
-      `${tl(r.price)} olsun, elimi sıkalım.`,
+    // "altına inmem" yalnız gerçek tabanda: eskiden her karşı teklifte söylenip sonra iniyordu
+    say("them", r.taban ? pick([
       `Bak ${tl(r.price)} diyorum, altına inmem.`,
-      `${tl(r.price)}. Bundan aşağısı yok.`]));
+      `${tl(r.price)}. Bundan aşağısı yok.`]) : pick([
+      `${tl(r.price)} olsun, elimi sıkalım.`,
+      `${tl(r.price)} diyelim, biraz daha yaklaş.`,
+      `Ne sen yan ne ben: ${tl(r.price)}.`]));
   }
+  n.sonKarsi=r.price;
   n.counter = r.price<=(n.senet?senetTavanNakit():S.cash) ? r.price : null;
   if(n.pat<=0) endNeg(c);
   save(); renderNeg();
@@ -3015,7 +3024,17 @@ function doSaleOffer(){
     return;
   }
   saleShift(r.act==="offended"?-10:-3, -(r.drop||0));
+  /* İlgisi bitmek üzere olan alıcı teklifini en çok %5 geri çeker — ve
+     bunu açıkça söyler. Eskiden fazla isteyen oyuncu sessizce açılışın
+     altına düşen karşı teklifler alıyordu; kural belli değildi. */
+  const onceki=Math.max(s.base||0, s.counter||0);
+  let geriCekti=false;
+  if(s.ilgi<25 && s.ilgi>0){ r.price=Math.round(onceki*.95/500)*500; geriCekti=true; }
   s.counter=r.price;
+  if(geriCekti){
+    saleSay("them", `İlgim azaldı açıkçası. Teklifimi ${tl(r.price)}'e çekiyorum.`);
+    save(); renderSaleNeg(); return;
+  }
   if(r.act==="offended"){
     saleSay("them", sPick([
       `O rakam &ccedil;ok y&uuml;ksek. Benim verebileceğim en fazla ${tl(r.price)}.`,
