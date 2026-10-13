@@ -140,7 +140,7 @@ function _kartDurum(ctx, c, x, y, genislik){
     Paylaşılan kart ile oyunun içindeki belge aynı dili konuşsun diye. */
 function _kartMuhur(ctx, c, x, y){
   const h = (typeof muhurHukmu==="function") ? muhurHukmu(c)
-          : (c.tramer? {s:"tramer", t:"TRAMERLİ"} : {s:"temiz", t:"TEMİZ"});
+          : (c.tramer? {s:"tramer", t:"TRAMERLİ"} : {s:"temiz", t:"TRAMERSİZ"});
   const renk = h.s==="agir" ? KART_RENK.kirmizi : h.s==="tramer" ? KART_RENK.altin : KART_RENK.yesil;
   const metin = h.t.replace(/&Uuml;/g,"Ü");
   ctx.save();

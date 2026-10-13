@@ -1871,7 +1871,10 @@ function muhurHukmu(c){
   if(c.tramer>deger*0.12 || c.degisen>=3) return {s:"agir", t:"AĞIR HASAR"};
   if(c.tramer>0 || c.degisen>0)           return {s:"tramer", t:"TRAMERLİ"};
   if(c.kmOynama)                          return {s:"tramer", t:"KM Ş&Uuml;PHELİ"};
-  return {s:"temiz", t:"TEMİZ"};
+  // "TEMİZ" mührü motoru 12 puanlık araçta da çıkıyordu: hüküm hasar kaydı
+  // üzerine, mekanik durum ayrı. Yorgun mekanikte yanına uyarı.
+  const zayif=Object.values(compsOf(c,false)).some(v=>v<35);
+  return {s:"temiz", t: zayif ? "TRAMERSİZ · YORGUN" : "TRAMERSİZ"};
 }
 function muhurCiz(c){
   const h=muhurHukmu(c);
@@ -2133,7 +2136,7 @@ function openOwnCar(c){
     const dil=c.ilanDili||"muglak", sun=c.sunum|0;
     sellPart=hazirlaKart(c)+`<section class="ilan">
       <div class="ilan-bas"><span class="ilan-et">İLANI KUR</span>
-        <span class="ilan-rozet">${gizli?gizli+" gizli kusur":"gizlenecek kusur yok"}</span></div>
+        <span class="ilan-rozet">${gizli?gizli+" bilinen, alıcının g&ouml;rmediği kusur":"gizlenecek kusur yok"}</span></div>
       <div class="ilan-alt">İLANIN DİLİ</div>
       <div class="ilan-secim">
         ${Object.keys(ILAN_DILI).map(k=>{const o=ILAN_DILI[k];
@@ -2271,6 +2274,8 @@ const MOOD_LBL=m=>m>=78?"Keyifli":m>=58?"Yumuşak":m>=40?"Nötr":m>=20?"Gergin":
 const MOOD_COL=m=>m>=58?"var(--kar)":m>=40?"var(--orange)":"var(--zarar)";
 
 function openNegotiation(c){
+  // park yeri doluyken anlaşma sonunda alım iptal oluyordu; masaya oturmadan söyle
+  if(S.cars.length>=S.slots){ toast("Park yerin dolu — önce bir araç sat ya da kontenjan al.","bad"); return; }
   if(!S.neg||S.neg.carId!==c.id){
     S.neg={
       carId:c.id, pat:c.pat+(perk("dil")?1:0), mood:50, disc:0, hard:0,
@@ -2444,19 +2449,25 @@ function doOffer(){
     return;
   }
   if(offer>senetTavanNakit()){ toast("Senetle bile yetmiyor.","bad"); return; }
-  say("you", tl(offer));
+  /* Fazla ödeme koruması: istenen fiyatın ya da satıcının son karşı
+     teklifinin üstüne teklif vermenin bir anlamı yok — oyuncu yazım
+     hatasıyla ₺40K fazla ödüyordu. Teklif o tavana çekilir. */
+  const ust=Math.min(c.ask, n.sonKarsi||c.ask);
+  if(offer>ust){ toast(`İstenen ${n.sonKarsi?"son fiyat":"fiyat"} ${tl(ust)} — teklif ona çekildi.`,"warn"); }
+  const offer2=Math.min(offer, ust);
+  say("you", tl(offer2));
   const er=negReserve();
-  const r=sellerReply(c,offer,er,n);
+  const r=sellerReply(c,offer2,er,n);
   n.tur=(n.tur||0)+1;
   if(r.act==="accept"){
     say("them", pick(["Hayırlı olsun, anlaştık.","Tamam, senin olsun.","Bu fiyata verdim gitti.","El sıkıştık."]));
     /* Masada kalan: ilk teklifte anlaşan oyuncu ne kadar fazla verdiğini hiç
        öğrenmiyordu. Satıcının o anki tabanı gösteriliyor. */
-    const kalan=offer-Math.max(er, Math.round(c.reserve*.85));
-    if(kalan>=5000) setTimeout(()=>toast(`Satıcı ${tl(Math.round((offer-kalan)/500)*500)}'e de inerdi.`,"warn"),900);
+    const kalan=offer2-Math.max(er, Math.round(c.reserve*.85));
+    if(kalan>=5000) setTimeout(()=>toast(`Satıcı ${tl(Math.round((offer2-kalan)/500)*500)}'e de inerdi.`,"warn"),900);
     n.done=true; n.counter=null;
     renderNeg();
-    setTimeout(()=>{ if(buyCar(c,offer,null,n.senet)){ S.neg=null; closeSheet(); S.tab="garaj"; render(); } },600);
+    setTimeout(()=>{ if(buyCar(c,offer2,null,n.senet)){ S.neg=null; closeSheet(); S.tab="garaj"; render(); } },600);
     return;
   }
   n.pat-=r.pat||0;
@@ -2467,7 +2478,7 @@ function doOffer(){
       `Bu araca o para verilmez mi ya... En son ${tl(r.price)}.`,
       `Vaktimi alma usta. ${tl(r.price)}.`]));
   }else{
-    moodShift(offer>=er*.94?5:-6);
+    moodShift(offer2>=er*.94?5:-6);
     // "altına inmem" yalnız gerçek tabanda: eskiden her karşı teklifte söylenip sonra iniyordu
     say("them", r.taban ? pick([
       `Bak ${tl(r.price)} diyorum, altına inmem.`,
@@ -2613,7 +2624,7 @@ function offerCard(o){
   const p=o.amount-cost;
   const note = o.caught
     ? `<div class="sec-note" style="color:var(--red);margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;: "${o.issues[0].t}". Teklifini kırdı.</div>`
-    : (o.inspects?`<div class="sec-note" style="margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;, temiz &ccedil;ıktı.</div>`:"");
+    : (o.inspects?`<div class="sec-note" style="margin-top:5px">Ekspertize g&ouml;t&uuml;rd&uuml;, ${(c.tramer||c.degisen||openFaults(c).length)?"ilandakiyle aynı &ccedil;ıktı":"temiz &ccedil;ıktı"}.</div>`:"");
   let extra="";
   if(o.takas){
     extra=takasBlok(o);
@@ -3004,7 +3015,7 @@ function doSaleMove(kind, idx){
     saleShift(Math.round(20*bt.sat.ikna), 8);
     saleSay("them", sPick([
       `Bu s&ouml;z&uuml; duyunca rahatladım a&ccedil;ık&ccedil;ası.`,
-      `Baktırdım zaten, temiz &ccedil;ıktı. G&uuml;venim geldi.`,
+      `Baktırdım zaten, s&ouml;ylediğin gibi &ccedil;ıktı. G&uuml;venim geldi.`,
       `Adam gibi konuştun. Devam edelim.`]));
   }
 
@@ -3050,6 +3061,7 @@ function doSaleOffer(){
   const raw=document.getElementById("saleInput").value.replace(/[^\d]/g,"");
   const price=parseInt(raw||"0",10);
   if(!price){ toast("Bir rakam yaz.","bad"); return; }
+  if(price>s.list*1.05) toast(`İlan fiyatının %${Math.round((price/s.list-1)*100)} &uuml;st&uuml;: alıcı bunu ağır karşılar, ilgisi d&uuml;şer.`,"warn");
   s.tur++;
   saleSay("you", tl(price));
   const r=saleReply(s, price);
@@ -3709,14 +3721,14 @@ document.addEventListener("click",e=>{
   if(a==="hazirla"){
     const p=hazirlaPlan(car);
     const metin=(car.inspected?"":`Ekspertiz yapılır (${p.ep?tl(p.ep):"bedava"}). `)+
-      (p.tam?(p.tam.length?`${p.tam.length} kârlı tamir yapılır (${tl(p.tamTutar)}). `:"Kârlı tamir yok. ")
+      (p.tam?(p.tam.length?`${p.tam.length} kârlı tamir yapılır (${tl(p.tamTutar)}). `:"Yapılacak kârlı tamir kalmadı. ")
             :"Çıkan kusurlardan yalnız kendini amorti edenler tamir edilir. ")+
       `Dürüst ilanla piyasa değerinin %3 üstüne ilana konur.`;
     onay("Hazırla ve ilana koy", metin, "Hazırla", ()=>{
       const r=hazirlaYap(car); if(!r) return;
       closeSheet(); S.tab="garaj"; S.garajTab="satis"; render();
       toast(`İlanda · ${tl(r.fiyat)}${r.yapilan.length?` · ${r.yapilan.length} tamir ${tlk(r.harcanan)}`:""} · beklenen kâr ${tlk(r.kar)}`, r.kar>=0?"good":"bad");
-    });
+    }, false, ()=>openOwnCar(car));
     return;
   }
   if(a==="oneriteklif"){
@@ -3739,8 +3751,17 @@ document.addEventListener("click",e=>{
   if(a==="cut"){ car.listPrice=Math.round(car.listPrice*0.97/500)*500; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
     toast(`Yeni fiyat ${tl(car.listPrice)}`); save(); openOwnCar(car); return; }
   if(a==="wholesale"){
+    /* Toptan satış geri dönüşsüz ve çoğu zaman zararlı; eskiden tek
+       dokunuşla oluyordu (oyun testinde ₺73K zarar, oyuncu Hazırla'ya
+       bastığını sanıyordu). Artık kâr/zarar yazan onay soruyor. */
     const p=Math.round(valueOf(car,false)*0.82/500)*500;
-    sellCar(car,p,"toptan"); render(); if(S.lastDeal) openDealSummary(S.lastDeal); return;
+    const kz=p-carCost(car);
+    onay("Galericiye toptan sat",
+      `${car.model.n} ${tl(p)}'e hemen satılır. Maliyetin ${tl(carCost(car))}: <b class="${kz>=0?"pos":"neg"}">${kz>=0?"+":"&minus;"}${tl(Math.abs(kz))}</b>.<br>İlana koyarsan genelde daha fazlasına satılır ama bekletir.`,
+      `Toptan sat · ${tl(p)}`,
+      ()=>{ sellCar(car,p,"toptan"); render(); if(S.lastDeal) openDealSummary(S.lastDeal); },
+      kz<0, ()=>openOwnCar(car));
+    return;
   }
   if(a==="takeoffer"){
     const o=getOffer(b.dataset.oid); if(!o) return;
@@ -3899,7 +3920,8 @@ document.addEventListener("click",e=>{
     return;
   }
   if(a==="onayevet"){ onayCalistir(); return; }
-  if(a==="onayhayir"){ _onayEylem=null; closeSheet(); render(); return; }
+  if(a==="onayhayir"){ _onayEylem=null; const g=_onayGeri; _onayGeri=null;
+    if(g){ try{ g(); }catch(e){ closeSheet(); } } else { closeSheet(); render(); } return; }
 });
 document.addEventListener("input",e=>{
   if(e.target.id==="lpRange"){

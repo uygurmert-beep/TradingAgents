@@ -99,9 +99,12 @@ function parla(metin, alt, renk){
    oyunun kendi sayfasıyla alınıyor: her yerde çalışır, çevrilir ve
    tasarıma uyar.
    ================================================================== */
-let _onayEylem=null;
-function onay(baslik, metin, etiket, eylem, tehlike){
+let _onayEylem=null, _onayGeri=null;
+/** geri: "Vazgeç"te çağrılır (ör. araç sayfasına dön). Yoksa sayfa kapanır —
+    eskiden Hazırla onayında Vazgeç araç sayfasını da kapatıyordu. */
+function onay(baslik, metin, etiket, eylem, tehlike, geri){
   _onayEylem=(typeof eylem==="function")?eylem:null;
+  _onayGeri=(typeof geri==="function")?geri:null;
   openSheet(`<div class="sheet-head">
       <div><div class="sheet-title">${baslik}</div></div>
       <button class="x" data-act="onayhayir" aria-label="Kapat">&times;</button></div>

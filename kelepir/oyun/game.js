@@ -312,7 +312,12 @@ function genCar(opt={}){
     if(imza.has(f.k)) return gecti ? 9 : 2.6;
     return f.cost>40000 ? .30 : (f.cost>1500 ? .55 : 1);
   };
-  const pool=[...FAULTS];
+  /* Arıza aracın donanımına uymalı: manuel vitesli araçta "otomatik
+     şanzıman bakımı", 1995 öncesi karbüratörlü araçta "motor beyni" ya da
+     "enjektör" çıkıyordu (oyun testi, 1983 Şahan). */
+  const uymaz=(f)=> (f.k==="otosanziman" && gear!=="Otomatik")
+                 || (year<1995 && (f.k==="beyin"||f.k==="enjektor"||f.k==="multimedya"||f.k==="turbo"));
+  const pool=FAULTS.filter(f=>!uymaz(f));
   for(let i=0;i<Math.min(nF,5);i++){
     if(!pool.length) break;
     let top=0; for(const f of pool) top+=agirlik(f);
@@ -350,7 +355,10 @@ function genCar(opt={}){
   const claims=[];
   const nTrue=ri(1,2);
   for(let i=0;i<nTrue;i++){const c=pick(CLAIMS_TRUE); if(!claims.includes(c))claims.push(c);}
-  if(chance(.55)){const c=pick(CLAIMS_LIE); if(!claims.includes(c))claims.push(c);}
+  // "Km'sine bakmayın" yalnız yaşına göre gerçekten yüksek km'li araçta söylenir
+  // (55.000 km'lik araçta da çıkıyordu)
+  const kmYuksek = km > Math.max(1,YEAR-year)*17000;
+  if(chance(.55)){const c=pick(CLAIMS_LIE.filter(x=>kmYuksek || !/Km/.test(x))); if(!claims.includes(c))claims.push(c);}
 
   const seller = opt.auction ? null : weightedSeller();
 

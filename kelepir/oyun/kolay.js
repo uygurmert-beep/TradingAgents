@@ -63,7 +63,7 @@ function hazirlaKart(c){
   const p=hazirlaPlan(c);
   const satir=[];
   if(!c.inspected) satir.push(`Ekspertiz ${p.ep?tl(p.ep):"bedava"}`);
-  if(p.tam) satir.push(p.tam.length?`${p.tam.length} kârlı tamir · ${tl(p.tamTutar)}`:"Kârlı tamir yok");
+  if(p.tam) satir.push(p.tam.length?`${p.tam.length} kârlı tamir · ${tl(p.tamTutar)}`:"Yapılacak kârlı tamir kalmadı");
   else satir.push("çıkan kusurlardan yalnız kârlı olanlar");
   satir.push(`dürüst ilan · ~${tlk(onerilenIlan(c))}`);
   const sanayi=(typeof sanayiyeKalan==="function") ? sanayiyeKalan() : 9;
