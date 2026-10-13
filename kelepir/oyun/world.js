@@ -1913,7 +1913,12 @@ const W3D=(()=>{
     const gGeo=govdeGeo(ad+"|"+car.model.seg+"|g", s, pr);
     // tek deri: boya, cam, tavan, B direği aynı yüzeyin grupları
     const gov=new THREE.Mesh(gGeo, [MAT.boya, MAT.cam, MAT[tavanKey], MAT.koyuP]); gov.name="govde"; g.add(gov);
-    if(detay){                       // içeriden bakınca boya değil, iç kaplama görünsün
+    /* İç kabuk artık her zaman var (eskiden yalnız yakın "detay" çiziminde).
+       Vitrinde ön camdan bakınca koltukların arkasında gövdenin iç yüzleri
+       (arkaya dönük, çizilmeyen) yüzünden aracın içinden dışarısı
+       görünüyordu: bagaj yokmuş gibi. İç kabuk bagajı, kapı içlerini ve
+       tavanı kapatıyor. */
+    {                                // içeriden bakınca boya değil, iç kaplama görünsün
       // cam bölgesi iç kabukta boş kalmalı, yoksa camdan bakınca iç kaplama görünür
       const gizli=new THREE.MeshBasicMaterial({visible:false});
       const ik=new THREE.Mesh(gGeo, [MAT.icKabuk, gizli, MAT.icKabuk, MAT.icKabuk]);
@@ -2044,8 +2049,11 @@ const W3D=(()=>{
       KUTU("ic", .06,.34,kabinUz+.30, [sx*(icX(tabanY+.02)-.06), tabanY+.14, kabOrtZ+.02]);
     // kapı içleri: plastik gövde + döşeme dolgusu + kolçak
     for(const sx of [-1,1]){
-      KUTU("ic", .055, Math.max(.12,belOrt-tabanY), kabinUz*.98,
-        [sx*(icX(tabanY+.04)-.07), (tabanY+belOrt)/2, kabOrtZ]);
+      // üst kenar kuşağın 6 cm altında ve dar yerdeki genişliğe göre: kuşak hizasına
+      // çıkınca ön cam dibinde gövdenin daraldığı yerden dışarı taşıyordu (bej çıkıntı)
+      const kapiUst=belOrt-.06;
+      KUTU("ic", .055, Math.max(.12,kapiUst-tabanY), kabinUz*.92,
+        [sx*(Math.min(icX(tabanY+.04), icX(kapiUst))-.07), (tabanY+kapiUst)/2, kabOrtZ+.02]);
       KUTU("doseme", .022, Math.max(.08,(belOrt-tabanY)*.46), kabinUz*.52,
         [sx*(HW-.108), (tabanY+belOrt)/2+.02, kabinZ0+kabinUz*.36]);
       KUTU("ic", .075,.10, kabinUz*.42, [sx*(HW-.115), belOrt-.16, kabinZ0+.62]);
@@ -2162,6 +2170,22 @@ const W3D=(()=>{
         EK("dikis", kutu(.007,.38,.010), [sx*s.W*.19, tabanY+.42, arkaKz+.207], [-.14,0,0]);
       }
       EK("dosemeYan", yastik(s.W*.14,.44,.11,.04), [0, tabanY+.40, arkaKz+.28], [-.14,0,0]);
+    }
+    /* Arka raf ve bagaj bölmesi: ön camdan bakınca arka koltuğun ardında
+       bagaj yokmuş gibi aracın içinden dışarısı görünüyordu. Sedanda arka
+       camın altına raf + koltuk arkasına bölme; hatch/SUV'da bagaj örtüsü. */
+    {
+      const rafZ0=arkaKz+.36;
+      if(s.cls==="sedan"){
+        const rafZ1=pr.camAlt-.02, rafY=pr.beltR-.05;
+        if(rafZ1>rafZ0+.08){
+          KUTU("ic", icX(rafY)*1.9, .025, rafZ1-rafZ0, [0, rafY, (rafZ0+rafZ1)/2]);
+          KUTU("ic", icX(tabanY+.3)*1.9, Math.max(.1,rafY-tabanY), .04, [0, (rafY+tabanY)/2, rafZ0+.02]);
+        }
+      }else if(s.cls!=="van"){
+        const ortuZ1=Math.min(yarim-.18, pr.camAlt+.05), ortuY=Math.min(pr.beltR,pr.beltF)-.06;
+        if(ortuZ1>rafZ0+.1) KUTU("koyu", icX(ortuY)*1.86, .02, ortuZ1-rafZ0, [0, ortuY, (rafZ0+ortuZ1)/2]);
+      }
     }
     // emniyet kemerleri
     if(detay) for(const sx of [-1,1]){
@@ -3006,7 +3030,7 @@ const W3D=(()=>{
     for(const sz of [1,-1]){
       const yz=new THREE.Mesh(new THREE.PlaneGeometry(2.3,1.7),
         new THREE.MeshBasicMaterial({map:pilonTex(ad,"ikinci el · güvenli alım", renk, zemin), transparent:true}));
-      yz.position.set(0,5.0,sz*.18); if(sz<0) yz.rotation.y=Math.PI; g.add(yz);
+      yz.position.set(0,5.0,sz*.20); if(sz<0) yz.rotation.y=Math.PI; g.add(yz);   // kutu yüzünden 3 cm önde
     }
     g.position.set(x,0,z);
     return g;
@@ -3111,6 +3135,12 @@ const W3D=(()=>{
     sc.near=1; sc.far=64; sc.updateProjectionMatrix();
     gun.shadow.bias=-0.0011; gun.shadow.normalBias=0.024;
     scene.add(gun); scene.add(gun.target);
+    /* Dolgu ışığı: güneşin karşı tarafından gölgesiz, zayıf bir ışık. Yoksa
+       araç etrafında dönerken güneşe sırtı dönük yüz neredeyse siyah kalıyor,
+       koyu renkli araçta ekran kararıyordu. */
+    const dolgu=new THREE.DirectionalLight(0xDDE6F0, .42);
+    dolgu.position.set(-S4.yon[0], Math.max(4,S4.yon[1]*.6), -S4.yon[2]);
+    scene.add(dolgu);
 
     /* --- gökyüzü kubbesi --- */
     const gok=new THREE.Mesh(new THREE.SphereGeometry(240, 28, 18),
@@ -3218,7 +3248,10 @@ const W3D=(()=>{
     else{
       const tb=new THREE.Mesh(new THREE.PlaneGeometry(7.2,1.8),
         new THREE.MeshBasicMaterial({map:signTex(o.ad,o.alt,o.renk,o.koyu), transparent:true}));
-      tb.position.set(0,3.5,z1-.45); D.add(tb);
+      /* Yazı paneli kutunun ön yüzüyle aynı düzlemdeydi (kutu z1-.60 ± .15):
+         iki yüzey çakışıp (z-fighting) "OTO PAZARI" yazısı açıya göre kırık
+         kırık, titreşerek görünüyordu. Panel 3 cm önde. */
+      tb.position.set(0,3.5,z1-.42); tb.material.polygonOffset=true; tb.material.polygonOffsetFactor=-2; D.add(tb);
       const kutu=new THREE.Mesh(new THREE.BoxGeometry(7.6,2.0,.30),
         new THREE.MeshLambertMaterial({color:0x14202C}));
       kutu.position.set(0,3.5,z1-.60); kutu.castShadow=true; D.add(kutu);
@@ -3234,7 +3267,8 @@ const W3D=(()=>{
     const direkZ=[];
     const ilk = o.bina ? z1+7.5 : z1+4.5;
     for(let z=ilk; z<z0-1.5; z+=9.0) direkZ.push(z);
-    for(const z of direkZ) for(const sx of [-1,1]) D.add(direkLamba(sx*(en-.9), z));
+    // direkler birleştirilmiş dekora girmez: kamerayla araç arasına girince saydamlaşacaklar
+    for(const z of direkZ) for(const sx of [-1,1]){ const dl=direkLamba(sx*(en-.9), z); scene.add(dl); ENGELLER.push(dl); }
     const flamalar=[];
     if(o.flama!==false){
       for(const z of direkZ) flamalar.push(flamaDizisi(-(en-.9), z, (en-.9), z, 5.5));
@@ -3418,7 +3452,48 @@ const W3D=(()=>{
      Kimse dokunmazken araç vitrindeki gibi ağır ağır dönüyor.
      ================================================================== */
   const VFOV=50;
-  let SAHA={x:9.4, z0:13, z1:-20};   // vitrin kamerasının kalması gereken saha (çit içi)
+  let SAHA={x:9.4, z0:13, z1:-20};
+  /* Görüş engeli olabilecek nesneler (lamba direkleri). 360° dönerken bir
+     direk ya da komşu araç kamerayla incelenen aracın arasına girince ekranı
+     kapkara/düz gri bir sütun kaplıyordu; bunlar saydamlaşır. */
+  let ENGELLER=[];
+  let engelSayac=0;
+  // tembel: bu kapsam THREE yüklenmeden de çalışıyor (3B'siz cihaz); burada
+  // new THREE.Raycaster() yazmak oyunun tamamını açılmaz yapıyordu (test.js 3. bölüm)
+  let _engelRc=null;
+  function engelSaydam(o, hedef){
+    o.traverse(m=>{
+      if(!m.isMesh) return;
+      const ms=Array.isArray(m.material)?m.material:[m.material];
+      for(const mt of ms){
+        if(!mt) continue;
+        if(mt.userData.asilOp===undefined){ mt.userData.asilOp=mt.opacity; mt.userData.asilTr=mt.transparent; }
+        const op=mt.userData.asilOp*hedef;
+        if(Math.abs(mt.opacity-op)<.01) continue;
+        mt.opacity += (op-mt.opacity)*.35;
+        const saydam = mt.opacity<.99 || mt.userData.asilTr;
+        if(mt.transparent!==saydam){ mt.transparent=saydam; mt.needsUpdate=true; }
+        mt.depthWrite = !(mt.opacity<.99) && mt.userData.asilDw!==false;
+      }
+    });
+  }
+  function engelleriGuncelle(){
+    if(!cam || !VT.T) return;
+    const adaylar=[...ENGELLER, ...items.filter(it=>it!==focus).map(it=>it.obj)];
+    const yon=VT.T.clone().sub(cam.position); const uz=yon.length(); yon.normalize();
+    if(!_engelRc) _engelRc=new THREE.Raycaster();
+    _engelRc.set(cam.position, yon); _engelRc.far=Math.max(.1, uz-.4);
+    const vurulan=new Set();
+    for(const h of _engelRc.intersectObjects(adaylar, true)){
+      let o=h.object; while(o.parent && !adaylar.includes(o)) o=o.parent;
+      vurulan.add(o);
+    }
+    // kameranın çok yakınındaki komşu araç (kamera içine girdiyse) de saydam
+    for(const it of items){ if(it===focus) continue;
+      if(it.obj.position.distanceTo(cam.position)<(it.obj.userData.size?it.obj.userData.size.l*.6:2.5)) vurulan.add(it.obj); }
+    for(const o of adaylar) engelSaydam(o, vurulan.has(o)?.18:1);
+    if(focus) engelSaydam(focus.obj, 1);   // önceden saydamlaşmış komşu odak olursa geri gelsin
+  }   // vitrin kamerasının kalması gereken saha (çit içi)
   const VT={i:0, aci:0, egim:.20, uzak:1, hAci:0, hEgim:.20, hUzak:1,
             T:null, hT:null, son:0, gecis:1, parmak:{}, pinch:null, surukle:null};
   function onKey(e,d){
@@ -3650,11 +3725,21 @@ const W3D=(()=>{
       let Rk=Rv;
       if(dx>1e-3) Rk=Math.min(Rk,(SAHA.x-VT.T.x)/dx); else if(dx<-1e-3) Rk=Math.min(Rk,(-SAHA.x-VT.T.x)/dx);
       if(dz>1e-3) Rk=Math.min(Rk,(SAHA.z0-VT.T.z)/dz); else if(dz<-1e-3) Rk=Math.min(Rk,(SAHA.z1-VT.T.z)/dz);
+      /* Sınıra çarpan yarıçap eskiden aracın dibine kadar (boyunun %62'si)
+         kısalıyordu: arkaya dönünce ekranı aracın gölgedeki koyu yüzü
+         kaplıyor, "kapkara ekran" görünüyordu. Artık yarıçap en çok %40
+         kısalır; kalan fark kadar kamera yükselir (vinç), aracı yukarıdan
+         görür ve çitin üstünden bakar. */
+      const kis=Rk/Rv;
+      // çitin içinde kalır (vitrin-test ölçüyor); yakınlaşmanın yerini yükseklik alır
       Rk=Math.max(Rk, VT.uzunluk*.62);
-      cam.position.set(VT.T.x+dx*Rk, VT.T.y+Math.sin(VT.egim)*Math.max(Rk,Rv*.8)+.15, VT.T.z+dz*Rk);
+      const vinc = kis<.96 ? Math.min(2.2,(1-kis)*Rv*.7) : 0;
+      VT.vinc = (VT.vinc||0) + (vinc-(VT.vinc||0))*Math.min(1,dt*4);
+      cam.position.set(VT.T.x+dx*Rk, VT.T.y+Math.sin(VT.egim)*Math.max(Rk,Rv*.8)+.15+VT.vinc, VT.T.z+dz*Rk);
       cam.lookAt(VT.T.x, VT.T.y, VT.T.z);
       if(Math.abs(cam.fov-VFOV)>.01){ cam.fov=VFOV; cam.updateProjectionMatrix(); }
       px=cam.position.x; pz=cam.position.z;
+      if(++engelSayac%3===0) engelleriGuncelle();
     }
 
     for(const f of CANLI){ try{ f(dt,t); }catch(e){} }
@@ -3703,7 +3788,7 @@ const W3D=(()=>{
     for(const k in geoCache) delete geoCache[k];
     for(const k in texCache) delete texCache[k];
     if(ren){ ren.dispose(); if(ren.domElement.parentNode) ren.domElement.parentNode.removeChild(ren.domElement); }
-    ren=scene=cam=null; items=[]; focus=null; ready=false;
+    ren=scene=cam=null; items=[]; focus=null; ready=false; ENGELLER=[];
   }
 
   /** Sahnenin içeriği değişti mi? (gün dönümü, satış, tamir, fiyat) */

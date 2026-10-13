@@ -293,6 +293,17 @@ modelin kendi profilini aldığını ölçüyor.
   (`camBolge`: 0 boya, 1 cam, 2 tavan, 3 koyu). Gövde mesh'inin malzemesi bu
   yüzden DİZİ; `gov.material.color` gibi tek malzeme varsayan kod yazma.
   İç kabukta (`detay`) cam grubu görünmez malzeme, yoksa camdan iç kaplama görünür.
+- ön camdan bakınca bagaj yokmuş gibi dışarısı görünüyordu: iç kabuk (`icKabuk`,
+  BackSide) eskiden yalnız `detay` çiziminde vardı; artık her araçta. Sedanda
+  arka raf + bölme, hatch/SUV'da bagaj örtüsü
+- 360° dönerken kapkara ekran: sınıra çarpan kamera aracın dibine iniyordu →
+  kamera çitte kalır ama yükselir (`VT.vinc`); güneşin karşısından gölgesiz
+  dolgu ışığı; lamba direkleri ve araya giren komşu araçlar saydamlaşır
+  (`ENGELLER`, `engelleriGuncelle`). Direkler bu yüzden birleştirilmiş dekora girmez
+- "OTO PAZARI" tabelası: yazı paneli kutunun ön yüzüyle aynı düzlemdeydi
+  (z-fighting) ve HTML yer etiketi (`.w3dplace`) tabelanın önüne düşüyordu
+- **THREE'ye modül yüklenirken dokunma** (`new THREE.X()` üst düzeyde): 3B'siz
+  cihazda oyunun tamamı açılmaz; `test.js` 3. bölüm yakalar. Tembel oluştur
 - sol jantların arka yüzü dışarı bakıyordu: `jantGeo` +x yüzüne göre kurulu,
   solda y ekseninde yarım tur döndürülüyor
 

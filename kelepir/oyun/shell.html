@@ -886,7 +886,10 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
   color:var(--label);font-size:24px;line-height:1;display:grid;place-items:center;cursor:pointer}
 .w3dok:active{transform:scale(.94)}
 .w3dsira{margin-left:6px;padding:1px 7px;border-radius:100px;background:var(--fill);color:var(--label-2);font-size:11px}
-.w3dplace{padding:8px 14px;border-radius:100px;background:rgba(30,32,36,.62);border:none;
+/* Yer etiketi kaldırıldı: sağ üstte 3B "OTO PAZARI" tabelasının tam önüne
+   düşüp yazıyı "OTO PA" diye kesiyordu; sahadaki tabela aynı şeyi söylüyor. */
+.w3dplace{display:none!important}
+.w3dplace-eski{padding:8px 14px;border-radius:100px;background:rgba(30,32,36,.62);border:none;
   font-weight:600;font-size:14px;letter-spacing:0;color:#fff;
   -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 /* Çubuk dokunuşları yutmasın: yalnızca düğmeleri tıklanabilir. Aksi hâlde
