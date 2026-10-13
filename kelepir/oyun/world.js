@@ -2339,10 +2339,18 @@ const W3D=(()=>{
     onPanel("izgara", 0, gY, hwOn*2*gwK*(imza.yuvarlakFar?.62:.55), gh, .012, 9,4);
     if(imza.izgaraTip==="yarik"||imza.izgaraTip==="kapali")   // alt hava girişi daha büyük
       onPanel("petek", 0, pr.sill+.20, hwAlt*1.20,.13, .010, 6,2);
+    /* Amblem düz bir disk değil, gövdeye yapışan dokulu bir yama: disk eğri
+       burunda kenarlarından havada kalıyor ya da gövdeye gömülüp kesiliyordu.
+       Boyu ızgaranın boyuyla sınırlı — alçak ızgarada taşıyordu. Önden
+       bakınca dünya x'i ekranda ters: doku aynalanmasın diye u tersten. */
     if(MAT.amblem){
-      let zm=1e9;
-      for(const dx of [-.075,0,.075]) for(const dy of [-.075,0,.075]) zm=Math.min(zm, zOn(dx, gY+.01+dy));
-      EK("amblem", new THREE.CircleGeometry(.075,24), [0, gY+.01, Math.min(zm, zOn(0,gY+.01))-.026], [0,Math.PI,0]);
+      const ar=Math.min(.072, gh*.42), ay=gY+.01;
+      MAT.amblem.side=THREE.DoubleSide; MAT.amblem.depthWrite=false;
+      const m=new THREE.Mesh(yuzey(6,6,(u,v)=>{
+        const y=ay-ar+2*ar*v, x=ar-2*ar*u;
+        return [x, y, zOn(x,y)-.024];
+      }), MAT.amblem);
+      m.renderOrder=3; g.add(m);
     }
     // tampon / hava girişi
     if(imza.tampon){
@@ -2418,7 +2426,9 @@ const W3D=(()=>{
       if(seg==="lux"||tTip==="spor") for(let i=-2;i<=2;i++)
         arkaPanel("koyuP", i*.11, pr.sill+.07, .018,.06, .020, 1,1);
     }
-    EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
+    // krom tamponlu araçta ön plaka tamponun önünde; eskiden ızgaranın arkasında kalıyordu
+    if(imza.tampon) EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.17, zF-.030-.040], [0,Math.PI,0]);
+    else EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
     if(!imza.tampon){
       onPanel("cizgi", 0, pr.sill+.33, hwAlt*1.86, .006, .004, 14,1);
       arkaPanel("cizgi", 0, pr.sill+.33, xAt(yarim-.06, pr.sill+.33)*1.86, .006, .004, 14,1);
@@ -2445,12 +2455,13 @@ const W3D=(()=>{
        lambalarının arasında; yüzeyin eğimine yatırılıyor ve en dışa çıkan
        noktanın önüne konuyor. */
     if(MAT.amblem){
-      const ar=.052, ay=Math.min(stopY+.07, pr.kuyruk-ar-.035);
-      let zm=-1e9;
-      for(const dx of [-ar,0,ar]) for(const dy of [-ar,0,ar]) zm=Math.max(zm, zArka(dx, ay+dy));
-      const egimA=Math.atan2(zArka(0,ay+.04)-zArka(0,ay-.04), .08);
-      EK("koyuP", new THREE.CylinderGeometry(ar*1.12,ar*1.12,.008,24), [0, ay, zm+.012], [Math.PI/2-egimA,0,0]);
-      EK("amblem", new THREE.CircleGeometry(ar,24), [0, ay, zm+.0175], [-egimA,0,0]);
+      const ar=.050, ay=Math.min(stopY+.07, pr.kuyruk-ar-.035);
+      MAT.amblem.side=THREE.DoubleSide; MAT.amblem.depthWrite=false;
+      const m=new THREE.Mesh(yuzey(6,6,(u,v)=>{
+        const y=ay-ar+2*ar*v, x=-ar+2*ar*u;
+        return [x, y, zArka(x,y)+.030];
+      }), MAT.amblem);
+      m.renderOrder=3; g.add(m);
     }
     if(!car.model.cl){
       /* egzoz ucu tamponun altına gizli, yalnız 3–4 cm görünür; eskiden 12 cm
@@ -3492,12 +3503,11 @@ const W3D=(()=>{
       delete VT.parmak[id];
       if(VT.pinch){ if(Object.keys(VT.parmak).length<2) VT.pinch=null; continue; }
       const sure=performance.now()-p.t, dx=t.clientX-p.sx;
-      if(p.yol<8) tapAt(t.clientX, t.clientY);
-      // hızlı ve yatay bir fiske sıradaki araca geçirir; yavaş sürükleme döndürür
-      else if(sure<320 && Math.abs(dx)>70 && Math.abs(dx)>Math.abs(t.clientY-p.sy)*1.6){
-        VT.hAci+=dx*.0085;   // fiskenin döndürdüğünü geri al
-        sec(VT.i+(dx<0?1:-1));
-      }
+      /* Eskiden hızlı yatay bir fiske sıradaki araca geçiriyordu. Aracın
+         etrafında dönerken atılan her hızlı sürükleme fiske sayılıyor, oyuncu
+         incelerken bir anda başka araca geçiyordu. Araç değiştirmek artık
+         yalnız ‹ › düğmeleri ve klavye okları ile. */
+      if(p.yol<8 && sure<450) tapAt(t.clientX, t.clientY);
     }
     if(e.touches && e.touches.length===0){ VT.parmak={}; VT.pinch=null; }
   }
@@ -3532,7 +3542,9 @@ const W3D=(()=>{
     let o=hit.object; while(o.parent && !hedefler.includes(o)) o=o.parent;
     const k=items.findIndex(i=>i.obj===o);
     if(k<0) return;
-    if(k===VT.i) openItem(items[k]); else sec(k);
+    // komşu araca dokunmak odağı değiştirmez: yandan bakınca komşu araç görüş
+    // hattına giriyor, dokunuş ona düşünce incelenen araç elden kaçıyordu
+    if(k===VT.i) openItem(items[k]);
   }
   /* ---- gözle ekspertiz: dokunulan nokta bir ipucunun yakınında mı ---- */
   function gozIsaretTex(){
@@ -3708,6 +3720,7 @@ const W3D=(()=>{
 
   function open(m, koru){
     const eskiX=px, eskiZ=pz, eskiYaw=yaw, eskiPitch=pitch;
+    const eskiId = focus && focus.car ? focus.car.id : null;
     mode=m;
     const host=document.getElementById("world");
     if(!host) return false;
@@ -3759,7 +3772,12 @@ const W3D=(()=>{
               yaw=eskiYaw; pitch=eskiPitch; }
     placeCars();
     focus=null; VT.T=null; VT.parmak={}; VT.pinch=null; VT.hEgim=VT.egim=.20;
-    if(items.length) sec(koru?Math.min(VT.i,items.length-1):0, true); else updateFocusBar();
+    /* Yeniden kurulunca odak SIRA ile değil ARAÇ ile korunur. Pazar listesi
+       değişince (satın alma, gün geçişi, gruptan ihbar) aynı sıra başka bir
+       araca denk geliyor, oyuncu incelerken bir anda başka araca geçiyordu. */
+    let odakI = koru ? Math.min(VT.i, items.length-1) : 0;
+    if(koru && eskiId!=null){ const k=items.findIndex(it=>it.car && it.car.id===eskiId); if(k>=0) odakI=k; }
+    if(items.length) sec(odakI, true); else updateFocusBar();
     kurulanDamga=damga(mode);
     if(ren.shadowMap) ren.shadowMap.needsUpdate=true;
     const yer=document.getElementById("w3dplace");

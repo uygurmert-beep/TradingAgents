@@ -62,14 +62,25 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   await p.evaluate(()=>W3D.onceki()); await p.waitForTimeout(200);
   t('baştan geri basınca sona sarıyor', await p.evaluate(()=>W3D.vitrin.i===W3D.vitrin.adet-1));
 
-  // hızlı fiske sıradakine geçirir
+  /* Hızlı yatay sürükleme ARTIK araç değiştirmiyor: aracın etrafında dönerken
+     atılan her hızlı sürükleme fiske sayılıp oyuncuyu başka araca geçiriyordu.
+     Sürükleme döndürür, odak aynı araçta kalır. */
   await p.evaluate(()=>W3D.sec(0)); await p.waitForTimeout(300);
   // Başsız tarayıcıda her fare olayı bir kare bekliyor; fiske zamanlaması
   // kesin olsun diye olaylar doğrudan veriliyor (gerçek dokunuşla aynı yol).
   await p.evaluate(()=>{ W3D.pointerDown({clientX:300,clientY:330}); W3D.pointerMove({clientX:220,clientY:332});
     W3D.pointerMove({clientX:150,clientY:334}); W3D.pointerUp({clientX:150,clientY:334}); });
   await p.waitForTimeout(300);
-  t('hızlı sola fiske sıradaki araca geçiyor', (await p.evaluate(()=>W3D.vitrin)).i===1);
+  t('hızlı yatay sürükleme odağı değiştirmiyor', (await p.evaluate(()=>W3D.vitrin)).i===0);
+  // sahne yeniden kurulunca (pazar listesi kaydı) odak sıra ile değil araç ile korunur
+  const kayma=await p.evaluate(async()=>{
+    W3D.sec(2); const id=W3D.focus.car.id;
+    const ilk=S.market.shift(); S.market.push(ilk);      // liste bir sıra kaydı
+    W3D.refresh(); await new Promise(r=>setTimeout(r,600));
+    return {ayni: W3D.focus && W3D.focus.car.id===id};
+  });
+  t('yeniden kurulunca incelenen araç odakta kalıyor', kayma.ayni);
+  await p.evaluate(()=>W3D.sec(0)); await p.waitForTimeout(300);
 
   // tekerlek yakınlaştırır
   const u0=(await p.evaluate(()=>W3D.vitrin)).uzak;
