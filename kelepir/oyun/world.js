@@ -3749,6 +3749,8 @@ const W3D=(()=>{
   function updateFocusBar(){
     const bar=document.getElementById("w3dbar");
     if(!bar) return;
+    const kasa=document.getElementById("w3dkasa");
+    if(kasa && typeof S!=="undefined" && S) kasa.textContent=tl(S.cash);
     if(!focus){ bar.innerHTML=`<div class="w3dhint">${mode==="pazar"?"Pazarda ilan yok":"Garajın boş"}</div>`; return; }
     const c=focus.car;
     const fiyat = mode==="pazar" ? c.ask : (c.listPrice||valueOf(c,!c.inspected));

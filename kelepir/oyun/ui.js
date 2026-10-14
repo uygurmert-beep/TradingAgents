@@ -949,6 +949,14 @@ function render(){
   const el=document.getElementById("screen");
   el.innerHTML = ({pazar:viewPazar, garaj:viewGaraj, muzayede:viewMuzayede,
                    galeri:viewGaleri, rapor:viewRapor, ayar:viewAyar}[S.tab]||viewPazar)();
+  /* "Günü bitir" her sekmede (v3 testi: Müzayede, Galeri, Rapor, Ayarlar'da
+     yoktu; oyuncu Pazar'a dönmek zorundaydı). */
+  if(S.started && !el.querySelector('[data-act="endday"]')){
+    const bar=el.querySelector(":scope > .actionbar");
+    const btn=`<button class="btn ${bar?"":"primary "}full" data-act="endday"${bar?' style="margin-top:8px"':""}>G&uuml;n&uuml; bitir &rarr;</button>`;
+    if(bar) bar.insertAdjacentHTML("beforeend", btn);
+    else el.insertAdjacentHTML("beforeend", `<div class="actionbar">${btn}</div>`);
+  }
   el.scrollTop=0; window.scrollTo(0,0);
   altBosluk(el);
   try{ ogretCiz(); }catch(e){}
@@ -1268,6 +1276,12 @@ function siralaListe(liste, anahtar, mod){
   else if(anahtar==="yeni")   a.sort((x,y)=>(x.age||0)-(y.age||0));
   else if(anahtar==="kar")    a.sort((x,y)=>((y.listPrice||valueOf(y,false))-carCost(y))-((x.listPrice||valueOf(x,false))-carCost(x)));
   else if(anahtar==="bekleyen") a.sort((x,y)=>(y.daysListed||0)-(x.daysListed||0));
+  /* Pazarda "Önerilen": önce kasaya sığanlar (fırsata göre), sonra sığmayanlar.
+     Eskiden ilan sırasıydı; kasa ₺2,1M iken ₺7,1M'lik araç 5 gün en üstteydi (v3). */
+  else if(anahtar==="onerilen" && mod==="market"){
+    const sigar=(c)=>c.ask<=S.cash*1.02?1:0;
+    a.sort((x,y)=>(sigar(y)-sigar(x)) || (fark(y)-fark(x)));
+  }
   return a;
 }
 /** Arama + sıralama şeridi. Odak kaybolmasın diye liste ayrı kapta tazeleniyor. */
@@ -2090,7 +2104,11 @@ function openAuctionCar(c){
     condBlock(c,false)+faultBlock(c,false)+
     `<div class="block"><h4>DEĞERLEME</h4>
       <div class="kv"><span>Kaba tahmin</span><b>${tlk(valueOf(c,true)*0.82)} – ${tlk(valueOf(c,true)*1.08)}</b></div>
-      <div class="sec-note" style="margin-top:5px">Kaputun altı meçhul. Zarfını buna göre ver.</div></div>
+      ${(()=>{ const o=S.muzOran||[]; const muh=Math.round(valueOf(c,true)*0.7);
+        const lo=o.length?Math.min(...o):1.18, hi=o.length?Math.max(...o):1.42;
+        return `<div class="kv"><span>Kazanan zarf ${o.length?`(son ${o.length} m&uuml;zayede)`:"(genelde)"}</span><b>${tlk(muh*lo)} – ${tlk(muh*hi)}</b></div>
+        <div class="kv"><span>Rakip galerici</span><b>${(S.rivals||[]).length} kişi</b></div>`; })()}
+      <div class="sec-note" style="margin-top:5px">Kaputun altı meçhul. Rakipler muhammenin değil, aracın g&ouml;r&uuml;nen değerinin peşinde.</div></div>
      <button class="btn primary full" data-act="bid" data-id="${c.id}">Zarf ver</button>`);
 }
 
@@ -2359,9 +2377,15 @@ function talkAlta(){
       // Balon kutusunun kendi içinde en alta inmek yetmiyor: kutu sayfanın
       // görünen alanının dışında kaldıysa oyuncu hamlesinin cevabını
       // göremiyor. Sayfayı, kutu görünecek KADAR kaydırıyoruz — başa atmadan.
-      const r=e.getBoundingClientRect(), s=sheet.getBoundingClientRect();
-      if(r.bottom > s.bottom-8)      sheet.scrollTop += r.bottom-(s.bottom-8);
-      else if(r.top < s.top+8)       sheet.scrollTop -= (s.top+8)-r.top;
+      // Alt sınır sayfanın dibi değil, yapışkan eylem çubuğunun üstü: çubuk
+      // ekranın %30'unu örttüğü için son cevap onun altında kalıyordu (v3 testi).
+      const son=e.lastElementChild||e;
+      const r=son.getBoundingClientRect(), s=sheet.getBoundingClientRect();
+      const bar=sheet.querySelector(".actionbar");
+      const alt=bar ? Math.min(s.bottom, bar.getBoundingClientRect().top) : s.bottom;
+      const ust=s.top+64;   // yapışkan başlık
+      if(r.bottom > alt-8)      sheet.scrollTop += r.bottom-(alt-8);
+      else if(r.top < ust)      sheet.scrollTop -= ust-r.top;
     });
   });
 }
@@ -2599,8 +2623,9 @@ function renderNeg(){
         <div class="sahne-yuz">${yuzKart(c.seller.k, c.seller.n, c.seller.d, n.mood,
                   clamp(n.pat/Math.max(1,patMax),0,1), MOOD_LBL(n.mood), MOOD_COL(n.mood))}</div>
         <div class="sahne-fiyat">
-          <span>İSTENEN</span>
-          <b>${tl(c.ask)}</b>
+          <span>${n.sonKarsi&&n.sonKarsi<c.ask?(n.tabanSoz?"SON S&Ouml;Z&Uuml;":"SATICININ TEKLİFİ"):"İSTENEN"}</span>
+          <b>${tl(n.sonKarsi&&n.sonKarsi<c.ask?n.sonKarsi:c.ask)}</b>
+          ${n.sonKarsi&&n.sonKarsi<c.ask?`<i>ilan ${tl(c.ask)}</i>`:""}
           <i class="${payi>0?"pos":payi<0?"neg":""}">a&ccedil;tığın pay ${payi>0?"+":""}%${payi}</i>
         </div>
       </div>
@@ -2707,7 +2732,7 @@ function offerCard(o){
        :`<button class="btn" data-act="takeoffer" data-oid="${o.oid}">Kabul et</button>`}
     </div>
     <div class="btn-row" style="margin-top:8px">
-      ${(o.takas||o.taksit)?`<button class="btn ghost" data-act="onlycash" data-oid="${o.oid}">Nakit ısrar et</button>`:""}
+      ${(o.takas||o.taksit)?`<button class="btn ghost" data-act="onlycash" data-oid="${o.oid}">Nakit ısrar et <small>· %6 iner, %42 vazge&ccedil;er</small></button>`:""}
       <button class="btn ghost" data-act="dropoffer" data-oid="${o.oid}">Reddet</button>
     </div>`;
 
@@ -2780,9 +2805,7 @@ function openReport(){
 
     ${ofs.length?`<div class="sec-head" style="margin:4px 2px 2px"><h2 class="sec" style="font-size:19px">Gelen teklifler</h2></div>
       ${ofs.map(o=>offerCard(o)).join("")}`
-     :`<div class="empty">Bug&uuml;n ilanlarına teklif gelmedi.
-        <div class="sec-note" style="margin-top:6px">Fiyatı kırmak alıcı akışını belirgin artırıyor.</div>
-        <div class="bosbtn"><button class="btn" data-act="closereportgaraj">Satıştakileri a&ccedil;</button></div></div>`}
+     :bosGunKart()}
 
     ${olay?`<div class="block"><h4>BUG&Uuml;N NE OLDU</h4>${olayKisa}${olayFazla?`<details class="olayfold"><summary>${olayFazla} olay daha</summary>${olayKalan}</details>`:""}</div>`:""}
 
@@ -2799,6 +2822,28 @@ function openReport(){
 
     <button class="btn ${ofs.length?"ghost":"primary"} full" data-act="closereport"
       style="margin-top:10px">Kapat</button>`, "belge");
+}
+
+/* Teklifsiz gün: ölü bekleme yerine karar (v3 testi, 5 kişi: "6 gün üst üste
+   'Teklif gelmedi', yapacak bir şey yok"). İlandaki her araç için piyasaya göre
+   fiyat durumu ve tek dokunuşla önerilen fiyat; garaj boşsa pazara yönlendir. */
+function bosGunKart(){
+  const ilan=S.cars.filter(c=>c.listPrice);
+  if(!S.cars.length) return `<div class="empty">Garajın boş &mdash; satacak araç yok.
+      <div class="bosbtn"><button class="btn primary" data-act="closereportpazar">Pazara git</button></div></div>`;
+  if(!ilan.length) return `<div class="empty">İlanda aracın yok. Garajdakileri hazırlayıp ilana koy.
+      <div class="bosbtn"><button class="btn" data-act="closereportgaraj">Garaja git</button></div></div>`;
+  return `<div class="block"><h4>BUG&Uuml;N TEKLİF GELMEDİ</h4>
+    ${ilan.map(c=>{
+      const v=valueOf(c,false), fark=Math.round((c.listPrice/v-1)*100);
+      const oneri=Math.round((fark>0 ? v*0.99 : c.listPrice*0.97)/500)*500;
+      const kar=oneri-carCost(c);
+      return `<div class="bosgun-satir">
+        <div><b>${c.model.n}</b><small>${c.daysListed} g&uuml;nd&uuml;r ilanda &middot; ${tlk(c.listPrice)} &middot;
+          <span class="${fark>3?"neg":fark<-3?"pos":""}">piyasanın ${fark>=0?"%"+fark+" &uuml;st&uuml;":"%"+(-fark)+" altı"}</span></small></div>
+        <button class="btn small" data-act="cutto" data-id="${c.id}" data-v="${oneri}">${tlk(oneri)}'e indir<small>${kar>=0?"k&acirc;r +"+tlk(kar):"zarar "+tlk(-kar)}</small></button>
+      </div>`; }).join("")}
+    <div class="sec-note" style="margin-top:6px">Piyasanın &uuml;st&uuml;ndeki ilana alıcı gelmez; fiyatı kırmak akışı belirgin artırır.</div></div>`;
 }
 
 /* ---- sezon özeti ---- */
@@ -3412,6 +3457,11 @@ function resolveAuction(){
       if(bid>(st.cash||def.cash)*.6) return;
       if(bid>best){ best=bid; winner=def.n; }
     });
+    /* Kazanan zarfın muhammene oranı birikir: oyuncunun tek çıpası buydu
+       ve hiç verilmiyordu (v3 testi, 5 kişi: "rakip muhammenin %33 üstünü
+       verdi, neden bilmiyorum"). */
+    const muh=Math.round(av*0.7);
+    if(best>0){ S.muzOran=(S.muzOran||[]).concat([Math.round(Math.max(best,my)/muh*100)/100]).slice(-8); }
     if(my>best){
       if(S.cars.length>=S.slots){ results.push(`<div class="block"><b>${c.model.n} ${c.year}</b><div class="sec-note">Kazandın ama park yerin dolu — satış iptal.</div></div>`); continue; }
       if(my>S.cash){ results.push(`<div class="block"><b>${c.model.n} ${c.year}</b><div class="sec-note">Kazandın ama nakit yetmedi — ceza olarak ${tl(450)} kesildi.</div></div>`); S.cash-=450; continue; }
@@ -3421,8 +3471,11 @@ function resolveAuction(){
         <div class="sec-note">Senin oldu · ${tl(my)} · en yakın rakip ${winner||"—"} ${tl(best)}</div>
         <div class="kv" style="margin-top:6px"><span>Gerçek değeri</span><b class="${tv>my?"pos":"neg"}">${tl(tv)}</b></div></div>`);
     }else{
+      const tv=valueOf(c,false);
       results.push(`<div class="block"><b>${c.model.n} ${c.year}</b>
-        <div class="sec-note">Kaptırdın · senin ${tl(my)} · ${winner||"rakip"} ${tl(best)} verdi</div></div>`);
+        <div class="sec-note">Kaptırdın · senin ${tl(my)} · ${winner||"rakip"} ${tl(best)} verdi (muhammenin %${Math.round(best/muh*100)}'i)</div>
+        <div class="kv" style="margin-top:6px"><span>Aracın ger&ccedil;ek değeri</span><b>${tl(tv)}</b></div>
+        <div class="sec-note">${best>tv?`Rakip ${tl(best-tv)} fazla ödedi &mdash; iyi ki kaptırmışsın.`:`Rakip ${tl(tv-best)} k&acirc;rla aldı.`}</div></div>`);
     }
   }
   S.auctionBids={};
@@ -3856,6 +3909,11 @@ document.addEventListener("click",e=>{
     car.sunum=i; save(); renderHud(); openOwnCar(car); return;
   }
   if(a==="unlist"){ car.listPrice=null; save(); closeSheet(); render(); return; }
+  if(a==="cutto"){ const v=+b.dataset.v; if(!car||!v) return;
+    car.listPrice=v; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
+    toast(`${car.model.n}: yeni fiyat ${tl(v)}`,"good"); save();
+    if(S.report) openReport(); return; }
+  if(a==="closereportpazar"){ S.report=null; S.reportStep=0; closeSheet(); S.tab="pazar"; render(); return; }
   if(a==="cut"){ car.listPrice=Math.round(car.listPrice*0.97/500)*500; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
     toast(`Yeni fiyat ${tl(car.listPrice)}`); save(); openOwnCar(car); return; }
   if(a==="wholesale"){
@@ -3913,6 +3971,13 @@ document.addEventListener("click",e=>{
   if(a==="onlycash"){
     const o=getOffer(b.dataset.oid); if(!o) return;
     const yeni=Math.round(o.amount*.94/500)*500;
+    /* Tek dokunuşla +₺443K'lık teklif kayboluyordu, risk yazmıyordu (v3 testi). */
+    if(!b.dataset.onay){
+      const geri=()=>{ try{ refreshOfferView(); }catch(e){ closeSheet(); } };
+      onay("Nakit ısrar et", `Alıcı ${o.takas?"takassız":"taksitsiz"} almaya ikna olursa teklif <b>${tl(yeni)}</b> nakde iner. <b>%42 ihtimalle</b> vazge&ccedil;er ve teklif tamamen gider.`,
+        "Riski al", ()=>{ const t=document.createElement("button"); t.dataset.act="onlycash"; t.dataset.oid=o.oid; t.dataset.onay="1"; t.hidden=true; document.body.appendChild(t); t.click(); t.remove(); }, true, geri);
+      return;
+    }
     if(chance(.42)){
       toast("Alıcı vazgeçti — takas/taksit olmadan alamayacakmış.","bad");
       dropOffer(o.oid);
