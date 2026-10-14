@@ -84,14 +84,15 @@ python3 modeller-b.py   # → _modeller_b.js VE game.js içindeki MODELS tablosu
 # testler — hepsi Playwright + Chromium, headless
 node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
-node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto, 6 yan sistem (135 kontrol; UX_TOHUM ile pazar değişir)
+node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto, 6 yan sistem (139 kontrol; UX_TOHUM ile pazar değişir)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
 node test/tut.js           # rehber (onboarding)
 node test/gunluk.js        # günlük görevler
 node test/kayittest.js     # kayıt / dışa aktarma / içe alma
 node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
-node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz (26 kontrol, ~1 dk)
+node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz (27 kontrol, ~1 dk)
+node test/v3-test.js       # v3 oyun testi kararları: araç karakteri, taksit, pazarlık/satış/müzayede kuralları, yeni ekranlar (35 kontrol)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
 
@@ -386,6 +387,27 @@ Testler kırmızıyken iş bitmiş sayılmaz.
 - **Satış sahnesinde eski fotoğraflı yer tutucu** (`.fotobekle.eskifoto`)
   `height:100%` ile yüksekliksiz kapta resmin doğal boyuna uzuyordu; kap
   `aspect-ratio` veriyor. Yeni bir fotoğraf kabı yazarsan yükseklik ver.
+- **Koz tavanı tek tablodan** (`SELLERS[].kozTavan`, `kozTavan(s)`): ekrandaki
+  pazarlık (`ui.js negReserve`) ile kural motoru (`effReserve`) aynı sınırı kullanır.
+  v2'de tavan yalnız `effReserve`'e yazılmış, ekranda %34 kalmıştı. "Altına inmem"
+  `S.neg.tabanSoz`'e yazılır ve bağlar; koz yalnız sayıyı söyleyerek indirebilir.
+- **Satış tavanı ilanı aşmaz** (`S.sale.tavanKat`, satış açılırken bir kez çekilir).
+- **Taksitli satış:** `sellCar(car, peşin, not, alacak)` — kâr tamamdan, kasaya peşin;
+  ödenmeyen taksit `taksitKaybi()` ile kârdan düşer, alacak `netWorth`'te.
+- **Ekspertiz maliyeti** `ekspMaliyet(c)` (gerçekte ödenen, `c.ekspBedel`); `PARA.ekspertiz`'i
+  maliyete doğrudan yazma — bedava bakış ₺2.500 sayılıyordu.
+- **Alımda araçtan `seller` ve `ask` silinir.** Alım özeti (`S.neg.alimOzet`) için
+  `S.neg.satici` saklanıyor; alımdan sonra `c.seller.x` okuyan kod yazma.
+- **Model verisi düzeltmesi `modeller-b.py` içindeki `ELLE` tablosunda.** `game.js`
+  `MODELS` üretilir; elle düzeltme orada kalmaz. Ad ve sıra değişmez (kayıt indeksle tutar).
+  `ky:"zincir"` modelde triger çıkmaz; `imza:1` arızalar (zincir, süspansiyon) yalnız
+  `zf`'sinde olan modelde çıkar.
+- **Rakip müzayede zarfı `rakipZarflari(c)`** (araçta `c.rz` saklanır): kapalı zarf,
+  Vedat'ın fısıltısı ve canlı artırma aynı ölçüyü kullanır.
+- **Pazar listesi varsayılan kompakt** (`S.listeMod`), BUGÜN şeridi 5 kart (`RAY_HEPSI`),
+  arama satırı büyüteçle (`ARA_ACIK`). "Günü bitir" `render()` içinde eksik sekmeye eklenir;
+  pencere açıkken arkadaki düğme sayılmaz.
+- **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir
   sayfa yazarken bu ikisini anlamlı doldur.

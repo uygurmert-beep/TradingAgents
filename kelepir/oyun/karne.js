@@ -21,7 +21,10 @@ function karneGerek(){
 /** A–F notu: haftalık özsermaye büyümesi, kâr marjı ve temizlik. */
 function karneNot(k){
   let p=0;
-  const buyume=k.netOnce>0 ? (k.net-k.netOnce)/k.netOnce : 0;
+  /* Sezon kirası ve vergisi o haftanın büyümesinden düşmüyor (v3 kararı 10):
+     kapanış haftası +₺477K kârla "D, zar zor döndün" alıyordu. Gider karnede
+     ayrı satırda görünüyor. */
+  const buyume=k.netOnce>0 ? (k.net+(k.sezonGideri||0)-k.netOnce)/k.netOnce : 0;
   if(buyume>=.22) p+=3; else if(buyume>=.12) p+=2; else if(buyume>=.04) p+=1;
   else if(buyume<-.06) p-=1;
   if(k.satis>=4) p+=2; else if(k.satis>=2) p+=1; else if(k.satis===0) p-=1;
@@ -32,7 +35,8 @@ function karneNot(k){
   const soz={A:"Piyasa seni konuşuyor.", B:"Sağlam bir hafta.",
              C:"İdare eder — ama marj dar.", D:"Zar zor döndün.",
              F:"Bu hafta para kaybettin."}[harf];
-  return {harf, soz, puan:p};
+  const olcut=`B&uuml;y&uuml;me %${Math.round(buyume*100)} &middot; ${k.satis} satış &middot; ${k.netKar>0?"k&acirc;rlı":"k&acirc;r yok"}${k.yakalanan?" &middot; yakalanma":""}`;
+  return {harf, soz, puan:p, olcut};
 }
 function karneUret(){
   const snap=S.karneSnap||{day:1, net:0, sold:0, profit:0, gider:0, caught:0, rep:50, bought:0};
@@ -68,6 +72,7 @@ function karneUret(){
     bas, bit, satis:satislar.length, alim:(S.stats.bought||0)-snap.bought,
     netKar:Math.round(netKar), gider, net:Math.round(netWorth()), netOnce:snap.net||1,
     yakalanan:(S.stats.caught||0)-snap.caught, repDelta:Math.round(S.rep)-snap.rep,
+    sezonGideri:-(S.kasa||[]).filter(x=>x.g>=bas && x.g<=bit+1 && /^Sezon/.test(x.e)).reduce((a,x)=>a+x.t,0),
     gunler, enIyi, hata, sira, tablo, sezon:seasonOf(S.day).k,
     enUzun: gunler.length
   };
@@ -102,7 +107,7 @@ function openKarne(){
       <button class="x" data-act="karnekapat" aria-label="Kapat">&times;</button></div>
 
     <div class="karnekart" id="karneKart">
-      <div class="krnot ${n.harf.toLowerCase()}"><b>${n.harf}</b><span>${n.soz}</span></div>
+      <div class="krnot ${n.harf.toLowerCase()}"><b>${n.harf}</b><span>${n.soz}<small style="display:block;font-size:12px;opacity:.8;margin-top:2px">${n.olcut||""}${k.sezonGideri?` &middot; sezon kapanışı &minus;${tlk(k.sezonGideri)} nota sayılmadı`:""}</small></span></div>
       <div class="krdort">
         <div><span>Satışlar</span><b>${k.satis}</b></div>
         <div><span>Net k&acirc;r</span><b class="${k.netKar>=0?"pos":"neg"}">${k.netKar>=0?"+":""}${tlk(k.netKar)}</b></div>

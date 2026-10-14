@@ -520,6 +520,10 @@ function valueOf(car, apparent){
     const st=STORIES.find(s=>s.k===car.story);
     if(st) v*=st.val;
   }
+  /* Klasiğin hâli değere girer (v3 kararı 9, M6); yalnız ekspertizle
+     öğrenilir, ilk bakışta görünmez. ARB'nin 1,30/0,55 önerisi, meraklı
+     alıcı primiyle üst üste binmesin diye yumuşatıldı. */
+  if(car.klasikHal && !apparent) v *= ({orijinal:1.15, restore:1.05, yorgun:1.00, proje:0.80})[car.klasikHal]||1;
   v *= evMul("val", m.seg);
   // segmentin piyasa dalgası (piyasa.js) — grafikte görünen eğrinin kendisi
   if(typeof nabizKat==="function") v *= nabizKat(m.seg);

@@ -15,7 +15,12 @@ const ok=(k,v)=>console.log((v?'  ok   ':'  FAIL ')+k);
   await p.evaluate(()=>{try{localStorage.clear()}catch(e){}}); await p.reload();
   await p.waitForTimeout(400);
   await p.click('[data-act="startgame"]'); await p.waitForTimeout(400);
-  await p.evaluate(()=>{ S.tutorial=false; render(); }); await p.waitForTimeout(200);
+  /* Fırsat rozeti yalnız gerçekten ucuz aday varsa çıkar; pazarın tohumuna
+     bağlı kalmasın diye bir ilanı ucuz yapıp günü yeniden kuruyoruz. */
+  await p.evaluate(()=>{ S.tutorial=false;
+    if(!S.market.some(c=>c.gunun)){ const c=S.market.find(x=>!(x.tramer>valueOf(x,false)*0.12||x.degisen>=3))||S.market[0];
+      c.tramer=0; c.degisen=0; c.ask=Math.round(valueOf(c,false)*0.85); gunlukKur(true); }
+    render(); }); await p.waitForTimeout(200);
 
   const d=await p.evaluate(()=>({say:S.gunluk.gorevler.length,
     tekil:new Set(S.gunluk.gorevler.map(g=>g.sayac)).size,

@@ -285,7 +285,7 @@ body.ogret-ac main{padding-bottom:218px}
 #ogret .ilerle i.ok{background:var(--tint)}
 .ogret-isik{position:relative;z-index:41;
   box-shadow:0 0 0 2px var(--tint), 0 0 0 7px var(--tint-soft) !important;
-  border-radius:14px;animation:ogretNabiz 1.5s ease-in-out infinite}
+  border-radius:14px;animation:ogretNabiz 1.5s ease-in-out 2}   /* 3 sn sonra durur (v3 kararı 13) */
 @keyframes ogretNabiz{0%,100%{box-shadow:0 0 0 2px var(--tint),0 0 0 6px rgba(14,94,75,0.128)}
   50%{box-shadow:0 0 0 2px var(--tint),0 0 0 11px rgba(14,94,75,0.04)}}
 
@@ -335,7 +335,7 @@ body.ogret-ac main{padding-bottom:218px}
   border-radius:100px;padding:2px 7px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .aj-bas{font-size:13px;font-weight:650;line-height:1.25;letter-spacing:-.01em;
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
-.aj-alt{font-size:11.5px;color:var(--label-2);line-height:1.3;
+.aj-alt{font-size:12px;color:var(--label-2);line-height:1.3;
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .aj-deger{margin-top:auto;padding-top:4px;font-size:13.5px;font-weight:700;color:var(--sodium);
   font-variant-numeric:tabular-nums}
@@ -913,6 +913,33 @@ details.hizli{margin:0 0 6px}
 details.hizli summary{font-size:13px;color:var(--label-2);min-height:30px;display:flex;align-items:center;cursor:pointer;list-style:none}
 details.hizli summary::-webkit-details-marker{display:none}
 details.hizli summary:before{content:"▸";margin-right:6px} details.hizli[open] summary:before{content:"▾"}
+.kilit-ik{font-size:28px;margin-bottom:6px;opacity:.6}
+.kilit-ilerle{display:flex;flex-direction:column;gap:6px;margin-top:12px;font-size:13px;color:var(--label-2)}
+.kilit-ilerle i{display:block;height:7px;border-radius:4px;background:var(--fill);overflow:hidden}
+.kilit-ilerle i s{display:block;height:100%;background:var(--tint);text-decoration:none}
+.kazanim{text-align:center;padding:26px 10px 18px}
+.kazanim span{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--gold)}
+.kazanim b{display:block;font-size:40px;font-weight:800;letter-spacing:-.03em;margin:6px 0 8px}
+.kazanim p{font-size:16px;line-height:1.45;color:var(--label);margin:0 0 12px}
+.kazanim-roz{display:inline-block;padding:6px 12px;border-radius:100px;background:var(--gold-soft);color:var(--gold);font-weight:600;font-size:14px}
+.kazanim small{display:block;margin-top:10px;font-size:13px;color:var(--label-2)}
+.alim-ozet{padding:14px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);margin:0 0 10px}
+.alim-ozet>span{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--green)}
+.alim-ozet>b{display:block;font-size:28px;font-weight:800;letter-spacing:-.03em;color:var(--gold);margin:2px 0 8px}
+/* Yazı boyutu (v3 kararı 13): --yk 1 / 1.15 / 1.3. zoom kullanılmıyor (3B tuval
+   ve sabit konumlar bozulur); okunan metin sınıfları ölçekleniyor. */
+html.yk body{font-size:calc(16px*var(--yk))}
+html.yk .sec-note,html.yk .hint,html.yk .chip,html.yk .kart-alt,html.yk .kart-fiyat small,
+html.yk .aj-alt,html.yk .mv span,html.yk .nb-cubuk,html.yk .glbl,html.yk .kv small,
+html.yk .bilinen-dert small,html.yk .fiyat-uyari{font-size:calc(13px*var(--yk))}
+html.yk .kv,html.yk .bub,html.yk .help p,html.yk .quote,html.yk .mv b,html.yk .kart-ad{font-size:calc(15.5px*var(--yk))}
+html.yk .aj-bas,html.yk .nb-orta b{font-size:calc(13.5px*var(--yk))}
+html.yk .kart-fiyat{font-size:calc(17px*var(--yk))}
+html.yk #tabs button{font-size:calc(11px*var(--yk))}
+html.azhareket *,html.azhareket *:before,html.azhareket *:after{animation:none!important;transition:none!important}
+.yazisec{display:flex;gap:8px}
+.yazisec button{flex:1;min-height:44px;border-radius:10px;border:none;background:var(--fill);color:var(--label);font:inherit;font-weight:600}
+.yazisec button.on{background:var(--tint);color:#fff}
 .bosgun-satir{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:.5px solid var(--sep-soft)}
 .bosgun-satir:first-of-type{border-top:none}
 .bosgun-satir>div{flex:1;min-width:0}

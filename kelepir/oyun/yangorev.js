@@ -189,6 +189,7 @@ function kapanisKirasi(rep){
   if(h){
     const kd=hedefKademe(S.seasonProfit||0, h.tutar);
     S.sonKademe=kd?kd.k:null;
+    S.sonHedefOzet={kar:S.seasonProfit||0, tutar:h.tutar, kd:kd?kd.k:null};
     if(kd){
       S.kiraDonuk=sezonKirasi();
       S.kiraIndirim = kd.k==="altin" ? HEDEF.altinIndirim : (kd.k==="gumus" ? HEDEF.indirim : 0);

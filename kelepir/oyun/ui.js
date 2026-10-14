@@ -31,7 +31,7 @@ const PARA={
   senetTavan:  2.2        // nakdinin en çok bu katına kadar araç alınabilir
 };
 
-const XP_LEVELS=[0,120,350,700,1200,1900,2800,4000];
+const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
    4 = Türkiye pazarı, TL ekonomisi, 45 marka / 130 model
@@ -351,7 +351,11 @@ function nextDay(){
   // sezon kapanışı: sabit giderler
   if(S.day>1 && (S.day-1)%SEASON_LEN===0){
     const kira=kapanisKirasi(rep);
-    const vergi=Math.round(Math.max(0,S.seasonProfit||0)*.08);
+    /* Vergi tabanı = sezon satış kârı − kira; zararlı sezonda vergi yok
+       (v3 kararı 10: zarar eden sezonda da vergi kesiliyordu). */
+    const vergiTaban=Math.max(0,(S.seasonGross||0)-kira);
+    const vergi=Math.round(vergiTaban*.08);
+    rep.vergiTaban=vergiTaban;
     rep.costs.push([`Sezon kapanışı — dükkân kirası`, kira]);
     if(vergi) rep.costs.push(["Sezon kapanışı — vergi (%8)", vergi]);
     rep.season={from:seasonOf(S.day-1).k, to:seasonOf(S.day).k};
@@ -734,12 +738,12 @@ function sellCar(car, price, note, alacak){
   cGain("yilmaz");
   cal(profit>=0?"satis":"reddet");
   dokun(profit>=0?"sat":"hata"); nefes(profit>=0?"good":"bad");
-  toast(`${car.model.n} satıldı — ${profit>=0?"kâr":"zarar"} ${tl(Math.abs(profit))}`, profit>=0?"good":"bad");
+  // "satıldı — kâr" bildirimi yok: anlaşma özeti aynı bilgiyi büyük gösteriyor (v3 kararı 11)
   if(level()>before){
     S.perkPts += level()-before;
-    setTimeout(()=>{ cal("seviye"); dokun("seviye"); nefes("big");
-      parla(`${EN()?"LEVEL":"SEVİYE"} ${level()}`, levelPerk(level()));
-      toast(`Seviye ${level()}! ${levelPerk(level())} · +1 uzmanlık puanı`,"good"); },700);
+    /* Seviye atlama kısa bir toast'tu, satış özetinin altında kayboluyordu
+       (v3 kararı 11): anlaşma özeti kapanınca kazanım kartı açılır. */
+    KAZANIM_BEKLE=level();
   }
   save();
 }
@@ -815,6 +819,20 @@ function rakipDevral(i, deger){
   if(!S.rivals.length) setTimeout(()=>openEnding(),900);
   save(); render();
 }
+let KAZANIM_BEKLE=0;   // geçici, kayda yazılmaz
+function openKazanim(l){
+  try{ cal("seviye"); dokun("seviye"); nefes("big"); }catch(e){}
+  const git = l===2?["muzayede","Müzayedeye git"] : l===3?["galeri","Galeriye git"] : null;
+  openSheet(`<div class="kazanim">
+      <span>SEVİYE ATLADIN</span>
+      <b>Seviye ${l}</b>
+      <p>${levelPerk(l)}</p>
+      <div class="kazanim-roz">+1 uzmanlık puanı${S.perkPts>1?` &middot; harcanmamış ${S.perkPts}`:""}</div>
+      ${l<XP_LEVELS.length?`<small>Sıradaki seviye: ${Math.max(0,(XP_LEVELS[l]||0)-S.xp)} XP</small>`:""}
+    </div>
+    ${git?`<button class="btn primary full" data-act="kazanimgit" data-t="${git[0]}">${git[1]}</button>`:""}
+    <button class="btn ${git?"ghost":"primary"} full" data-act="kazanimtamam" style="margin-top:8px">Devam</button>`);
+}
 function levelPerk(l){
   if(l===2) return "Müzayedeler ve banka kredisi açıldı.";
   if(l===3) return "Galeri yönetimi açıldı.";
@@ -862,7 +880,8 @@ const ICONS={
   rapor:'<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h3"/></svg>',
   ayar:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.6v2.6M12 18.8v2.6M4.3 4.3l1.9 1.9M17.8 17.8l1.9 1.9M2.6 12h2.6M18.8 12h2.6M4.3 19.7l1.9-1.9M17.8 6.2l1.9-1.9"/></svg>'
 };
-const TABLBL={pazar:"Pazar",garaj:"Garaj",muzayede:"Müzayede",galeri:"Galeri",rapor:"Rapor",ayar:"Ayarlar"};
+// "Rapor" sekmesinin sayfası "Defter" diyordu (v3 kararı 12): tek ad
+const TABLBL={pazar:"Pazar",garaj:"Garaj",muzayede:"Müzayede",galeri:"Galeri",rapor:"Defter",ayar:"Ayarlar"};
 
 /* ================= 3B görünüm köprüsü ================= */
 function can3d(){ return S.tab==="pazar"||S.tab==="garaj"; }
@@ -944,7 +963,15 @@ document.addEventListener("change", (e)=>{
   }
 });
 
+function gorunumUygula(){
+  const h=document.documentElement, yk=S.yazi||1;
+  h.style.setProperty("--yk", yk);
+  h.classList.toggle("yk", yk>1);
+  h.classList.toggle("azhareket", !!S.azHareket);
+  if(S.azHareket) CILA.azHareket=true;
+}
 function render(){
+  try{ gorunumUygula(); }catch(e){}
   try{ if(S.started && (!S.neg||S.neg.done)) muzikKip("saha"); }catch(e){}
   renderHud(); renderTabs();
   sync3d();
@@ -1629,7 +1656,7 @@ function muzayedeyeKalan(){ for(let k=1;k<=3;k++) if((S.day+k)%3===1) return k; 
 
 /* ---- MÜZAYEDE ---- */
 function viewMuzayede(){
-  if(!unlocked("muzayede")) return lockedView("Müzayede","Seviye 2'de açılır.","Kârlı birkaç çevirme yap — müzayedede ekspertizsiz, ucuz araçlar var.");
+  if(!unlocked("muzayede")) return lockedView("Müzayede","Seviye 2'de ya da 4. günde açılır.","Kârlı birkaç çevirme yap — müzayedede ekspertizsiz, ucuz araçlar var.",2,4);
   if(!S.auction.length){ const k=muzayedeyeKalan();
     return `<div class="sec-head"><h2 class="sec">Müzayede</h2></div>${canliBlok()}
     <div class="empty bosdurum">${bosSahne("muzayede")}
@@ -1652,14 +1679,20 @@ function viewMuzayede(){
       </div>`).join("")}
     <button class="btn primary full" data-act="resolveauction" ${Object.keys(bids).length?"":"disabled"}>Zarfları aç</button>`;
 }
-function lockedView(t,sub,note){
-  return `<div class="locked"><b>${t}</b>${sub}<div class="rule" style="margin:14px 0"></div>
+/* Kilitli sekme düz metindi ve yanlış bilgi veriyordu ("Seviye 3'te" — gün
+   eşiği yazmıyordu). Artık iki yol ve ilerleme çubuğu (v3 kararı 11). */
+function lockedView(t,sub,note,sv,gun){
+  const xpOran = sv ? clamp((S.xp-(XP_LEVELS[sv-2]||0))/Math.max(1,(XP_LEVELS[sv-1]-(XP_LEVELS[sv-2]||0))),0,1) : 0;
+  return `<div class="locked"><div class="kilit-ik">&#128274;</div><b>${t}</b>${sub}
+    ${sv?`<div class="kilit-ilerle"><span>Seviye ${sv}: ${Math.max(0,XP_LEVELS[sv-1]-S.xp)} XP kaldı</span><i><s style="width:${Math.round(xpOran*100)}%"></s></i>
+      <span>ya da ${gun}. g&uuml;nde a&ccedil;ılır &middot; ${Math.max(0,gun-S.day)} g&uuml;n kaldı</span></div>`:""}
+    <div class="rule" style="margin:14px 0"></div>
     <span class="sec-note">${note}</span></div>`;
 }
 
 /* ---- GALERİ ---- */
 function viewGaleri(){
-  if(!unlocked("galeri")) return lockedView("Galeri","Seviye 3'te açılır.","Personel, park kontenjanı, vitrin ilanı ve kredi burada yönetilir.");
+  if(!unlocked("galeri")) return lockedView("Galeri","Seviye 3'te ya da 12. günde açılır.","Personel, park kontenjanı, vitrin ilanı ve kredi burada yönetilir.",3,12);
   const slotCost=slotFiyat();
   return `<div class="sec-head"><h2 class="sec">Galeri y&ouml;netimi</h2></div>
     ${yerBlok()}
@@ -1785,6 +1818,12 @@ function viewRapor(){
     ${(S.receivables&&S.receivables.length)?`<div class="block"><h4>ALACAKLAR</h4>
       ${S.receivables.map(r=>`<div class="kv"><span>${r.n}<br><small style="color:var(--muted-2)">${r.who} · ${r.due}. gün · risk %${Math.round(r.risk*100)}</small></span>
       <b>${tl(r.amount)}</b></div>`).join("")}</div>`:""}
+    ${S.sonHedefOzet?(()=>{ const h=S.sonHedefOzet, kd=HEDEF.kademe;
+      const sonraki=kd.find(k=>h.kar<h.tutar*k.x);
+      const odul=h.kd==="altin"?"gelecek sezon kira donuk, %40 indirimli":h.kd==="gumus"?"gelecek sezon kira donuk, %25 indirimli":h.kd==="bronz"?"gelecek sezon kira donuk":"kira normal işler";
+      return `<div class="block"><h4>SEZON HEDEFİ</h4>
+        ${kd.map(k=>`<div class="kv"><span>${k.n} &middot; ${tlk(h.tutar*k.x)}</span><b class="${h.kar>=h.tutar*k.x?"pos":""}">${h.kar>=h.tutar*k.x?"&#10003;":"eksik "+tlk(h.tutar*k.x-h.kar)}</b></div>`).join("")}
+        <div class="sec-note" style="margin-top:6px">Sezon k&acirc;rın ${tl(h.kar)} &middot; &ouml;d&uuml;l: ${odul}${sonraki?` &middot; ${sonraki.n} i&ccedil;in ${tlk(h.tutar*sonraki.x-h.kar)} eksikti`:""}</div></div>`; })():""}
     <div class="block"><h4>PİYASADAKİ GALERİLER</h4>
       ${standings().map((r,i)=>`<div class="kv" style="${r.me?'background:var(--gold-soft);margin:0 -6px;padding:6px;border-radius:6px':''}">
         <span><b style="color:${r.me?'var(--sodium)':'var(--text)'}">${i+1}. ${r.n}</b>
@@ -1835,6 +1874,13 @@ function swc(act, acik, ek){
 function viewAyar(){
   const z=ZORLUKLAR.find(x=>x.k===(S.zorluk||"normal"))||ZORLUKLAR[0];
   return `<div class="sec-head"><h2 class="sec">Ayarlar</h2></div>
+
+    <div class="block"><h4>G&Ouml;R&Uuml;N&Uuml;M</h4>
+      <div class="swsat" style="display:block"><span>Yazı boyutu</span>
+        <div class="yazisec" style="margin-top:8px">${[[1,"Normal"],[1.15,"B&uuml;y&uuml;k"],[1.3,"&Ccedil;ok b&uuml;y&uuml;k"]].map(([v,l])=>
+          `<button class="${(S.yazi||1)===v?"on":""}" data-act="yazi" data-v="${v}">${l}</button>`).join("")}</div></div>
+      <div class="swsat"><span>Hareketi azalt<br><small style="color:var(--muted-2)">Animasyonlar ve sayaçlar durur</small></span>${swc("azhareket", !!S.azHareket)}</div>
+    </div>
 
     <div class="block"><h4>SES</h4>
       <div class="swsat"><span>Ses efektleri ve titreşim</span>${swc("ses", !sesKapaliMi())}</div>
@@ -1943,6 +1989,7 @@ function bilinenDert(m, c){
   return `<div class="bilinen-dert">
     <div><span class="bd-et">Bu modelde bilinen</span>${durum}${gecti?`<span class="bd-durum esik">Eşik ge&ccedil;ti</span>`:""}</div>
     <b>${zf.map(f=>f.n).join(" &middot; ")}</b>
+    ${c&&c.klasikHal&&c.inspected?`<small>Klasik h&acirc;li: <b style="display:inline;font-size:13px">${({orijinal:"ORİJİNAL",restore:"RESTORE",yorgun:"YORGUN",proje:"PROJE"})[c.klasikHal]}</b></small>`:""}
     ${esik>0?`<small>${Math.round(esik/1000)} bin km sonrası sıklaşır</small>`:""}
   </div>`;
 }
@@ -2598,11 +2645,19 @@ function doOffer(){
     say("them", pick(["Hayırlı olsun, anlaştık.","Tamam, senin olsun.","Bu fiyata verdim gitti.","El sıkıştık."]));
     /* Masada kalan: ilk teklifte anlaşan oyuncu ne kadar fazla verdiğini hiç
        öğrenmiyordu. Satıcının o anki tabanı gösteriliyor. */
-    const kalan=offer2-Math.max(er, Math.round(c.reserve*.85));
-    if(kalan>=5000) setTimeout(()=>toast(`Satıcı ${tl(Math.round((offer2-kalan)/500)*500)}'e de inerdi.`,"warn"),900);
+    /* Alım özeti (v3 kararı 11): sayfa 600ms'de kapanıyor, "satıcı ₺X'e
+       inerdi" bildirimi görülmüyordu; oyunun en önemli kararının sonucu
+       bir saniyelik toast'tu. Artık sayfa bir alım kartına dönüşür. */
+    const taban=Math.max(er, Math.round(c.reserve*(1-kozTavan(c.seller))));
+    const kalan=offer2-taban, ask0=c.ask;
+    n.satici=c.seller;          // alımda araçtan silinir; başlık için saklanır
     n.done=true; n.counter=null;
-    renderNeg();
-    setTimeout(()=>{ if(buyCar(c,offer2,null,n.senet)){ S.neg=null; closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render(); } },600);
+    if(buyCar(c,offer2,null,n.senet)){
+      n.alimOzet={fiyat:offer2, ask:ask0, deger:Math.round(valueOf(c,!c.inspected)), kesin:!!c.inspected,
+                  inerdi:kalan>=5000?Math.round(taban/500)*500:0};
+      renderHud();
+    }
+    save(); renderNeg();
     return;
   }
   n.pat-=r.pat||0;
@@ -2653,7 +2708,9 @@ function moveButtons(){
 }
 
 function renderNeg(){
-  const c=findCar(S.neg.carId), n=S.neg;
+  const c0=findCar(S.neg.carId), n=S.neg;
+  // alımdan sonra araçta satıcı ve istenen silinir: özet için saklanan kopya
+  const c=c0.seller?c0:Object.assign(Object.create(c0),{seller:n.satici||SELLERS[0], ask:(n.alimOzet&&n.alimOzet.ask)||c0.boughtFor});
   const patMax=c.pat+(perk("dil")?1:0);
   // Müzik gerilimi sabırla ters: son hamleye yaklaşırken nabız sertleşir.
   try{ muzikKip("pazarlik", 1-clamp(n.pat/Math.max(1,patMax),0,1)); }catch(e){}
@@ -2697,7 +2754,15 @@ function renderNeg(){
     ${!n.done&&moves?`${!c.inspected&&!n.known.length?`<div class="sec-note" style="margin:0 0 6px">Ekspertizsiz &mdash; kozun yok, yalnız bl&ouml;f.</div>`:""}<div class="movegrid">${moves}</div>`:""}
     <div class="talk" id="talkKutu">${n.log.map(m=>`<div class="bub ${m.who}">${m.t}</div>`).join("")}</div>
 
-    ${n.done?`<button class="btn full" data-act="close">Kapat</button>`:`
+    ${n.done&&n.alimOzet?(()=>{ const a=n.alimOzet, ind=Math.round((1-a.fiyat/a.ask)*100);
+      return `<div class="alim-ozet">
+        <span>ALDIN</span><b>${tl(a.fiyat)}</b>
+        <div class="kv"><span>İstenen</span><b>${tl(a.ask)} <small class="pos">&minus;%${ind}</small></b></div>
+        <div class="kv"><span>${a.kesin?"Değeri":"Tahmini değer"}</span><b>${a.kesin?tl(a.deger):tlk(a.deger*.86)+" – "+tlk(a.deger*1.06)}</b></div>
+        <div class="sec-note" style="margin-top:6px">${a.inerdi?`Satıcı ${tl(a.inerdi)}'e kadar inerdi &mdash; masada ${tlk(a.fiyat-a.inerdi)} kaldı.`:"Tam tabanından aldın."}</div>
+      </div>
+      <button class="btn primary full" data-act="alimgit">Garaja git</button>`; })()
+    :n.done?`<button class="btn full" data-act="close">Kapat</button>`:`
 
       <div class="actionbar kompakt">
         <div class="ruler">
@@ -2918,26 +2983,28 @@ function openSeasonSummary(){
       ${S.sonKademe?`<i class="kademe-rozet ${S.sonKademe}">${({bronz:"BRONZ",gumus:"GÜMÜŞ",altin:"ALTIN"})[S.sonKademe]} HEDEF</i>`:""}
       <em>${rank}. sıradasın${delta>0?` &middot; ${delta} basamak yukarı`:delta<0?` &middot; ${-delta} basamak aşağı`:""}</em>
     </div>
-    <div class="crest">
-      <div class="sn" style="color:var(--muted)">${s.from}</div>
-      <div class="arrow">bitti &middot; sıradaki</div>
-      <div class="sn" style="color:var(--sodium)">${s.to}</div>
-    </div>
     <div class="block"><h4>SEZON K&Acirc;R&ndash;ZARAR</h4>
       <div class="kv"><span>${S.seasonSales||0} satış</span><b class="pos">+${tl(S.seasonGross||0)}</b></div>
       ${kira?`<div class="kv"><span>D&uuml;kk&acirc;n kirası</span><b class="neg">&minus;${tl(kira[1])}</b></div>`:""}
-      ${vergi?`<div class="kv"><span>Vergi (%8)</span><b class="neg">&minus;${tl(vergi[1])}</b></div>`:""}
+      ${vergi?`<div class="kv"><span>Vergi %8 &times; ${tlk(r.vergiTaban||0)}<br><small style="color:var(--label-3)">taban: satış k&acirc;rı &minus; kira</small></span><b class="neg">&minus;${tl(vergi[1])}</b></div>`:`<div class="kv"><span>Vergi</span><b>yok (k&acirc;r kirayı ge&ccedil;medi)</b></div>`}
       <div class="kv" style="border-top:1px solid var(--line);margin-top:4px;padding-top:9px">
         <span style="color:var(--text)">Sezon sonucu</span>
         <b class="${(S.seasonGross||0)-((kira?kira[1]:0)+(vergi?vergi[1]:0))>=0?"pos":"neg"}" style="font-size:17px">
           ${((S.seasonGross||0)-((kira?kira[1]:0)+(vergi?vergi[1]:0)))>=0?"+":""}${tl((S.seasonGross||0)-((kira?kira[1]:0)+(vergi?vergi[1]:0)))}</b></div>
     </div>
-    <div class="block"><h4>PİYASADAKİ GALERİLER</h4>
+    ${S.sonHedefOzet?(()=>{ const h=S.sonHedefOzet, kd=HEDEF.kademe;
+      const sonraki=kd.find(k=>h.kar<h.tutar*k.x);
+      const odul=h.kd==="altin"?"gelecek sezon kira donuk, %40 indirimli":h.kd==="gumus"?"gelecek sezon kira donuk, %25 indirimli":h.kd==="bronz"?"gelecek sezon kira donuk":"kira normal işler";
+      return `<div class="block"><h4>SEZON HEDEFİ</h4>
+        ${kd.map(k=>`<div class="kv"><span>${k.n} &middot; ${tlk(h.tutar*k.x)}</span><b class="${h.kar>=h.tutar*k.x?"pos":""}">${h.kar>=h.tutar*k.x?"&#10003;":"eksik "+tlk(h.tutar*k.x-h.kar)}</b></div>`).join("")}
+        <div class="sec-note" style="margin-top:6px">Sezon k&acirc;rın ${tl(h.kar)} &middot; &ouml;d&uuml;l: ${odul}${sonraki?` &middot; ${sonraki.n} i&ccedil;in ${tlk(h.tutar*sonraki.x-h.kar)} eksikti`:""}</div></div>`; })():""}
+    ${/* dev rakiplerle kıyas moral bozuyordu (v3 kararı 10): katlanır */""}
+    <details class="block"><summary><h4 style="display:inline">PİYASANIN B&Uuml;Y&Uuml;KLERİ</h4> <small style="color:var(--label-3)">· ${rank}. sıradasın</small></summary>
       ${st.map((x,i)=>`<div class="rankrow">
         <span class="${x.me?"":""}" style="${x.me?"color:var(--sodium);font-weight:600":""}">${i+1}. ${x.n}
         ${x.me&&delta?`<span class="${delta>0?"pos":"neg"}" style="font-size:11px"> ${delta>0?"&#9650;":"&#9660;"} ${Math.abs(delta)} sıra</span>`:""}</span>
         <b class="mono" style="${x.me?"color:var(--sodium)":""}">${tlk(x.w)}</b></div>`).join("")}
-    </div>
+    </details>
     <div class="block"><h4>${s.to.toLocaleUpperCase("tr")}${/[şçkptfhs]$/i.test(s.to)?"TA":"DA"} NE ARANACAK</h4>
       <div class="sec-note">${sez.d}</div>
       <div class="fc">${fc}</div>
@@ -3572,7 +3639,7 @@ let TOAST_AKTIF=false;
 function toast(t,kind){
   cal(kind==="good"?"para":(kind==="bad"?"hata":"uyari"));
   titre(kind==="bad"?HAPTIK.hata:HAPTIK.hafif);
-  TOAST_Q.push({t,kind:kind||""});
+  TOAST_Q.push({t,kind:kind||"", g:(typeof S!=="undefined"&&S)?S.day:0});
   if(TOAST_Q.length>3){
     // aynı türden fazlalıkları birleştir
     const k=TOAST_Q[TOAST_Q.length-1].kind;
@@ -3589,6 +3656,10 @@ function toastSiradaki(){
   if(TOAST_AKTIF || !TOAST_Q.length) return;
   // satış özeti (SATILDI) açıkken beklet: damga ve rakamlar okunsun
   if(document.querySelector(".deal-stamp, .satildi")){ setTimeout(toastSiradaki, 700); return; }
+  /* Önceki günün bekleyen bildirimi atılır: satış bildirimi ertesi gün
+     raporun üstünde yeniden çıkıyordu (v3 kararı 11). */
+  while(TOAST_Q.length && S && TOAST_Q[0].g && TOAST_Q[0].g!==S.day) TOAST_Q.shift();
+  if(!TOAST_Q.length) return;
   const {t,kind}=TOAST_Q.shift();
   TOAST_AKTIF=true;
   const el=document.createElement("div");
@@ -3625,7 +3696,7 @@ document.addEventListener("click",e=>{
   if(a==="tab"){
     const t=b.dataset.t;
     if(S.view3d && !(t==="pazar"||t==="garaj")) W3D.close();
-    if(!unlocked(t)){ toast(t==="muzayede"?"Müzayede seviye 2'de açılır.":"Galeri seviye 3'te açılır."); }
+    if(!unlocked(t)){ toast(t==="muzayede"?"Müzayede seviye 2'de ya da 4. günde açılır.":"Galeri seviye 3'te ya da 12. günde açılır."); }
     S.tab=t; render(); return;
   }
   if(a==="close"){
@@ -3696,8 +3767,11 @@ document.addEventListener("click",e=>{
   }
   if(a==="dealdone"){
     S.lastDeal=null;
+    if(KAZANIM_BEKLE){ const l=KAZANIM_BEKLE; KAZANIM_BEKLE=0; render(); openKazanim(l); return; }
     refreshOfferView(); return;
   }
+  if(a==="kazanimtamam"){ closeSheet(); refreshOfferView(); return; }
+  if(a==="kazanimgit"){ closeSheet(); S.report=null; S.tab=b.dataset.t; render(); return; }
   if(a==="salenego"){ openSaleNeg(b.dataset.oid); return; }
   if(a==="carfile"){ openCarFile(id, b.dataset.back||null); return; }
   if(a==="filedone"){
@@ -3839,6 +3913,9 @@ document.addEventListener("click",e=>{
   if(a==="filter"){ S.filter=b.dataset.f; render(); return; }
   if(a==="garajtab"){ S.garajTab=b.dataset.g; S.araGaraj=""; render(); return; }
   if(a==="hidetut"){ S.tutorial=false; save(); render(); return; }
+  /* Bir pencere (karne, rapor) açıkken arkadaki "Günü bitir" sayılmaz: karne
+     açıkken gün üç kez ilerlemişti (v3 kararı 12). */
+  if(a==="endday" && !document.getElementById("modal").classList.contains("hidden") && !b.closest("#sheet")) return;
   if(a==="endday"){ closeSheet(); nextDay(); return; }
 
   if(a==="open"){
@@ -3904,8 +3981,16 @@ document.addEventListener("click",e=>{
   if(a==="bloflist"){ openBluffList(); return; }
   if(a==="backneg"){ renderNeg(); return; }
   if(a==="acceptcounter"){
-    const c=findCar(S.neg.carId), p=S.neg.counter;
-    if(buyCar(c,p,null,S.neg.senet)){ S.neg=null; closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render(); }
+    const c=findCar(S.neg.carId), p=S.neg.counter, n=S.neg;
+    const taban=Math.max(negReserve(), Math.round(c.reserve*(1-kozTavan(c.seller))));
+    const ask0=c.ask; n.satici=c.seller;
+    if(buyCar(c,p,null,n.senet)){
+      n.done=true; n.counter=null;
+      n.alimOzet={fiyat:p, ask:ask0, deger:Math.round(valueOf(c,!c.inspected)), kesin:!!c.inspected,
+                  inerdi:p-taban>=5000?Math.round(taban/500)*500:0};
+      say("them", pick(["Hayırlı olsun, anlaştık.","El sıkıştık."]));
+      renderHud(); save(); renderNeg();
+    }
     return;
   }
   if(a==="senetac"){ if(S.neg){ S.neg.senet=!S.neg.senet; renderNeg(); } return; }
@@ -3987,6 +4072,9 @@ document.addEventListener("click",e=>{
   }
   if(a==="unlist"){ car.listPrice=null; save(); closeSheet(); render(); return; }
   if(a==="araac"){ ARA_ACIK=!ARA_ACIK; render(); if(ARA_ACIK){ const i=document.getElementById("araInput"); if(i) i.focus(); } return; }
+  if(a==="alimgit"){ S.neg=null; closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render(); return; }
+  if(a==="yazi"){ S.yazi=+b.dataset.v||1; save(); render(); return; }
+  if(a==="azhareket"){ S.azHareket=!S.azHareket; if(!S.azHareket){ try{ CILA.azHareket=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ CILA.azHareket=false; } } save(); render(); return; }
   if(a==="rayhepsi"){ RAY_HEPSI=true; render(); return; }
   if(a==="listemod"){ S.listeMod=(S.listeMod||"kompakt")==="kompakt"?"foto":"kompakt"; save(); render(); return; }
   if(a==="cutto"){ const v=+b.dataset.v; if(!car||!v) return;
