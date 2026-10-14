@@ -32,7 +32,13 @@ function onerilenIlan(c){ return Math.round(valueOf(c,false)*KOLAY.ilanKat/500)*
 function hazirlaPlan(c){
   const ep = c.inspected ? 0 : (c.gunun ? 0 : eksperFiyat());
   const tam = c.inspected ? karliTamirler(c) : null;     // ekspertizsizse sonra belli olur
-  return {ep, tam, tamTutar: tam ? tam.reduce((a,f)=>a+_hzBedel(f),0) : null};
+  const tamTutar = tam ? tam.reduce((a,f)=>a+_hzBedel(f),0) : null;
+  /* Beklenen kâr (ekspertizliyse kesin, değilse görünen değerden kaba):
+     zararına ilan uyarısız kuruluyordu (v3 kararı 2). */
+  const artis = tam ? tam.reduce((a,f)=>a+_hzKazanc(c,f),0) : 0;
+  const deger = c.inspected ? valueOf(c,false)+artis : valueOf(c,true)*.92;
+  const kar = Math.round(deger*KOLAY.ilanKat - carCost(c) - ep - (tamTutar||0));
+  return {ep, tam, tamTutar, kar};
 }
 function hazirlaYap(c){
   if(!c || !c.owned || c.listPrice) return null;

@@ -39,7 +39,7 @@ function gunlukKur(zorla){
   if(aday.length){
     const c=pick(aday);
     c.gunun=true;
-    if(c.reserve) c.reserve=Math.round(c.reserve*0.94);
+    if(c.reserve) c.reserve=Math.round(c.reserve*0.97);   // fırsat ilanı zaten ucuz (v3 kararı 1)
   }
 }
 function gorevIlerle(sayac, adet){

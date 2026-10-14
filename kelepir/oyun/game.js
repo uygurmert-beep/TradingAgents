@@ -230,13 +230,16 @@ const PARCA={
 };
 
 /* ============ satıcı arketipleri ============ */
+/* v3 kararı 1: ilan şişirmesi (galerici ×1,14) ve geniş taban, ilanın
+   %16-27 altına almayı olağan yapıyordu; gerçekte %5-12 (galeri sahibi).
+   İlan çarpanı indi, taban yükseldi; kozun payı kozTavan ile sınırlı. */
 const SELLERS=[
- {k:"acil",   n:"Acil nakit lazım",  d:"İhtiyaçtan satılık. Pazarlık payı geniş.",  ask:1.02, res:0.84, pat:4, sert:.20, w:18, savvy:.30, motiv:.80, ego:.3,  pesin:.055},
- {k:"acemi",  n:"Acemi satıcı",      d:"Piyasayı bilmiyor. Fiyatı rastgele koymuş.",ask:0.95, res:0.86, pat:5, sert:.18, w:14, savvy:.12, motiv:.62, ego:.5,  pesin:.045},
- {k:"filo",   n:"Filo çıkışı",       d:"Şirket aracı. Bakımlı ama km yüksek.",      ask:1.05, res:0.87, pat:3, sert:.50, w:16, savvy:.55, motiv:.50, ego:.15, pesin:.030},
- {k:"duygusal",n:"Duygusal sahibi",  d:"Arabasına kıyamıyor, fiyatı da öyle.",      ask:1.13, res:0.92, pat:3, sert:.72, w:18, savvy:.35, motiv:.30, ego:1.0, pesin:.012},
- {k:"galerici",n:"Galerici",         d:"İşini bilir, fiyatı ezberlemiş.",           ask:1.14, res:0.94, pat:3, sert:.88, w:22, savvy:.88, motiv:.25, ego:-1,  pesin:.015},
- {k:"koleksiyoncu",n:"Koleksiyoncu", d:"Değerini biliyor, acelesi yok.",            ask:1.12, res:0.93, pat:2, sert:.80, w:12, savvy:.80, motiv:.20, ego:.9,  pesin:.010}
+ {k:"acil",   n:"Acil nakit lazım",  d:"İhtiyaçtan satılık. Pazarlık payı geniş.",  ask:0.98, res:0.86, pat:4, sert:.20, w:12, savvy:.30, motiv:.80, ego:.3,  pesin:.055, kozTavan:0.14},
+ {k:"acemi",  n:"Acemi satıcı",      d:"Piyasayı bilmiyor. Fiyatı rastgele koymuş.",ask:0.95, res:0.88, pat:5, sert:.18, w:11, savvy:.12, motiv:.62, ego:.5,  pesin:.045, kozTavan:0.12},
+ {k:"filo",   n:"Filo çıkışı",       d:"Şirket aracı. Bakımlı ama km yüksek.",      ask:1.02, res:0.89, pat:3, sert:.50, w:16, savvy:.55, motiv:.50, ego:.15, pesin:.030, kozTavan:0.09},
+ {k:"duygusal",n:"Duygusal sahibi",  d:"Arabasına kıyamıyor, fiyatı da öyle.",      ask:1.08, res:0.93, pat:3, sert:.72, w:18, savvy:.35, motiv:.30, ego:1.0, pesin:.012, kozTavan:0.08},
+ {k:"galerici",n:"Galerici",         d:"İşini bilir, fiyatı ezberlemiş.",           ask:1.08, res:0.95, pat:3, sert:.88, w:22, savvy:.88, motiv:.25, ego:-1,  pesin:.015, kozTavan:0.06},
+ {k:"koleksiyoncu",n:"Koleksiyoncu", d:"Değerini biliyor, acelesi yok.",            ask:1.08, res:0.94, pat:2, sert:.80, w:12, savvy:.80, motiv:.20, ego:.9,  pesin:.010, kozTavan:0.06}
 ];
 
 /* ============ blöf iddiaları ============ */
@@ -383,7 +386,7 @@ function genCar(opt={}){
   const kmYuksek = km > Math.max(1,YEAR-year)*17000;
   if(chance(.55)){const c=pick(CLAIMS_LIE.filter(x=>kmYuksek || !/Km/.test(x))); if(!claims.includes(c))claims.push(c);}
 
-  const seller = opt.auction ? null : weightedSeller();
+  const seller = opt.auction ? null : weightedSeller(m, year);
 
   const car={
     id:_uid++, model:m, year, km, plate:plate(), color:color.n, colorM:color.m,
@@ -400,9 +403,22 @@ function genCar(opt={}){
   }
   return car;
 }
-function weightedSeller(){
-  const tot=SELLERS.reduce((s,x)=>s+x.w,0); let r=Math.random()*tot;
-  for(const s of SELLERS){ r-=s.w; if(r<=0) return s; }
+/* Satıcı modele uysun (v3 kararı 9, M4): 1985 E30 "filo çıkışı", 2024
+   araç "koleksiyoncu" çıkıyordu. Ağırlık = tablo w × model/yaş çarpanı. */
+function saticiCarpan(k, m, year){
+  if(!m) return 1;
+  const yas=YEAR-(year||YEAR);
+  let x=1;
+  if(m.seg==="klasik") x*=({koleksiyoncu:4, duygusal:3, galerici:1, acil:.7, acemi:1, filo:0})[k];
+  else if(m.seg==="ticari") x*=({filo:3, acil:1.5, koleksiyoncu:0})[k]??1;
+  else if(m.seg==="lux") x*=({galerici:2, acil:1.5})[k]??1;
+  if(m.seg!=="klasik" && yas<5) x*=({galerici:2, filo:1.5, koleksiyoncu:.2})[k]??1;
+  return x;
+}
+function weightedSeller(m, year){
+  const w=SELLERS.map(x=>x.w*saticiCarpan(x.k,m,year));
+  const tot=w.reduce((a,b)=>a+b,0); let r=Math.random()*tot;
+  for(let i=0;i<SELLERS.length;i++){ r-=w[i]; if(r<=0) return SELLERS[i]; }
   return SELLERS[0];
 }
 
@@ -533,9 +549,13 @@ function hiddenIssues(car){
 /* Oyun testinde altı oyuncunun dördü alımın "hep ilk teklifte, hep %20
    altına" bittiğini yazdı: kozlar rezervi %30'a kadar eritiyordu ve acil /
    acemi satıcının tabanı çok düşüktü. Tavan %15'e, tabanlar yukarı çekildi. */
+/* Koz tavanı satıcıya göre (v3 kararı 1): v2'de konan %15 tavan yalnız
+   burada duruyordu, ekrandaki pazarlık ui.js negReserve() ile %34'e kadar
+   iniyordu. İki yol artık aynı tablodan okur. */
+function kozTavan(s){ return ((s&&s.kozTavan)||.10)*(zorGercek()?.8:1); }
 function effReserve(car, leverage){
   let cut=0; for(const l of leverage) cut+=l.cut;
-  return Math.round(car.reserve*(1-Math.min(zorGercek()?.12:.15,cut)));
+  return Math.round(car.reserve*(1-Math.min(kozTavan(car.seller),cut)));
 }
 /** Satıcının cevabı. Kurallar (test/yeni-test.js 16. bölüm ölçüyor):
     • karşı teklif oyuncunun teklifinin altına inmez,
@@ -631,11 +651,27 @@ const BUYERS=[
   sat:{esnek:.13, kacma:.28, ikna:1.00, sabir:3, savvy:.45, butce:1.06},
   line:"Yoldan geldim, boşuna gelmiş olmayayım."}
 ];
-function pickBuyerType(seg){
-  const uygun=BUYERS.filter(b=>b.segs&&b.segs.includes(seg));
-  const genel=BUYERS.filter(b=>!b.segs);
-  const havuz=uygun.concat(uygun).concat(genel); // segmentine uyan alıcı iki kat olası
-  return pick(havuz.length?havuz:BUYERS);
+/* Alıcı araca uysun (v3 kararı 9, M5): ₺1,74M'lik hibriti "bütçem kısıtlı,
+   ilk arabam" diyen genç alıyordu. Segment havuzu korunur (uyan ×2), üstüne
+   fiyat/yakıt/segment çarpanları. Eski çağrı (yalnız segment) hâlâ çalışır. */
+function pickBuyerType(segOrCar){
+  const car=(segOrCar&&segOrCar.model)?segOrCar:null;
+  const seg=car?car.model.seg:segOrCar;
+  const fiyat=car?(car.listPrice||car.ask||0):0, yakit=car?car.fuel:"";
+  const w=BUYERS.map(b=>{
+    let x = b.segs ? (b.segs.includes(seg)?2:0) : 1;
+    if(!x || !car) return x;
+    if(b.k==="genc") x*= fiyat>1500000?.1 : fiyat>1000000?.4 : 1;
+    if(b.k==="esnaf" && seg==="ticari") x*= yakit==="Dizel"?4.5:3;
+    if(b.k==="merakli") x*= seg==="klasik"?3 : (seg==="lux"||fiyat>3000000)?2:1;
+    if(b.k==="aile") x*= (seg==="suv"||seg==="sedan"?2:1)*(yakit==="Hibrit"?1.5:1);
+    return x;
+  });
+  const tot=w.reduce((a,b)=>a+b,0);
+  if(!tot) return pick(BUYERS);
+  let r=Math.random()*tot;
+  for(let i=0;i<BUYERS.length;i++){ r-=w[i]; if(r<=0) return BUYERS[i]; }
+  return BUYERS[BUYERS.length-1];
 }
 /** Takas için alıcının getireceği araç: teklifin %70'ini geçmeyen bir araç. */
 function genTradeIn(maxVal){
@@ -810,8 +846,14 @@ function saleLeverage(car, rep, day){
       d: `${parcalar.join(", ")} &middot; fişi duruyor, ${tl(car.spent)} harcandı`,
       lift:.030+Math.min(.03,tamirler.length*.012), guven:6});
   }
-  if(car.km < bekKm*0.8)
-    out.push({k:"km", t:"Yaşına g&ouml;re d&uuml;ş&uuml;k km", d:`${num(car.km)} km &mdash; ortalamanın altında`, lift:.040, guven:4});
+  /* km oynanmış araçta bu koz yalan olurdu; klasikte "yaşına göre düşük"
+     anlamsız (41 yaşında E30'a sunuluyordu) — klasikte belgeli km (v3 kararı 7) */
+  if(!car.kmOynama){
+    if(car.model.cl){ if(car.km < Math.max(1,YEAR-car.year)*4000)
+      out.push({k:"km", t:"Belgeli km", d:`${num(car.km)} km &mdash; yaşına g&ouml;re az kullanılmış klasik`, lift:.040, guven:4}); }
+    else if(car.km < bekKm*0.8)
+      out.push({k:"km", t:"Yaşına g&ouml;re d&uuml;ş&uuml;k km", d:`${num(car.km)} km &mdash; ortalamanın altında`, lift:.040, guven:4});
+  }
   if(car.cosmetic)
     out.push({k:"bakimli", t:"Bakımlı g&ouml;r&uuml;n&uuml;m", d:"Pasta cila yeni yapıldı", lift:.020, guven:3});
   if(car.gear==="Otomatik" || car.fuel==="Hibrit")
@@ -974,7 +1016,7 @@ function leadChance(car, S){
   return clamp(p*.5, .02, .92);
 }
 function makeBuyer(car, S){
-  const bt=pickBuyerType(car.model.seg);
+  const bt=pickBuyerType(car);
   const dil=ilanDili(car), sun=ilanSunum(car);
   const mv=valueOf(car,false), av=valueOf(car,true);
   // Abartılı ilan alıcıyı şüphelendirir: daha sık ekspertize götürür.

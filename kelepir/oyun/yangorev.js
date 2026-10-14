@@ -213,7 +213,11 @@ function yanGorevGun(rep){
   }
   if(!S.parti && S.day>=PARTI.ilkGun && S.day-(S.partiSon||0)>=PARTI.bekleme && chance(PARTI.sans)){
     S.parti=partiUret();
-    rep.events.push({parti:true, t:`<b>${S.parti.satici}</b> toptan parti teklif ediyor: ${S.parti.cars.length} ara&ccedil; `+
+    /* Kasası yetmeyene parti gelmez (v3 kararı 3): ₺7,3M'lik parti ₺1,6M
+       kasaya her gün bildirim olarak düşüyordu. */
+    const limit=S.cash+(typeof creditLimit==="function"?Math.max(0,creditLimit()-(S.debt||0)):0);
+    if(S.parti.fiyat>limit) S.parti=null;
+    else rep.events.push({parti:true, t:`<b>${S.parti.satici}</b> toptan parti teklif ediyor: ${S.parti.cars.length} ara&ccedil; `+
       `${tl(S.parti.fiyat)} &mdash; tek tek ${tl(S.parti.tekTek)}. ${S.parti.cars.length} boş yer gerekiyor.`});
   }
   // dönen müşteriler
