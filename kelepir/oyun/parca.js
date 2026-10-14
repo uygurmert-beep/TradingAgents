@@ -46,7 +46,7 @@ function parcaTamir(car, f){
   const bedava=!!(S.favors&&S.favors.nuri);
   if(!bedava && S.cash<bedel){ toast("Nakit yetmiyor.","bad"); return null; }
   if(bedava){ S.favors.nuri=false; toast("Nuri bu tamiri bedava yaptı.","good"); }
-  else S.cash-=bedel;
+  else { S.cash-=bedel; kasaNot(-bedel, `Tamir: ${f.n}`); }
   car.spent+=bedava?0:bedel;
   f.fixed=true;
   if(tur==="orijinal"){ delete f.parca; delete f.parcaGun; }

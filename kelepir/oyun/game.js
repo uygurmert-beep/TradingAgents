@@ -293,11 +293,22 @@ function genCar(opt={}){
   // aşınma
   const wear={};
   for(const k of COMPKEYS) wear[k] = clamp((age*1.35 + km/17000) * (1.6-m.rel) * rnd(.75,1.3), 0, 55);
+  /* Klasikte yaş formülü 40 yılda tavana çarpıyor, her organ 45/45/45 ve
+     arızasız çıkıyordu (v3 testi, araba tutkunu): orijinal mi, restore mu,
+     çürük mü keşfi ölüyordu. Klasiğin bir "hâli" var; organlar ona göre
+     dağılır ve organlar arası fark büyüktür. */
+  let klasikHal=null;
+  if(m.cl){
+    klasikHal=pick(["orijinal","orijinal","restore","yorgun","yorgun","proje"]);
+    const bant={orijinal:[12,32], restore:[6,22], yorgun:[30,58], proje:[52,78]}[klasikHal];
+    for(const k of COMPKEYS) wear[k]=Math.round(rnd(bant[0],bant[1]));
+  }
 
   // arızalar — en fazla 5, yaş/km/güvenilirliğe göre
   const faults=[];
   const maxF = clamp(Math.round(1 + age/5 + km/180000), 0, 5);
-  const nF = ri(0, maxF) + (chance(clamp((1.5-m.rel)*.35,0,.4))?1:0);
+  let nF = ri(0, maxF) + (chance(clamp((1.5-m.rel)*.35,0,.4))?1:0);
+  if(klasikHal) nF = klasikHal==="restore" ? ri(0,1) : Math.max(klasikHal==="proje"?3:1, Math.min(nF, klasikHal==="orijinal"?2:4));
   /* Havuz artık düz değil: modelin imza arızaları ağırlıklı çekiliyor.
      Eşik km'yi geçmiş araçta ağırlık iyice artıyor — "bu modeli 180
      binden sonra alma" bilgisi böyle doğuyor. Eşiğin altında imza arıza
@@ -315,7 +326,15 @@ function genCar(opt={}){
   /* Arıza aracın donanımına uymalı: manuel vitesli araçta "otomatik
      şanzıman bakımı", 1995 öncesi karbüratörlü araçta "motor beyni" ya da
      "enjektör" çıkıyordu (oyun testi, 1983 Şahan). */
+  /* v3 testi: 4000 araçlık simülasyonda elektrikli araç arızalarının %31'i
+     imkânsızdı (triger, enjektör, debriyaj…), otomatiklerin %13'ünde
+     "debriyaj seti bitmiş" çıkıyordu. */
+  const ev=fuel==="Elektrik", hibrit=fuel==="Hibrit";
+  const EV_YOK=["triger","yagkacak","enjektor","turbo","motorrev","debriyaj","otosanziman","sanzimanrev"];
   const uymaz=(f)=> (f.k==="otosanziman" && gear!=="Otomatik")
+                 || (f.k==="debriyaj" && (gear==="Otomatik" || hibrit))
+                 || (ev && EV_YOK.includes(f.k))
+                 || (hibrit && (f.k==="enjektor"||f.k==="turbo"))
                  || (year<1995 && (f.k==="beyin"||f.k==="enjektor"||f.k==="multimedya"||f.k==="turbo"));
   const pool=FAULTS.filter(f=>!uymaz(f));
   for(let i=0;i<Math.min(nF,5);i++){
@@ -326,6 +345,10 @@ function genCar(opt={}){
     const f=pool[idx];
     pool.splice(idx,1);
     if(!f) break;
+    /* Aynı şanzıman iki kez arızalanmaz: "Şanzıman revizyonu" ile "Otomatik
+       şanzıman bakımı" aynı raporda çıkıyordu (v3 testi). Revizyon bakımı kapsar. */
+    if(f.k==="sanzimanrev"||f.k==="otosanziman")
+      for(let j=pool.length-1;j>=0;j--) if(pool[j].k==="sanzimanrev"||pool[j].k==="otosanziman") pool.splice(j,1);
     const cm=clamp(.5 + baseValue(m,age)/3000000, .5, 1.5);
     faults.push({id:_uid++, k:f.k, n:f.n, comp:f.c, cost:Math.round(f.cost*cm*rnd(.85,1.2)/25)*25,
                  gain:f.gain, dm:f.dm, visible:chance(f.vis), fixed:false});
@@ -364,7 +387,7 @@ function genCar(opt={}){
 
   const car={
     id:_uid++, model:m, year, km, plate:plate(), color:color.n, colorM:color.m,
-    gear, fuel, wear, faults, tramer, degisen, boyali, kmOynama, claims, story,
+    gear, fuel, wear, faults, klasikHal, tramer, degisen, boyali, kmOynama, claims, story,
     seller, inspected:false, owned:false, listPrice:null, disclosed:false,
     daysListed:0, boughtFor:0, spent:0, cosmetic:false, auction:!!opt.auction,
     listedDay:0, leadsSeen:0
@@ -527,14 +550,25 @@ function sellerReply(car, offer, er, n){
   const s=car.seller, r=offer/er;
   const onceki=(n&&n.sonKarsi)||car.ask;
   if(offer>=onceki) return {act:"accept", price:offer};
+  /* Söz bağlar (v3 oyun testi, 6/8 kişi): "altına inmem" denen fiyatın altı
+     artık hiçbir yoldan kabul edilmiyor. Eskiden r≥.955 bandındaki zar ya da
+     yeni bir koz satıcıyı söylediği tabanın altına indirebiliyordu. */
+  if(n && n.tabanSoz && offer<n.tabanSoz)
+    return {act:"counter", price:n.tabanSoz, pat:1, taban:true};
   let sonuc;
   if(r>=1){
-    // tabanın üstünde: sert satıcı ilk turda yine de bir pazarlık payı ister
-    if(n && !n.tur && s.sert>=.5 && offer<car.ask*.97)
-      sonuc={act:"counter", price:Math.round((offer+car.ask)/2/500)*500, pat:0};
-    else return {act:"accept", price:offer};
+    /* Tabanın üstünde bile her teklif kabul değil: satıcı son sözüyle teklif
+       arasındaki farkın ancak bir kısmını yutar. Eskiden rezervin üstündeki
+       her rakam anında "Tamam, senin olsun" alıyordu; acil satıcıya ilanın
+       %25 altını yazmak tek strateji olmuştu. Tolerans turla büyür, sert
+       satıcıda dardır. */
+    const fark=(onceki-offer)/onceki;
+    const tol=.035+.075*(1-s.sert)+.025*((n&&n.tur)||0);
+    if(fark<=tol && !(n && !n.tur && s.sert>=.5 && offer<car.ask*.97)) return {act:"accept", price:offer};
+    const pay=.42+.26*s.sert;
+    sonuc={act:"counter", price:Math.max(Math.round(er/500)*500, Math.round((offer+(onceki-offer)*pay)/500)*500), pat:0};
   }
-  else if(r>=.955) sonuc = chance(.55-s.sert*.25)
+  else if(r>=.955) sonuc = (n&&n.tur) && chance(.45-s.sert*.25)
       ? {act:"accept", price:offer}
       : {act:"counter", price:Math.round((offer+er)/2/500)*500, pat:0};
   else if(r>=.87) sonuc={act:"counter", price:Math.round(er*rnd(1.0,1.04)/500)*500, pat:1};

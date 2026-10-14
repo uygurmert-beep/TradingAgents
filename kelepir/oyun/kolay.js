@@ -18,9 +18,13 @@
 const KOLAY={ ilanKat:1.03, hedefPay:1.12 };
 
 /** Bilinen ve yaptırılınca kendini amorti eden arızalar, en kârlıdan. */
+/* Atölyede seçili parça kalitesine göre (v3 testi: Hazırla "Çıkma" seçiliyken
+   orijinal fiyatla ödüyordu, ₺53.500 yerine ₺118.750). */
+const _hzBedel=(f)=> (typeof parcaBedel==="function") ? parcaBedel(f,PARCA_SECIM) : repairCost(f);
+const _hzKazanc=(c,f)=> (typeof parcaKazanc==="function") ? parcaKazanc(c,f,PARCA_SECIM) : repairGain(c,f);
 function karliTamirler(c){
-  return openFaults(c).filter(f=>known(c,f) && repairGain(c,f)>=repairCost(f))
-    .sort((a,b)=>(repairGain(c,b)-repairCost(b))-(repairGain(c,a)-repairCost(a)));
+  return openFaults(c).filter(f=>known(c,f) && _hzKazanc(c,f)>=_hzBedel(f))
+    .sort((a,b)=>(_hzKazanc(c,b)-_hzBedel(b))-(_hzKazanc(c,a)-_hzBedel(a)));
 }
 function onerilenIlan(c){ return Math.round(valueOf(c,false)*KOLAY.ilanKat/500)*500; }
 
@@ -28,7 +32,7 @@ function onerilenIlan(c){ return Math.round(valueOf(c,false)*KOLAY.ilanKat/500)*
 function hazirlaPlan(c){
   const ep = c.inspected ? 0 : (c.gunun ? 0 : eksperFiyat());
   const tam = c.inspected ? karliTamirler(c) : null;     // ekspertizsizse sonra belli olur
-  return {ep, tam, tamTutar: tam ? tam.reduce((a,f)=>a+repairCost(f),0) : null};
+  return {ep, tam, tamTutar: tam ? tam.reduce((a,f)=>a+_hzBedel(f),0) : null};
 }
 function hazirlaYap(c){
   if(!c || !c.owned || c.listPrice) return null;
@@ -36,16 +40,19 @@ function hazirlaYap(c){
   if(!c.inspected){
     const ep=c.gunun?0:eksperFiyat();
     if(S.cash<ep){ toast("Ekspertize nakit yetmiyor.","bad"); return null; }
-    S.cash-=ep; sonuc.ep=ep;
+    S.cash-=ep; sonuc.ep=ep; c.ekspBedel=ep; kasaNot(-ep, `Ekspertiz: ${c.model.n}`);
     c.inspected=true; cGain("hakan"); gorevIlerle("eksper"); notAl(c,true);
   }
   // Nakit yettiği kadar, en kârlı tamirden başla. Kasa hiç sıfırlanmasın:
   // bir sonraki alım için bir yastık bırak.
   const yastik=Math.min(150000, S.cash*0.15);
   for(const f of karliTamirler(c)){
-    const bd=repairCost(f);
+    const bd=_hzBedel(f);
     if(S.cash-bd<yastik) continue;
     S.cash-=bd; c.spent+=bd; f.fixed=true; S.stats.repairs++;
+    kasaNot(-bd, `Tamir: ${f.n}`);
+    if(PARCA_SECIM==="orijinal"){ delete f.parca; delete f.parcaGun; }
+    else { f.parca=PARCA_SECIM; f.parcaGun=S.day; }
     cGain("nuri"); gorevIlerle("tamir");
     sonuc.yapilan.push(f); sonuc.harcanan+=bd;
   }
