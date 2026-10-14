@@ -71,7 +71,7 @@ Object.assign(I18N.TAM, {
 "Döşeme yıpranmış":"Upholstery worn","Torpido çatlağı":"Cracked dashboard",
 "Direksiyon/vites deri":"Steering wheel / gear knob leather","Akü ölmüş":"Battery dead",
 "Klima soğutmuyor":"Air-con not cooling","Multimedya arızalı":"Infotainment faulty",
-"Motor beyni arızası":"ECU fault",
+"Motor beyni arızası":"ECU fault","Zincir seti / gergi değişmeli":"Timing chain / tensioner due","Hava süspansiyonu arızalı":"Air suspension fault",
 
 /* --- pazarlık --- */
 "Pazarlığa otur":"Start haggling","Hamleler":"Moves","RUH HÂLİ":"MOOD","SABIR":"PATIENCE",

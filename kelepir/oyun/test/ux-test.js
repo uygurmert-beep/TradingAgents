@@ -32,6 +32,9 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   console.log('1) arama');
   const hepsi=await p.evaluate(()=>S.market.length);
   const ilkAd=await p.evaluate(()=>S.market[0].model.n.split(" ")[0]);
+  // arama satırı büyüteçle açılıyor (v3 kararı 4a)
+  t('arama satırı varsayılan kapalı', await p.evaluate(()=>!document.getElementById('araInput')));
+  await p.click('[data-act="araac"]'); await p.waitForTimeout(200);
   await p.fill('#araInput', ilkAd);
   await p.waitForTimeout(320);
   const suzulen=await p.evaluate(()=>document.querySelectorAll('#listeKap .card').length);
@@ -191,13 +194,14 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   await p.waitForTimeout(400);
   const ao=await p.evaluate(()=>{
     const a=document.querySelector('.atolye'); if(!a) return {yok:true};
-    const bloklar=[...document.querySelectorAll('#modal .block, #modal .atolye')];
-    return { var:true, sira:bloklar.indexOf(a),
+    // v3 kararı 4b: ilk ekranda karar (Hazırla), atölye ondan sonra
+    const h=document.querySelector('#modal .hazirla');
+    return { var:true, sira: h ? (h.compareDocumentPosition(a)&Node.DOCUMENT_POSITION_FOLLOWING ? 0 : -1) : 0,
              dolgu:!!a.querySelector('.ise-btn'),
              fiyat:!!a.querySelector('.ise-btn em') };
   });
   t('kendi aracım sayfasında atölye var', !!ao.var);
-  t('atölye bloklardan önce geliyor', ao.sira===0);
+  t('Hazırla kartı atölyeden önce geliyor', ao.sira===0);
   t('Yaptır düğmesinde fiyat yazıyor', !!ao.fiyat);
 
   await p.evaluate(id=>openCarFile(id,"own"), arac.id);
@@ -399,7 +403,9 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
 
   /* ---------- 12) görsel katman ---------- */
   console.log('12) kart, mühür, sahne, sezon');
-  await p.evaluate(()=>{ closeSheet(); S.tab="pazar"; render(); });
+  // kompakt liste varsayılan (v3 kararı 4a); tam genişlik ölçümü fotoğraflı modda
+  t('pazar listesi varsayılan kompakt', await p.evaluate(()=>{ closeSheet(); S.tab="pazar"; render(); return !!document.querySelector('.card.kart2.kompakt'); }));
+  await p.evaluate(()=>{ closeSheet(); S.tab="pazar"; S.listeMod="foto"; render(); });
   await p.waitForTimeout(300);
   const kartK=await p.evaluate(()=>{
     const k=document.querySelector('.card.kart2');
@@ -430,18 +436,22 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   const mc=await p.$('.card'); if(mc){ await mc.click(); await p.waitForTimeout(450); }
   const nb2=await p.$('[data-act="negotiate"]');
   if(nb2){ await nb2.click(); await p.waitForTimeout(650); }
+  /* v3 kararı 5: büyük sahne yerine ≤96px kompakt başlık; hamleler ve son
+     mesaj kaydırmadan görünür */
   const sah=await p.evaluate(()=>{
-    const s=document.querySelector('.sahne');
+    const s=document.querySelector('.negbas');
     if(!s) return {yok:true};
-    const f=s.querySelector('.sahne-fiyat b'), y=s.querySelector('.sahne-yuz');
-    const fr=f.getBoundingClientRect(), yr=y.getBoundingClientRect();
-    return { var:true, arac:!!s.querySelector('.sahne-arac svg, .sahne-arac img.aracfoto'),
-             fiyatBuyuk: parseFloat(getComputedStyle(f).fontSize)>=22,
-             cakismaYok: fr.bottom<=yr.top+2 || fr.left>=yr.right-2 };
+    const f=s.querySelector('.nb-fiyat b'), bar=document.querySelector('#sheet .actionbar');
+    const mv=[...document.querySelectorAll('#sheet .movegrid .mv')].slice(0,4);
+    const alt=bar?bar.getBoundingClientRect().top:innerHeight;
+    return { var:true, h:s.getBoundingClientRect().height, fiyat:!!f && /₺/.test(f.textContent),
+             hamle:mv.length>0 && mv.every(m=>m.getBoundingClientRect().bottom<=alt+1),
+             barH:bar?bar.getBoundingClientRect().height:0 };
   });
-  t('pazarlık sahnesi kuruldu', sah.var && sah.arac);
-  t('istenen fiyat ekranın en büyük tipografisi', sah.fiyatBuyuk);
-  t('fiyat satıcı kartıyla çakışmıyor', sah.cakismaYok);
+  t(`pazarlık başlığı kompakt (${Math.round(sah.h||0)}px ≤ 96)`, sah.var && sah.h<=96);
+  t('başlıkta fiyat yazıyor', sah.fiyat);
+  t('ilk 4 hamle kaydırmadan görünüyor', sah.hamle);
+  t(`eylem çubuğu kısa (${Math.round(sah.barH)}px ≤ 150)`, sah.barH<=150);
   await p.evaluate(()=>{ S.neg=null; closeSheet(); render(); });
 
   const sz=await p.evaluate(()=>{
@@ -527,18 +537,23 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   /* ---------- 9) BUGÜN rayı, boş sahneler, sayfa eylem çubuğu ---------- */
   console.log('9) bugün rayı ve cila');
   const ray=await p.evaluate(()=>{
-    closeSheet(); S.tab="pazar"; S.parti=partiUret(); S.konsTeklif=konsTeklifUret(); render();
+    closeSheet(); S.tab="pazar"; S.parti=partiUret(); S.konsTeklif=konsTeklifUret(); RAY_HEPSI=false; render();
+    const kisa=document.querySelectorAll('.ray .ajkart:not(.ajtumu)').length, tumu=!!document.querySelector('.ray .ajtumu');
+    RAY_HEPSI=true; render();
     const kartlar=[...document.querySelectorAll('.ray .ajkart')].map(b=>b.dataset.act);
     const ray=document.querySelector('.ray').getBoundingClientRect();
     const ilk=document.querySelector('#listeKap .card');
-    return {kartlar, rayH:ray.height, listeUst:ilk?ilk.getBoundingClientRect().top:9999};
+    const ilkUst=ilk?ilk.getBoundingClientRect().top:9999;
+    RAY_HEPSI=false; render();
+    return {kartlar, kisa, tumu, rayH:ray.height, listeUst:ilkUst};
   });
+  t(`rayda en fazla 5 kart, fazlası "Tümü" (${ray.kisa})`, ray.kisa<=5 && (ray.kartlar.length<=5 || ray.tumu));
   t('rayda parti, emanet, görev, vaka ve hedef kartı var',
     ['partiac','konsac','gorevac','meydanac','hedefac'].every(k=>ray.kartlar.includes(k)));
   t(`ray tek satır (${Math.round(ray.rayH)}px)`, ray.rayH<140);
   t(`ilk ilan ilk ekranın içinde başlıyor (${Math.round(ray.listeUst)}px)`, ray.listeUst<620);
   for(const k of ['partiac','konsac','gorevac','hedefac']){
-    await p.evaluate(k=>{ closeSheet(); document.querySelector(`.ray [data-act="${k}"]`).click(); },k);
+    await p.evaluate(k=>{ closeSheet(); RAY_HEPSI=true; render(); document.querySelector(`.ray [data-act="${k}"]`).click(); },k);
     await p.waitForTimeout(250);
     t(`"${k}" kartı kendi sayfasını açıyor`, await p.evaluate(()=>!document.getElementById('modal').classList.contains('hidden')));
   }

@@ -34,7 +34,8 @@ function canliRakipler(c){
   (S.rivals||[]).forEach((st,i)=>{
     const def=rivalDef(st,i);
     const fits=def.segs.includes(c.model.seg);
-    let tavan=Math.round(rivalValue(c)*def.bid*rnd(fits?.92:.70, fits?1.06:.86)/1000)*1000;
+    // kapalı zarfla aynı ölçü (v3 kararı 8): rakibin gördüğü değerin %80-102'si
+    let tavan=Math.round(rivalValue(c)*clamp(def.bid*rnd(.95,1.08),.80,1.02)*(fits?1:.85)/1000)*1000;
     tavan=Math.min(tavan, Math.round((st.cash||def.cash)*.6));
     if(tavan>acilis*1.05) out.push({n:rivalDef(st,i).n, tavan, atak:def.aggr||.7});
   });

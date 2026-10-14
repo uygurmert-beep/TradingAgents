@@ -1122,7 +1122,8 @@ function cardHtml(c, mode){
      üstünde tam genişlikte bir şerit — gerçek bir ilan fotoğrafı gibi —
      altında tek satır ad, sağda fiyat. Dört katman ikiye indi. */
   const ab=adBol(c.model.n);
-  return `<button class="card kart2" data-act="open" data-id="${c.id}" data-mode="${mode}">
+  const kompakt = mode==="market" && (S.listeMod||"kompakt")==="kompakt";
+  return `<button class="card kart2${kompakt?" kompakt":""}" data-act="open" data-id="${c.id}" data-mode="${mode}">
     <div class="kart-sahne">
       ${aracFoto(c,"tam")}
       <span class="kart-plaka">${plateHtml(c.plate)}</span>
@@ -1365,12 +1366,16 @@ function viewPazar(){
     <div class="listbas">
       <span class="lb-et">İLANLAR</span><em>${S.market.length}</em>
       <small>${sez.k} kapanışına ${kalan} g&uuml;n</small>
+      <button class="listemod" data-act="listemod" aria-label="Liste g&ouml;r&uuml;n&uuml;m&uuml;">${(S.listeMod||"kompakt")==="kompakt"?"Fotoğraflı":"Kompakt"}</button>
       ${viewToggle()}
     </div>
     <div class="filters">
+      <button class="chip arachip ${ARA_ACIK||S.ara?"solid":""}" data-act="araac" aria-label="Ara"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 L21 21"></path></svg></button>
       ${FILTERS.map(([k,l])=>`<button class="chip ${S.filter===k?"solid":""}" data-act="filter" data-f="${k}">${l}</button>`).join("")}
     </div>
-    ${araSerit("market")}
+    ${/* arama/sıralama satırı ilk ekranda bir satır yiyordu (v3 kararı 4a);
+         büyüteçle açılır, sıralama "Önerilen" iken gizli kalır */
+      (ARA_ACIK||S.ara||(S.sira&&S.sira!=="onerilen"))?araSerit("market"):""}
     ${sipSeridi()}
     <div id="listeKap">${pazarListesi(list)}</div>
     <div class="actionbar">
@@ -1439,11 +1444,15 @@ function bugunKartlari(){
     alt:`${tlk(S.seasonProfit||0)} / ${tlk(h.tutar)}`, rozet:il>=1?"&#10003;":`%${Math.round(il*100)}`, cubuk:il});
   return k;
 }
+/* Şerit 8-10 karta çıkıyordu, ilanlar ekranın altına itiliyordu (v3 kararı
+   4a): ilk 5 kart, gerisi "Tümü" ile açılır. */
+let RAY_HEPSI=false, ARA_ACIK=false;
 function bugunRayi(){
   const k=bugunKartlari();
+  const gor = RAY_HEPSI ? k : k.slice(0,5);
   return `<section class="bugun">
     <div class="bugun-bas"><span>BUG&Uuml;N</span><em>${k.length}</em></div>
-    <div class="ray">${k.map(ajKart).join("")}</div>
+    <div class="ray">${gor.map(ajKart).join("")}${k.length>5&&!RAY_HEPSI?`<button class="ajkart ajtumu" data-act="rayhepsi"><b class="aj-bas">T&uuml;m&uuml;</b><span>${k.length-5} kart daha</span></button>`:""}</div>
   </section>`;
 }
 function siparisKart(o){
@@ -1921,6 +1930,22 @@ function closeSheet(){
 
 function findCar(id){ return [...S.market,...S.cars,...S.auction].find(c=>c.id===+id); }
 
+/* "Bilinen dert" (v3 kararı 9, M3): modelin kronik zayıflığı açık, bu araçta
+   olup olmadığını ekspertiz söyler. Araba tutkunu: "Model adı açık, kronik
+   derdi de açık; bu araçta var mı, onu ekspertiz söyler." */
+function bilinenDert(m, c){
+  const zf=(m.zf||[]).map(k=>FAULTS.find(f=>f.k===k)).filter(Boolean);
+  if(!zf.length) return "";
+  const esik=(m.km||0)*1000, gecti=c && esik>0 && c.km>=esik;
+  const var_=c && c.inspected ? c.faults.filter(f=>(m.zf||[]).includes(f.k) && !f.fixed) : null;
+  const durum = !c||!c.inspected ? `<span class="bd-durum">ekspertiz s&ouml;yler</span>`
+    : var_.length ? `<span class="bd-durum var">Bu ara&ccedil;ta var</span>` : `<span class="bd-durum yok">Bu ara&ccedil;ta yok</span>`;
+  return `<div class="bilinen-dert">
+    <div><span class="bd-et">Bu modelde bilinen</span>${durum}${gecti?`<span class="bd-durum esik">Eşik ge&ccedil;ti</span>`:""}</div>
+    <b>${zf.map(f=>f.n).join(" &middot; ")}</b>
+    ${esik>0?`<small>${Math.round(esik/1000)} bin km sonrası sıklaşır</small>`:""}
+  </div>`;
+}
 function sheetHead(c, extra){
   return `<div class="sheet-head">
     <div><div class="sheet-title">${adBol(c.model.n).ad}</div>
@@ -2099,7 +2124,7 @@ function openMarketCar(c){
      <div class="kv"><span>Vites / yakıt</span><b>${c.gear} &middot; ${c.fuel}</b></div>
      <div class="kv"><span>Renk</span><b>${c.color}</b></div>
      <div class="kv"><span>İstenen fiyat</span><b style="color:var(--sodium)">${tl(c.ask)}</b></div></div>`;
-  openSheet(sheetHead(c)+hikaye+valueBlock(c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
+  openSheet(sheetHead(c)+hikaye+valueBlock(c)+bilinenDert(c.model,c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
     (c.inspected?notSatiri(c.model):"")+faultBlock(c,false)+historyBlock(c)+claims+specs+
     `<div class="actionbar">
        <div class="btn-row">
@@ -2123,9 +2148,8 @@ function openAuctionCar(c){
     condBlock(c,false)+faultBlock(c,false)+
     `<div class="block"><h4>DEĞERLEME</h4>
       <div class="kv"><span>Kaba tahmin</span><b>${tlk(valueOf(c,true)*0.82)} – ${tlk(valueOf(c,true)*1.08)}</b></div>
-      ${(()=>{ const o=S.muzOran||[]; const muh=Math.round(valueOf(c,true)*0.7);
-        const lo=o.length?Math.min(...o):1.18, hi=o.length?Math.max(...o):1.42;
-        return `<div class="kv"><span>Kazanan zarf ${o.length?`(son ${o.length} m&uuml;zayede)`:"(genelde)"}</span><b>${tlk(muh*lo)} – ${tlk(muh*hi)}</b></div>
+      ${(()=>{ const g=S.muzGecmis||[];
+        return `<div class="kv"><span>Kazanan zarf</span><b>${g.length?`son ${g.length}: ger&ccedil;ek değerin %${Math.round(g.reduce((x,y)=>x+y,0)/g.length*100)}'i`:"genelde ger&ccedil;ek değerin %85-100'&uuml;"}</b></div>
         <div class="kv"><span>Rakip galerici</span><b>${(S.rivals||[]).length} kişi</b></div>`; })()}
       <div class="sec-note" style="margin-top:5px">Kaputun altı meçhul. Rakipler muhammenin değil, aracın g&ouml;r&uuml;nen değerinin peşinde.</div></div>
      <button class="btn primary full" data-act="bid" data-id="${c.id}">Zarf ver</button>`);
@@ -2213,7 +2237,7 @@ function openOwnCar(c){
     const press=rivalPressure(c.model.seg);
     const gizli=hiddenIssues(c).length;
     const dil=c.ilanDili||"muglak", sun=c.sunum|0;
-    sellPart=hazirlaKart(c)+`<section class="ilan">
+    sellPart=`<section class="ilan">
       <div class="ilan-bas"><span class="ilan-et">İLANI KUR</span>
         <span class="ilan-rozet">${gizli?gizli+" bilinen, alıcının g&ouml;rmediği kusur":"gizlenecek kusur yok"}</span></div>
       <div class="ilan-alt">İLANIN DİLİ</div>
@@ -2252,8 +2276,9 @@ function openOwnCar(c){
       </div>
       <div class="actionbar">
         <button class="btn primary full" data-act="list" data-id="${c.id}">İlanı yayınla</button>
-        ${c.konsinye?"":`<button class="btn ghost full" data-act="wholesale" data-id="${c.id}">
-          Galericiye toptan sat &middot; ${tl(Math.round(tv*0.82))}</button>`}
+        ${c.konsinye?"":(()=>{ const tp=Math.round(tv*0.82/500)*500, kz=tp-cost;
+          // birincil düğme kadar ağır duruyordu (v3 kararı 4b): metin bağlantısına indi
+          return `<button class="linkbtn" data-act="wholesale" data-id="${c.id}">Galericiye toptan sat &middot; ${tlk(tp)} <span class="${kz>=0?"pos":"neg"}">(${kz>=0?"+":"&minus;"}${tlk(Math.abs(kz))})</span></button>`; })()}
       </div>`;
   }
 
@@ -2275,13 +2300,18 @@ function openOwnCar(c){
   const emanet=konsBlok(c);
   // Atölye her araçta en üstte: bekleyen teklifin hemen ardından,
   // değer ve hesap bloklarının ÖNÜNDE.
+  /* Sıra (v3 kararı 4b): ilk ekranda karar — Hazırla ya da ekspertiz —,
+     sonra hesap, atölye, ilan. Eskiden ekspertizsiz araçta ilk blok atölyeydi,
+     Hazırla 1-2 ekran aşağıdaydı. */
   openSheet(sheetHead(c)+teklifKarti+
-    atolyeBlok(c,"repair")+
-    `<button class="btn ghost full" data-act="carfile" data-id="${c.id}" data-back="own" style="margin-bottom:10px">
-       Ara&ccedil; dosyası &middot; alış, tamirler, rapor</button>`+
+    (c.listPrice?"":hazirlaKart(c))+
+    bilinenDert(c.model, c)+
     valueBlock(c)+emanet+head+
+    atolyeBlok(c,"repair")+
     (c.inspected?"":`<button class="btn full" data-act="eksper" data-id="${c.id}" style="margin-bottom:10px" ${S.cash<eksperFiyat()?"disabled":""}>Ekspertize ver &middot; ${c.gunun?"bedava":tl(eksperFiyat())}</button>`)+
     condBlock(c,c.inspected)+
+    `<button class="btn ghost full" data-act="carfile" data-id="${c.id}" data-back="own" style="margin-bottom:10px">
+       Ara&ccedil; dosyası &middot; alış, tamirler, rapor</button>`+
     historyBlock(c)+sellPart);
 }
 function repairCost(f){
@@ -2646,41 +2676,28 @@ function renderNeg(){
         <div class="sheet-sub">${c.model.n} ${c.year}</div></div>
       <button class="x" data-act="close" aria-label="Kapat">&times;</button></div>
 
-    <section class="sahne">
-      <div class="sahne-arac">${aracFoto(c,"tam")}</div>
-      <div class="sahne-on">
-        <div class="sahne-yuz">${yuzKart(c.seller.k, c.seller.n, c.seller.d, n.mood,
-                  clamp(n.pat/Math.max(1,patMax),0,1), MOOD_LBL(n.mood), MOOD_COL(n.mood))}</div>
-        <div class="sahne-fiyat">
-          <span>${n.sonKarsi&&n.sonKarsi<c.ask?(n.tabanSoz?"SON S&Ouml;Z&Uuml;":"SATICININ TEKLİFİ"):"İSTENEN"}</span>
-          <b>${tl(n.sonKarsi&&n.sonKarsi<c.ask?n.sonKarsi:c.ask)}</b>
-          ${n.sonKarsi&&n.sonKarsi<c.ask?`<i>ilan ${tl(c.ask)}</i>`:""}
-          <i class="${payi>0?"pos":payi<0?"neg":""}">a&ccedil;tığın pay ${payi>0?"+":""}%${payi}</i>
-        </div>
+    ${/* Kompakt pazarlık başlığı (v3 kararı 5): araç sahnesi + yüz kartı +
+         ruh hâli/sabır bloğu ekranın üçte birini yiyordu (160-270px), hamleler
+         ve son mesaj görünmüyordu. Tek satır: yüz · ad + iki mini çubuk · fiyat. */""}
+    <section class="negbas">
+      <div class="yuzcer" style="--mrenk:${MOOD_COL(n.mood)}">${yuzSvg(c.seller.k, n.mood, clamp(n.pat/Math.max(1,patMax),0,1))}</div>
+      <div class="nb-orta">
+        <b>${c.seller.n}</b>
+        <div class="nb-cubuk"><span>Ruh h&acirc;li</span><i><s style="width:${n.mood}%;background:${MOOD_COL(n.mood)}"></s></i><em style="color:${MOOD_COL(n.mood)}">${MOOD_LBL(n.mood)}</em></div>
+        <div class="nb-cubuk"><span>Sabır</span><i><s style="width:${clamp(n.pat/patMax*100,0,100)}%;background:${n.pat>1?"var(--sodium)":"var(--zarar)"}"></s></i><em>${Math.max(0,n.pat)}/${patMax}</em></div>
+      </div>
+      <div class="nb-fiyat">
+        <span>${n.sonKarsi&&n.sonKarsi<c.ask?(n.tabanSoz?"SON S&Ouml;Z&Uuml;":"SATICININ TEKLİFİ"):"İSTENEN"}</span>
+        <b>${tl(n.sonKarsi&&n.sonKarsi<c.ask?n.sonKarsi:c.ask)}</b>
+        ${n.sonKarsi&&n.sonKarsi<c.ask?`<small>ilan ${tlk(c.ask)}</small>`:`<small class="${payi>0?"pos":payi<0?"neg":""}">pay ${payi>0?"+":""}%${payi}</small>`}
       </div>
     </section>
+    ${n.distrust?`<div class="sec-note" style="color:var(--red);margin:-4px 0 8px">Sana g&uuml;venmiyor &mdash; kozların yarı etkili.</div>`:""}
 
-    <div class="block" style="padding:11px 12px">
-      <div class="gauge">
-        <div class="gwrap">
-          <div class="glbl"><span>RUH H&Acirc;Lİ</span><span style="color:${MOOD_COL(n.mood)}">${MOOD_LBL(n.mood)}</span></div>
-          <div class="gmeter"><i style="width:${n.mood}%;background:${MOOD_COL(n.mood)}"></i></div>
-        </div>
-        <div class="gwrap">
-          <div class="glbl"><span>SABIR</span><span>${Math.max(0,n.pat)} / ${patMax}</span></div>
-          <div class="gmeter"><i style="width:${clamp(n.pat/patMax*100,0,100)}%;background:${n.pat>1?"var(--sodium)":"var(--zarar)"}"></i></div>
-        </div>
-      </div>
-      ${n.distrust?`<div class="sec-note" style="color:var(--red);margin-top:8px">Sana g&uuml;venmiyor &mdash; kozların yarı etkili.</div>`:""}
-    </div>
-
+    ${!n.done&&moves?`${!c.inspected&&!n.known.length?`<div class="sec-note" style="margin:0 0 6px">Ekspertizsiz &mdash; kozun yok, yalnız bl&ouml;f.</div>`:""}<div class="movegrid">${moves}</div>`:""}
     <div class="talk" id="talkKutu">${n.log.map(m=>`<div class="bub ${m.who}">${m.t}</div>`).join("")}</div>
 
     ${n.done?`<button class="btn full" data-act="close">Kapat</button>`:`
-      ${moves?`<div style="display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 4px">
-        <span class="sec-note" style="letter-spacing:.11em;text-transform:uppercase;font-size:10px">Hamleler</span>
-        <span class="sec-note">${!c.inspected&&!n.known.length?"ekspertizsiz &mdash; sadece bl&ouml;f":""}</span></div>
-        <div class="movegrid">${moves}</div>`:""}
 
       <div class="actionbar kompakt">
         <div class="ruler">
@@ -2698,12 +2715,12 @@ function renderNeg(){
           &middot; tavan ${tlk(senetTavanNakit())}</small></span>
           ${swc("senetac", !!n.senet)}</div>`:""}
         ${n.counter?`<button class="btn primary full" data-act="acceptcounter">Kabul et &middot; ${tl(n.counter)}</button>`:""}
-        <div class="quick">
+        <details class="hizli"><summary>Hızlı ayar &middot; &minus;%10 &hellip; tavan</summary><div class="quick">
           <button data-act="q" data-p="-10">&minus;%10</button>
           <button data-act="q" data-p="-5">&minus;%5</button>
           <button data-act="q" data-p="5">+%5</button>
           <button data-act="q" data-p="10">+%10</button>
-          ${(()=>{ const o=onerilenTeklif(c); return `<button class="oneri-kisa" data-act="oneriteklif" data-v="${o}" title="~%12 kâr payı bırakan tavan">Tavan ${tlk(o)}</button>`; })()}</div>
+          ${(()=>{ const o=onerilenTeklif(c); return `<button class="oneri-kisa" data-act="oneriteklif" data-v="${o}" title="~%12 kâr payı bırakan tavan">Tavan ${tlk(o)}</button>`; })()}</div></details>
         <div class="teklifsatir">
           <input class="offer-input" id="negInput" type="text" inputmode="numeric" value="${num(start)}">
           <button class="btn ${n.counter?"":"primary"}" data-act="offer">Teklif ver</button></div>
@@ -3045,6 +3062,7 @@ function openSaleNeg(oid){
     S.sale={
       carId:car.id, oid:o.oid, bt, base:o.amount, list,
       lifts:0, extras:[], usedKoz:[], taksit:null, takas:o.takas||null,
+      tavanKat: Math.round(Math.min(1, rnd(.965,1.03)*Math.min(1.02,bt.sat.butce))*1000)/1000,
       guven: Math.round(clamp(40+(S.rep-50)*.5+(car.disclosed?12:0)+((o.inspects&&!o.caught)?10:0), 10, 92)),
       ilgi:  Math.round(clamp(62+(S.rep-50)*.3+((o.inspects&&!o.caught)?10:0)-(bt.k==="galerici"?14:0), 20, 95)),
       tur:0, sabir:bt.sat.sabir, aciliyetUsed:false, ekspertizUsed:false, taksitUsed:false, sonUsed:false,
@@ -3084,15 +3102,17 @@ function doSaleMove(kind, idx){
     const k=s.kozlar[+idx]; if(!k||s.usedKoz.includes(+idx)) return;
     s.usedKoz.push(+idx);
     const dim=[1,.85,.7,.55,.45][Math.min(4,s.usedKoz.length-1)];
+    const tavanOnce=buyerCeiling(s);
     s.lifts+=k.lift*dim*bt.sat.ikna;
     saleShift(Math.round(k.guven*dim*bt.sat.ikna), -2);
     saleSay("you", `${k.t}. ${k.d}.`);
-    saleSay("them", sPick([
-      `Onu ben de fark ettim, doğru.`,
-      `Tamam, bu kıymetli. Ama fiyat da fiyat.`,
-      `İyi ki s&ouml;yledin, bu benim i&ccedil;in &ouml;nemliydi.`,
-      `Bunu duymak iyi oldu.`,
-      `Hı hı. Not aldım.`]));
+    /* Koz cevabı sayıyı söyler (v3 kararı 6: "Hı hı. Not aldım." deyip
+       karşı teklif aynı kalıyordu, kozun işe yarayıp yaramadığı belli değildi). */
+    const art=buyerCeiling(s)-tavanOnce;
+    saleSay("them", art>=1000 ? sPick([
+      `Bunu duymak iyi oldu. Bir ${tlk(art)} daha &ccedil;ıkabilirim.`,
+      `Tamam, bu kıymetli. ${tlk(art)} kadar esnerim.`])
+      : `Fiyat zaten ilan fiyatına dayandı; bu koz rakamı oynatmaz ama g&uuml;venimi artırdı.`);
   }
 
   else if(kind==="aciliyet"){
@@ -3208,6 +3228,14 @@ function doSaleOffer(){
      bunu açıkça söyler. Eskiden fazla isteyen oyuncu sessizce açılışın
      altına düşen karşı teklifler alıyordu; kural belli değildi. */
   const onceki=Math.max(s.base||0, s.counter||0);
+  /* Gitmeden önce bir kez uyarır (v3 kararı 6: alıcı "son sözüm" demeden
+     kalkıp gidiyordu). Bu tur gitmez; bundan sonraki fazla istek götürür. */
+  if(s.ilgi<35 && !s.sonSozDedi && r.act!=="accept"){
+    s.sonSozDedi=true; s.ilgi=Math.max(s.ilgi,8);
+    s.counter=Math.max(onceki, Math.min(r.price, price-500));
+    saleSay("them", `Son s&ouml;z&uuml;m ${tl(s.counter)}. Bunun &uuml;st&uuml;ne &ccedil;ıkarsan kalkarım.`);
+    save(); renderSaleNeg(); return;
+  }
   let geriCekti=false;
   if(s.ilgi<25 && s.ilgi>0){ r.price=Math.round(onceki*.95/500)*500; geriCekti=true; }
   s.counter=r.price;
@@ -3367,11 +3395,11 @@ function renderSaleNeg(){
         ${s.takas?`<div class="takas-cip">TAKASLI: nakit + ${s.takas.car.model.n} (bi&ccedil;ilen ${tlk(s.takas.claim)})</div>`:""}
         ${s.counter?`<button class="btn primary full" data-act="saleaccept">
           Kabul et &middot; ${s.takas?`${tlk(s.counter-s.takas.claim)} nakit + ${s.takas.car.model.n.split(" ").slice(0,2).join(" ")}`:tl(s.counter)} <span style="opacity:.75;font-weight:400">(${kar>=0?"+":""}${tlk(kar)})</span></button>`:""}
-        <div class="quick">
+        <details class="hizli"><summary>Hızlı ayar &middot; &plusmn;%2 / %5</summary><div class="quick">
           <button data-act="sq" data-p="-5">&minus;%5</button>
           <button data-act="sq" data-p="-2">&minus;%2</button>
           <button data-act="sq" data-p="2">+%2</button>
-          <button data-act="sq" data-p="5">+%5</button></div>
+          <button data-act="sq" data-p="5">+%5</button></div></details>
         <div class="teklifsatir">
           <input class="offer-input" id="saleInput" type="text" inputmode="numeric" value="${num(start)}">
           <button class="btn ${s.counter?"":"primary"}" data-act="saleoffer">Fiyat ver</button></div>
@@ -3453,8 +3481,26 @@ function openDealSummary(d){
 }
 
 /* ---- müzayede zarf ---- */
+/* Rakip zarfları araç başına bir kez çekilir ve saklanır: Vedat'ın fısıltısı
+   ayrı bir formülle hesaplanıp gerçek zarfla tutmuyordu. Zarf, rakibin
+   gördüğü değerin (gizli kusurların çoğunu görür) %80-102'si; segmentine
+   uymayan rakip ×0,85. Eskiden görünen değer × 0,94-1,10 → kazanan zarf
+   muhammenin 1,3-1,5 katı, oyuncuya marj kalmıyordu (v3 kararı 8). */
+function rakipZarflari(c){
+  if(c.rz) return c.rz;
+  const rv=rivalValue(c), out=[];
+  (S.rivals||[]).forEach((st,i)=>{
+    const def=rivalDef(st,i);
+    const fits=def.segs.includes(c.model.seg);
+    const bid=Math.round(rv*clamp(def.bid*rnd(.95,1.08),.80,1.02)*(fits?1:.85)/500)*500;
+    if(bid<=(st.cash||def.cash)*.6) out.push({n:def.n, bid});
+  });
+  c.rz=out.sort((a,b)=>b.bid-a.bid);
+  return c.rz;
+}
 function openBid(c){
-  const est=Math.round(valueOf(c,true)*0.78/500)*500;
+  const av=valueOf(c,true);
+  const est=Math.round(av*0.82*0.85/500)*500;
   openSheet(`<div class="sheet-head">
       <div><div class="sheet-title">Zarf ver</div>
       <div class="sheet-sub">${c.model.n} ${c.year} · ${mesafe(c.km)}</div></div>
@@ -3462,7 +3508,11 @@ function openBid(c){
     <div class="block"><div class="help">
       <p>Rakip galericiler de zarf veriyor. En yüksek zarf alır, <strong>verdiğin rakamı ödersin</strong>.</p>
       <p>Kaputun altını kimse görmedi — bu yüzden ucuz, bu yüzden riskli.</p></div></div>
-    <div class="sec-note" style="text-align:center;margin-bottom:5px">Zarfın (₺)</div>
+    <div class="block"><div class="kv"><span>Muhammen (a&ccedil;ılış bedeli)</span><b>${tl(Math.round(av*0.7))}</b></div>
+      <div class="kv"><span>Tahmini değer</span><b>${tlk(av*0.82)} – ${tlk(av*1.08)}</b></div>
+      ${(S.muzGecmis||[]).length?`<div class="kv"><span>Son ${S.muzGecmis.length} m&uuml;zayedede kazanan zarf</span><b>ger&ccedil;ek değerin %${Math.round(S.muzGecmis.reduce((a,b)=>a+b,0)/S.muzGecmis.length*100)}'i</b></div>`:""}
+    </div>
+    <div class="sec-note" style="text-align:center;margin-bottom:5px">Zarfın (₺) &middot; &ouml;neri: tahmini değerin alt ucunun %85'i</div>
     ${c.whisper?`<div class="note" style="margin-bottom:10px">
       <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-6 6c0 4 3 5 3 8h6c0-3 3-4 3-8a6 6 0 0 0-6-6z"></path></svg>
       <div>Vedat fısıldadı: en y&uuml;ksek rakip zarfı <b class="mono">${tl(c.whisper.best)}</b> — ${c.whisper.who}.</div></div>`
@@ -3478,23 +3528,12 @@ function resolveAuction(){
     const my=S.auctionBids[c.id];
     if(!my) continue;
     const av=valueOf(c,true);
-    let best=0, winner="";
-    /* Rakipler S.rivals'tan (oyundaki 4 galerici) okunur. Eskiden 10 kayıtlı
-       RIVAL_DEFS dolaşılıp S.rivals[i] isteniyordu; 5. tanımda st tanımsız
-       kalıyor, "Zarfları aç" TypeError ile duruyor ve müzayede hiç
-       sonuçlanmıyordu. */
-    (S.rivals||[]).forEach((st,i)=>{
-      const def=rivalDef(st,i);
-      const fits=def.segs.includes(c.model.seg);
-      const bid=Math.round(av*def.bid*rnd(fits?.94:.72, fits?1.10:.88)/500)*500;
-      if(bid>(st.cash||def.cash)*.6) return;
-      if(bid>best){ best=bid; winner=def.n; }
-    });
-    /* Kazanan zarfın muhammene oranı birikir: oyuncunun tek çıpası buydu
-       ve hiç verilmiyordu (v3 testi, 5 kişi: "rakip muhammenin %33 üstünü
-       verdi, neden bilmiyorum"). */
+    /* Rakipler S.rivals'tan (oyundaki 4 galerici) okunur: RIVAL_DEFS'i
+       dolaşmak 5. tanımda TypeError veriyordu. */
+    const rz=rakipZarflari(c);
+    const best=rz.length?rz[0].bid:0, winner=rz.length?rz[0].n:"";
+    { const tv0=valueOf(c,false); if(tv0>0) S.muzGecmis=(S.muzGecmis||[]).concat([Math.round(Math.max(best,my)/tv0*100)/100]).slice(-5); }
     const muh=Math.round(av*0.7);
-    if(best>0){ S.muzOran=(S.muzOran||[]).concat([Math.round(Math.max(best,my)/muh*100)/100]).slice(-8); }
     if(my>best){
       if(S.cars.length>=S.slots){ results.push(`<div class="block"><b>${c.model.n} ${c.year}</b><div class="sec-note">Kazandın ama park yerin dolu — satış iptal.</div></div>`); continue; }
       if(my>S.cash){ results.push(`<div class="block"><b>${c.model.n} ${c.year}</b><div class="sec-note">Kazandın ama nakit yetmedi — ceza olarak ${tl(450)} kesildi.</div></div>`); S.cash-=450; continue; }
@@ -3506,9 +3545,9 @@ function resolveAuction(){
     }else{
       const tv=valueOf(c,false);
       results.push(`<div class="block"><b>${c.model.n} ${c.year}</b>
-        <div class="sec-note">Kaptırdın · senin ${tl(my)} · ${winner||"rakip"} ${tl(best)} verdi (muhammenin %${Math.round(best/muh*100)}'i)</div>
+        <div class="sec-note">Kaptırdın · senin ${tl(my)} · ${winner||"rakip"} ${tl(best)} verdi</div>
         <div class="kv" style="margin-top:6px"><span>Aracın ger&ccedil;ek değeri</span><b>${tl(tv)}</b></div>
-        <div class="sec-note">${best>tv?`Rakip ${tl(best-tv)} fazla ödedi &mdash; iyi ki kaptırmışsın.`:`Rakip ${tl(tv-best)} k&acirc;rla aldı.`}</div></div>`);
+        <div class="sec-note">Kazanan zarf ger&ccedil;ek değerin %${Math.round(best/tv*100)}'i &mdash; ${best>tv*1.02?`rakip ${tl(best-tv)} fazla ödedi, iyi ki kaptırmışsın.`:best<tv*.98?`rakip ${tl(tv-best)} pay bıraktı; daha y&uuml;ksek zarf k&acirc;rlıydı.`:"başa baş bir zarf."}</div></div>`);
     }
   }
   S.auctionBids={};
@@ -3947,6 +3986,9 @@ document.addEventListener("click",e=>{
     car.sunum=i; save(); renderHud(); openOwnCar(car); return;
   }
   if(a==="unlist"){ car.listPrice=null; save(); closeSheet(); render(); return; }
+  if(a==="araac"){ ARA_ACIK=!ARA_ACIK; render(); if(ARA_ACIK){ const i=document.getElementById("araInput"); if(i) i.focus(); } return; }
+  if(a==="rayhepsi"){ RAY_HEPSI=true; render(); return; }
+  if(a==="listemod"){ S.listeMod=(S.listeMod||"kompakt")==="kompakt"?"foto":"kompakt"; save(); render(); return; }
   if(a==="cutto"){ const v=+b.dataset.v; if(!car||!v) return;
     car.listPrice=v; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
     toast(`${car.model.n}: yeni fiyat ${tl(v)}`,"good"); save();
@@ -4035,16 +4077,8 @@ document.addEventListener("click",e=>{
     if(!(S.favors&&S.favors.vedat)){ toast("Vedat&#39;tan iyilik istemedin.","bad"); return; }
     S.favors.vedat=false;
     const c=findCar(id); if(!c) return;
-    const av=valueOf(c,true);
-    let best=0,who="";
-    // yalnız oyundaki rakiplerin zarfı (tanım listesinin tamamı değil)
-    (S.rivals||[]).forEach((st,i)=>{
-      const def=rivalDef(st,i);
-      const fits=def.segs.includes(c.model.seg);
-      const bid=Math.round(av*def.bid*(fits?1.02:.80)/500)*500;
-      if(bid>best){best=bid;who=def.n;}
-    });
-    c.whisper={who,best};
+    const rz=rakipZarflari(c);
+    c.whisper={who:rz.length?rz[0].n:"kimse", best:rz.length?rz[0].bid:0};
     toast("Vedat fısıldadı.","good"); save(); openBid(c); return;
   }
   if(a==="savebid"){

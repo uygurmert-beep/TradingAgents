@@ -303,6 +303,57 @@ for m in M:
     m["zf"] = [a] if a == b else [a, b]
     m["km"] = km_esigi(m)
 
+# ======================= elle düzeltmeler (v3 oyun testi) =======================
+# Yordamsal imza arızası marka profilinden geliyor; bazı modellerin gerçek
+# karakteriyle tutmuyordu (araba tutkunu + oyun tasarımcısı, karar 9 /
+# OYUN-TESTI-KARARLAR-v3.md §4.1): zincirli motorda "triger", çift kavramalı
+# otomatik ailesinde "debriyaj", üretimi bitmiş modelde 2020 yılı vb.
+# Ad ve sıra DEĞİŞMEZ: kayıt modeli dizi sırasıyla, koleksiyon adla tutuyor.
+# ky:"zincir" → genCar bu modelde "triger" üretmez.
+ELLE = {
+  "Bavera E30 2.0":                 dict(zf=["triger","yagkacak"]),
+  "Hessler 190 2.0":                dict(zf=["altsac","yagkacak"], ky="zincir"),
+  "Vernon Mk1 3.5":                 dict(zf=["altsac","aku"], ky="zincir"),
+  "Volkheim Böcek 1.2":             dict(zf=["altsac","yagkacak"]),
+  "Fiyat Şahan 1.6":                dict(y=[1984,2002], dem=1.10),
+  "Fiyat Linas 1.3 Dizel":          dict(y=[2007,2018], zf=["debriyaj","klima"], ky="zincir"),
+  "Fiyat Egeo 1.3 Dizel":           dict(y=[2016,2024], zf=["kapiboya","multimedya"], ky="zincir"),
+  "Fiyat Egeo Sedan 1.6 Dizel":     dict(g=.40, zf=["otosanziman","kapiboya"]),
+  "Perrin 208 1.5 Dizel":           dict(y=[2018,2024]),
+  "Tanaro Aurin 1.8 Hibrit":        dict(y=[2013,2019]),
+  "Volkheim Golfo 1.6 Dizel":       dict(zf=["enjektor","debriyaj"]),
+  "Volkheim Golfo 1.4 Turbo":       dict(y=[2012,2020], g=.80, zf=["otosanziman","zincir"], ky="zincir"),
+  "Volkheim Passo 1.6 Dizel":       dict(g=.75, zf=["otosanziman","enjektor"]),
+  "Volkheim Jetro 1.4 Benzin":      dict(g=.80, zf=["otosanziman","aku"]),
+  "Renolta Meganta 1.5 Dizel":      dict(g=.50, zf=["otosanziman","enjektor"]),
+  "Renolta Meganto Sedan 1.5 Dizel":dict(g=.55, zf=["otosanziman","multimedya"]),
+  "Renolta Flanso 1.5 Dizel":       dict(g=.50, zf=["otosanziman","enjektor"]),
+  "Skava Oktan 1.6 Dizel":          dict(g=.50, zf=["otosanziman","enjektor"]),
+  "Skava Oktan Sedan 1.6 Dizel":    dict(g=.52, zf=["otosanziman","enjektor"]),
+  "Bavera 320 2.0 Dizel":           dict(g=.95, zf=["zincir","enjektor"], ky="zincir"),
+  "Bavera 520 2.0 Dizel":           dict(g=.96, zf=["zincir","turbo"], ky="zincir"),
+  "Hessler A160 1.6 Dizel":         dict(g=.95, zf=["enjektor","otosanziman"]),
+  "Hessler C200 2.0 Dizel":         dict(g=.97, zf=["enjektor","turbo"]),
+  "Hanseul Tucana 1.6 Dizel":       dict(rel=.78, zf=["otosanziman","enjektor"]),
+  "Kiva Sportago 1.6 Dizel":        dict(rel=.78, zf=["otosanziman","torpido"]),
+  "Honzo CRV 1.6 Dizel":            dict(y=[2015,2021], g=.55),
+  "Vernon Highland 3.0 Dizel":      dict(y=[2013,2021], zf=["suspansiyon","beyin"]),
+  "Brickley Contin 3.0 Benzin":     dict(zf=["yagkacak","suspansiyon"]),
+  "Calvetti Giulio 2.0 Dizel":      dict(zf=["aku","multimedya"]),
+  "Fiyat Dobla 1.6 Dizel":          dict(zf=["enjektor","debriyaj"]),
+  "Daçya Duste 1.5 Dizel":          dict(zf=["enjektor","torpido"]),
+  # ikinci el elektrikli: batarya ve teknoloji kaygısı talebi düşürür
+  "Orvell E2 Elektrik":   dict(dem=.92), "Voltaro V1 Elektrik": dict(dem=.90),
+  "Amperon A3 Elektrik":  dict(dem=.95), "Orvell E4 Elektrik":  dict(dem=.93),
+  "Voltaro V5 Elektrik":  dict(dem=.94), "Amperon S Elektrik":  dict(dem=.95),
+}
+_adlar = {m["n"] for m in M}
+for ad, d in ELLE.items():
+    assert ad in _adlar, "ELLE: model yok: " + ad
+for m in M:
+    for k, v in ELLE.get(m["n"], {}).items():
+        m[k] = v
+
 # ======================= doğrulama + çıktı =======================
 from collections import Counter
 say = Counter(m["seg"] for m in M)
@@ -330,6 +381,7 @@ for m in M:
          f' f:"{m["f"]}", g:{m["g"]:.2f},' +
          f' y:[{m["y"][0]},{m["y"][1]}],' +
          ' zf:[' + ",".join(f'"{z}"' for z in m["zf"]) + f'], km:{m["km"]}' +
+         (f', ky:"{m["ky"]}"' if m.get("ky") else "") +
          (", cl:1" if m["cl"] else "") + "}")
     satir.append(s)
 js = "const MODELS=[\n" + ",\n".join(satir) + "\n];"
