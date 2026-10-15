@@ -31,6 +31,8 @@ const PARA={
   senetTavan:  2.2        // nakdinin en çok bu katına kadar araç alınabilir
 };
 
+/* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
+const OYUN_SURUM="1.0";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
@@ -1922,7 +1924,7 @@ function viewAyar(){
 
     <button class="btn ghost full danger" data-act="reset" style="margin-top:6px">Baştan başla</button>
     <div class="sec-note" style="text-align:center;margin-top:10px;color:var(--muted-2)">
-      Kelepir &middot; reklamsız, &ccedil;evrimdışı, uygulama i&ccedil;i satın alma yok</div>`;
+      Kelepir ${OYUN_SURUM} &middot; reklamsız, &ccedil;evrimdışı, uygulama i&ccedil;i satın alma yok</div>`;
 }
 
 /* ================= modal ================= */
@@ -4360,7 +4362,7 @@ function renderIntro(){
       ${S.demoYapildi?`<div class="demonot">Tanıtım turu tamam &mdash; ${tl(demoKar())} k&acirc;r kasana eklenecek</div>`:""}
       <button class="btn primary full" data-act="startgame">Galeriyi a&ccedil;</button>
       ${S.demoYapildi?"":`<button class="btn full" data-act="demoac">İlk kez mi? Tanıtım turu &middot; 1 dk</button>`}
-      <div class="hint">İlerlemen bu cihazda saklanır &middot; reklamsız, &ccedil;evrimdışı</div>
+      <div class="hint">S&uuml;r&uuml;m ${OYUN_SURUM} &middot; İlerlemen bu cihazda saklanır &middot; reklamsız, &ccedil;evrimdışı</div>
     </div>`;
   document.getElementById("intro").classList.remove("hidden");
   try{ muzikKip("menu"); }catch(e){}
