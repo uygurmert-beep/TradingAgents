@@ -407,6 +407,11 @@ Testler kırmızıyken iş bitmiş sayılmaz.
 - **Pazar listesi varsayılan kompakt** (`S.listeMod`), BUGÜN şeridi 5 kart (`RAY_HEPSI`),
   arama satırı büyüteçle (`ARA_ACIK`). "Günü bitir" `render()` içinde eksik sekmeye eklenir;
   pencere açıkken arkadaki düğme sayılmaz.
+- **3B sahnenin dokunma dinleyicisi** (`bind3d`, `#world` touchstart → preventDefault)
+  arayüz öğelerini (`#w3dtop`, `#w3dbar`, düğmeler) muaf tutmalı; yoksa iPhone'da
+  üstteki "Liste"/"Günü bitir" tıklaması hiç oluşmuyor (1.0.1). `v3-test.js` ölçüyor.
+- **Sayfa yeniden çizilince kaydırma dokunulan düğmeye sabitlenir** (`SAYFA_TIK`,
+  atölyede `.atolye` bloğu); yalnız sayısal `scrollTop` iOS'ta yetmiyordu.
 - **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir

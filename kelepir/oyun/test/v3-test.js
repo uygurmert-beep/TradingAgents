@@ -171,6 +171,17 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('çok büyük yazıda ikincil metin ≥15,6px', ek.yazi);
   t('çok büyük yazıda yatay taşma yok', ek.tasma);
 
+  // 1.0 geri bildirimi: 3B'de üst düğmelere dokunuş sahneye yutuluyordu (iPhone)
+  const dok=await p.evaluate(()=>{
+    const host=document.getElementById('world');
+    return ['.w3dback','.w3dgun'].map(sel=>{
+      const el=host.querySelector(sel); if(!el) return false;
+      const ev=new Event('touchstart',{bubbles:true,cancelable:true});
+      el.dispatchEvent(ev); return !ev.defaultPrevented;
+    });
+  });
+  t('3B üst düğmelerde dokunuş engellenmiyor (Liste, Günü bitir)', dok.every(Boolean));
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   console.log(`\n${ok} geçti, ${fail} kaldı`);
   await b.close();

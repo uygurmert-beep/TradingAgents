@@ -32,7 +32,7 @@ const PARA={
 };
 
 /* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
-const OYUN_SURUM="1.0";
+const OYUN_SURUM="1.0.1";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
@@ -1621,6 +1621,12 @@ function viewGaraj(){
       <button class="${g==="teklif"?"on":""}" data-act="garajtab" data-g="teklif">Teklif <em>${grup.teklif.length}</em></button>
     </div>
     ${S.cars.length>3?araSerit("own"):""}
+    ${/* "İlan vermeye çalışıyorum, beceremiyorum — ha araca girip oradanmış"
+         (1.0 geri bildirimi): Hazırlıkta sekmesi ne yapılacağını söyler ve
+         ilk araç için doğrudan Hazırla düğmesi verir. */
+      g==="hazir"&&grup.hazir.length?`<div class="garaj-ipucu">
+        <b>Satmak i&ccedil;in:</b> araca dokun &rarr; <i>Hazırla ve ilana koy</i>. Ekspertiz, k&acirc;rlı tamir ve ilan tek dokunuşta.
+        <button class="btn primary full" data-act="hazirla" data-id="${grup.hazir[0].id}" style="margin-top:8px">${grup.hazir[0].model.n} &middot; Hazırla ve ilana koy</button></div>`:""}
     <div id="listeKap">${garajListesi(grup[g], g)}</div>
     <button class="btn primary full" data-act="endday" style="margin-top:4px">G&uuml;n&uuml; bitir &rarr;</button>`;
 }
@@ -1943,6 +1949,18 @@ function sheetAnahtar(html){
   return (al("sheet-title")+"|"+al("sheet-sub"))
     .replace(/<[^>]*>/g,"").replace(/\s+/g," ").trim();
 }
+let SAYFA_TIK=null;   // geçici: sayfada son dokunulan düğmenin konumu
+function sayfaTikKaydet(b){
+  const sheet=document.getElementById("sheet");
+  if(!b || !sheet || !sheet.contains(b)) return;
+  const at=["data-act","data-k","data-f","data-id","data-i","data-g"].filter(a=>b.hasAttribute(a))
+    .map(a=>`[${a}="${CSS.escape(b.getAttribute(a))}"]`).join("");
+  const blokEl=b.closest(".atolye,.block,section");
+  const blok=blokEl ? (blokEl.classList.contains("atolye")?".atolye":null) : null;
+  const ref=(blok&&b.closest(".atolye"))||b;
+  SAYFA_TIK={sel:at||null, blok, top:(blok?ref:b).getBoundingClientRect().top};
+  if(blok) SAYFA_TIK.sel=null;   // atölye satırı tamirden sonra kaybolur: bloğu sabitle
+}
 function openSheet(html, sinif){
   const el=document.getElementById("sheet");
   const modal=document.getElementById("modal");
@@ -1964,7 +1982,21 @@ function openSheet(html, sinif){
   if(acikti && yeniAnahtar && yeniAnahtar===eskiAnahtar){
     // İçerik kısalmış olabilir (tamir edilen satır listeden düştü) — kırp.
     el.scrollTop=Math.max(0, Math.min(eskiKaydirma, el.scrollHeight-el.clientHeight));
+    /* Sayı yetmiyor: dokunulan düğmenin üstündeki içerik boy değiştirince
+       (Hazırla kartı, değer bloğu) ya da iOS yerleşimi geç bitirince sayfa
+       kayıyordu — "atölyede farklı tuşa basınca en tepeye dönüyor" (1.0
+       geri bildirimi). Dokunulan düğme (yoksa bulunduğu blok) ekranda aynı
+       yere sabitlenir; bir kare sonra bir kez daha. */
+    const cpa=SAYFA_TIK; SAYFA_TIK=null;
+    if(cpa){
+      const sabitle=()=>{
+        const h=(cpa.sel&&el.querySelector(cpa.sel))||(cpa.blok&&el.querySelector(cpa.blok));
+        if(h) el.scrollTop+=h.getBoundingClientRect().top-cpa.top;
+      };
+      sabitle(); requestAnimationFrame(sabitle);
+    }
   }else{
+    SAYFA_TIK=null;
     el.scrollTop=0;
   }
   // Pazarlık ekranlarında son mesaj hep görünsün.
@@ -3685,6 +3717,7 @@ const SES_EYLEM={
 };
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-act]"); if(!b) return;
+  try{ sayfaTikKaydet(b); }catch(_){}
   const a=b.dataset.act, id=b.dataset.id;
   const car=id?findCar(id):null;
   if(S.tutorial){ if(!S.ogretIz) S.ogretIz={}; S.ogretIz[a]=true; }
@@ -4407,11 +4440,16 @@ function boot(fresh){
 (function bind3d(){
   const host=document.getElementById("world");
   if(!host) return;
-  host.addEventListener("touchstart", e=>{ if(e.target.closest("#w3dbar")) return; W3D.pointerDown(e); e.preventDefault();}, {passive:false});
+  /* Düğmelere gelen dokunuş sahneye gitmez: eskiden yalnız alt çubuk muaftı,
+     üstteki "Liste", kasa ve "Günü bitir" düğmelerinde touchstart'a
+     preventDefault uygulanıyor, iPhone'da tıklama hiç oluşmuyordu (1.0 geri
+     bildirimi: "3B garajdan çıkamıyorum, günü bitiremiyorum"). */
+  const arayuz=(e)=>!!(e.target.closest && e.target.closest("#w3dbar,#w3dtop,button,[data-act],a,input,select"));
+  host.addEventListener("touchstart", e=>{ if(arayuz(e)) return; W3D.pointerDown(e); e.preventDefault();}, {passive:false});
   host.addEventListener("touchmove",  e=>{W3D.pointerMove(e); e.preventDefault();}, {passive:false});
   host.addEventListener("touchend",   e=>{W3D.pointerUp(e);}, {passive:false});
   host.addEventListener("touchcancel",e=>{W3D.pointerUp(e);}, {passive:false});
-  host.addEventListener("mousedown", e=>{ if(e.target.closest("#w3dbar")) return; W3D.pointerDown(e); });
+  host.addEventListener("mousedown", e=>{ if(arayuz(e)) return; W3D.pointerDown(e); });
   window.addEventListener("mousemove", e=>W3D.pointerMove(e));
   window.addEventListener("mouseup",   e=>W3D.pointerUp(e));
   host.addEventListener("wheel", e=>W3D.tekerlek(e), {passive:false});

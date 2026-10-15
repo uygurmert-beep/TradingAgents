@@ -3767,7 +3767,7 @@ const W3D=(()=>{
         <button class="w3dok" data-act="w3dsonra" aria-label="Sonraki araç">&rsaquo;</button>
       </div>
       ${gz}
-      <button class="btn primary full" data-act="w3dopen">İncele</button>
+      <button class="btn primary full" data-act="w3dopen">${mode==="garaj"&&!c.listPrice?"A&ccedil; &middot; ilana koy":"İncele"}</button>
       <div class="w3dhint">Sürükle: etrafında dön &middot; iki parmak: yakınlaş</div>`;
   }
 
