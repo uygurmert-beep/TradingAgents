@@ -25,7 +25,8 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   await p.evaluate(()=>{try{localStorage.clear()}catch(e){}});
   await p.reload(); await p.waitForSelector('[data-act="startgame"]');
   await p.click('[data-act="startgame"]'); await p.waitForTimeout(600);
-  await p.evaluate(()=>{ S.tutorial=false; S.ogretAdim=99; S.cash=8000000; render(); });
+  // yan sistemlerin hepsi bu testte baştan açık (kademeli açılış v3-test'te ölçülüyor)
+  await p.evaluate(()=>{ S.tutorial=false; S.ogretAdim=99; S.cash=8000000; S.hepsiAcik=true; render(); });
   await p.waitForTimeout(250);
 
   /* ---------- 1) arama ---------- */

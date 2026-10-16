@@ -52,7 +52,7 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   await p.click('#tabs [data-t="ayar"]'); await p.waitForTimeout(300);
   t('ayarlar ekranı açıldı', await p.evaluate(()=>S.tab==="ayar"));
   const sw=await p.$$('.swc');
-  t('üç toggle var (ses, müzik, hareketi azalt)', sw.length===3);
+  t('beş toggle var (ses, müzik, hareketi azalt, usta notları, bütün sistemler)', sw.length===5);
   const sesOnce=await p.evaluate(()=>sesKapaliMi());
   await p.click('.swc[data-act="ses"]'); await p.waitForTimeout(250);
   t('ses anahtarı durumu değişti', await p.evaluate(x=>sesKapaliMi()!==x, sesOnce));

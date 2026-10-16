@@ -79,6 +79,7 @@ function _grpKulis(kim){
 }
 
 KANCA.gun.push(rep=>{
+  if(!acikMi("grup")) return;   // kademeli açılış (Ö1)
   const g=grupDurum();
   // önce bekleyenleri sonuçlandır
   for(const m of g.m){
@@ -146,6 +147,7 @@ function openGrup(){
 
 KANCA.ikon.grup='<path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/>';
 KANCA.ray.push(()=>{
+  if(!acikMi("grup")) return [];
   const g=grupDurum(); if(!g.m.length) return [];
   const son=g.m[g.m.length-1], n=grupOkunmamis();
   const ozet=son.metin.replace(/<[^>]+>/g,"").replace(/&[a-z]+;/g,c=>({"&uuml;":"ü","&ouml;":"ö","&ccedil;":"ç","&mdash;":"—"}[c]||""));

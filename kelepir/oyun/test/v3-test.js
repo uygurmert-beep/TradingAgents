@@ -182,6 +182,50 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   });
   t('3B üst düğmelerde dokunuş engellenmiyor (Liste, Günü bitir)', dok.every(Boolean));
 
+  console.log('8) kademeli açılış (1.1)');
+  const ka=await p.evaluate(()=>{
+    const r={};
+    // yeni kariyer benzetimi: satışsız oyuncu
+    S.acilan={}; S.yeniSistem={}; S.hepsiAcik=false; S.prestij=0; S.stats.sold=0; S.orders=[]; S.konsTeklif=null; S.parti=null; S.day=1;
+    S.cars=[]; S.tutorial=false; S.tab="pazar";
+    const say=()=>{ render(); return document.querySelectorAll('.ray .ajkart:not(.ajtumu)').length + (document.querySelector('.ray .ajtumu')?99:0); };
+    r.g=[];
+    for(let d=1; d<=3; d++){ r.g.push(say()); closeSheet(); S.report=null; nextDay(); S.report=null; closeSheet(); }
+    r.siparisYok=(S.orders||[]).length===0 && S.konsTeklif==null;
+    // ilk satış sonrası: her gün en çok bir YENİ
+    S.stats.sold=1; r.yeni=[];
+    for(let d=0; d<4; d++){ nextDay(); S.report=null; closeSheet(); r.yeni.push(Object.keys(S.yeniSistem||{}).length); S.yeniSistem={}; }
+    r.acilanSay=Object.keys(S.acilan).length;
+    return r;
+  });
+  t(`satışsız oyuncuda 1.-3. gün rayda ≤3 kart (${ka.g.join(", ")})`, ka.g.every(x=>x<=3));
+  t('ilk satıştan önce sipariş ve emanet yok', ka.siparisYok);
+  t(`satıştan sonra günde en çok bir yeni sistem (${ka.yeni.join(", ")})`, ka.yeni.every(x=>x<=1) && ka.acilanSay>=2);
+
+  console.log('9) usta notu (1.1)');
+  const un=await p.evaluate(()=>{
+    const r={}; S.ustaNotKapali=false; S.day=3; S.stats.sold=0;
+    // 1) pahalı ilan, teklif yok
+    const c=genCar(); c.owned=true; c.inspected=true; c.disclosed=true; c.boughtFor=100000; c.spent=0; c.daysListed=3;
+    c.listPrice=Math.round(valueOf(c,false)*1.15); S.cars=[c];
+    const a1=ustaNotu([]); r.k1=a1&&a1.act==="cutto" && /\d/.test(a1.t) && a1.t.length<=140;
+    // 2) maliyet altı teklif
+    c.listPrice=Math.round(valueOf(c,false)); c.boughtFor=valueOf(c,false)*2;
+    const a2=ustaNotu([{oid:1, carId:c.id, amount:Math.round(valueOf(c,false))}]); r.k2=a2&&a2.act==="salenego";
+    // 3) boş garaj
+    S.cars=[]; S.cash=Math.max(S.cash, 5e6); const a3=ustaNotu([]); r.k3=a3&&a3.act==="ustapazar";
+    // 4) ekspertizsiz araç
+    const d=genCar(); d.owned=true; d.inspected=false; d.boughtDay=S.day-1; S.cars=[d]; const a4=ustaNotu([]); r.k4=a4&&a4.act==="hazirla";
+    // 8. günden sonra ve 3 satıştan sonra yok
+    S.day=9; S.stats.sold=3; r.yok=ustaNotu([])===null;
+    S.cars=[]; return r;
+  });
+  t('usta notu: pahalı ilanda fiyat indirme', un.k1);
+  t('usta notu: maliyet altı teklifte pazarlık', un.k2);
+  t('usta notu: boş garajda pazara yönlendirme', un.k3);
+  t('usta notu: ekspertizsiz araçta Hazırla', un.k4);
+  t('usta notu: ilk günler geçince çıkmıyor', un.yok);
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   console.log(`\n${ok} geçti, ${fail} kaldı`);
   await b.close();

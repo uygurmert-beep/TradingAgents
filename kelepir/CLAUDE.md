@@ -86,13 +86,13 @@ node test/test.js          # ana akış dumanı
 node test/yeni-test.js     # kural motoru (116 kontrol)
 node test/ux-test.js       # arayüz, yeni sistemler, 3B profil, kolay oynanış, marka şeridi, foto, 6 yan sistem (139 kontrol; UX_TOHUM ile pazar değişir)
 node test/magaza-test.js   # mağaza/kabuk uyumu (26 kontrol)
-node test/tut.js           # rehber (onboarding)
+node test/tut.js           # rehber (7 adım, vurguyu izleyen oyuncu ≤15 dokunuşta ilk satış)
 node test/gunluk.js        # günlük görevler
 node test/kayittest.js     # kayıt / dışa aktarma / içe alma
 node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
 node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz (27 kontrol, ~1 dk)
-node test/v3-test.js       # v3 oyun testi kararları: araç karakteri, taksit, pazarlık/satış/müzayede kuralları, yeni ekranlar (35 kontrol)
+node test/v3-test.js       # v3 kararları + 1.1: araç karakteri, taksit, pazarlık/satış/müzayede, yeni ekranlar, kademeli açılış, usta notu (44 kontrol)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
 
@@ -412,6 +412,15 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   üstteki "Liste"/"Günü bitir" tıklaması hiç oluşmuyor (1.0.1). `v3-test.js` ölçüyor.
 - **Sayfa yeniden çizilince kaydırma dokunulan düğmeye sabitlenir** (`SAYFA_TIK`,
   atölyede `.atolye` bloğu); yalnız sayısal `scrollTop` iOS'ta yetmiyordu.
+- **Kademeli açılış** (`kanca.js` `ACILIS`, `acikMi(k)`, `acilisGun`): vaka, sipariş,
+  emanet, nabız, grup ve parti satışla açılır, günde en çok biri (`S.acilan`,
+  "YENİ" rozeti `S.yeniSistem`). Yeni bir yan sistem eklersen buraya ekle ve
+  üretimini `acikMi` ile kapıla. Testler `S.hepsiAcik=true` ile hepsini açar.
+- **Rehber 7 adım** (`rehber.js OGRET`): `sec` dizi olabilir; açık sayfada önce
+  sayfa içi hedef aranır. Rehber görünürken vurgusuz an kalmasın (`tut.js` ölçer:
+  vurguyu izleyen oyuncu ilk satışı ≤15 dokunuşta yapar).
+- **Usta notu** (`gunlukritim.js ustaNotu`): ilk 7 gün ya da ilk 3 satışa kadar gün
+  raporunda tek cümle + tek düğme; 4 kural sırası `v3-test.js`'te.
 - **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir

@@ -212,7 +212,7 @@ function yanGorevGun(rep){
     rep.events.push({t:`${S.parti.satici} partiyi başka galeriye verdi.`});
     S.parti=null;
   }
-  if(!S.parti && S.day>=PARTI.ilkGun && S.day-(S.partiSon||0)>=PARTI.bekleme && chance(PARTI.sans)){
+  if(!S.parti && acikMi("parti") && S.day>=PARTI.ilkGun && S.day-(S.partiSon||0)>=PARTI.bekleme && chance(PARTI.sans)){
     S.parti=partiUret();
     /* Kasası yetmeyene parti gelmez (v3 kararı 3): ₺7,3M'lik parti ₺1,6M
        kasaya her gün bildirim olarak düşüyordu. */

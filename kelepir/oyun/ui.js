@@ -32,7 +32,7 @@ const PARA={
 };
 
 /* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
-const OYUN_SURUM="1.0.1";
+const OYUN_SURUM="1.1";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
@@ -341,6 +341,7 @@ function refreshAuction(){
 /* ================= gün döngüsü ================= */
 function nextDay(){
   const rep={day:S.day, costs:[], offers:[], events:[], total:0, season:null};
+  try{ acilisGun(rep); }catch(e){}
   // giderler
   const park=S.cars.length*(zorGercek()?PARA.otoparkZor:PARA.otoparkGun);
   if(park) rep.costs.push(["Otopark / kira", park]);
@@ -453,7 +454,7 @@ function nextDay(){
     return true;
   });
   // İlk sipariş 2. günde garanti gelir: oyuncu bu sistemi ilk oturumda görsün.
-  if(S.orders.length<2 && ((S.day<=2 && S.orders.length===0) || (S.day>2 && chance(S.orders.length?.18:.34)))){
+  if(acikMi("siparis") && S.orders.length<2 && (S.orders.length===0 || chance(.18))){
     const o=genOrder(S.day, level());
     S.orders.push(o);
     rep.events.push({siparis:true, t:`<b>${o.who}</b> ara&ccedil; arıyor: ${SEGLBL[o.seg]} &middot; ${o.minYear}+ &middot; en fazla ${mesafe(o.maxKm)}${o.gear?" &middot; "+o.gear:""}. B&uuml;t&ccedil;e ${tl(o.butce)}, prim ${tl(o.prim)}. ${o.deadline-S.day} g&uuml;n s&uuml;re.`});
@@ -1455,7 +1456,7 @@ function bugunKartlari(){
       bas:o.who, alt:`${SEGLBL[o.seg]} &middot; ${o.minYear}+`, deger:tlk(o.butce+o.prim),
       rozet:uyan?"uyan var":(o.donen?"d&ouml;nen":`${kalan} g&uuml;n`)});
   }
-  try{ const m=meydanDurum(), bitti=meydanOynandiMi();
+  if(acikMi("vaka")) try{ const m=meydanDurum(), bitti=meydanOynandiMi();
     k.push({ik:"vaka", sinif:bitti?"bitti":"", act:"meydanac", bas:"G&uuml;n&uuml;n vakası",
       alt:bitti?`${m.skor}/100 &middot; seri ${m.seri}`:"Tek soru, 20 saniye", rozet:bitti?"&#10003;":""});
   }catch(e){}
@@ -1468,6 +1469,10 @@ function bugunKartlari(){
     bas:sk===0?"Sanayi g&uuml;n&uuml;":"Sanayi g&uuml;n&uuml; yaklaşıyor", alt:`Tamirler %${Math.round(SANAYI.indirim*100)} ucuz`,
     rozet:sk===0?"bug&uuml;n":`${sk} g&uuml;n`});
   k.push(...kancaRay());
+  // yeni açılan sistemin kartı "YENİ" rozetiyle (Ö1)
+  const YENI_ACT={vaka:"meydanac", siparis:"sipac", emanet:"konsac", nabiz:"nabizac", grup:"grupac", parti:"partiac"};
+  for(const [sis,act] of Object.entries(YENI_ACT)) if(S.yeniSistem&&S.yeniSistem[sis])
+    for(const x of k) if(x.act===act){ x.rozet="YENİ"; x.sinif=(x.sinif||"")+" yeni"; x.data=(x.data||"")+` data-yeni="${sis}"`; }
   const h=hedef(), il=hedefIlerleme();
   k.push({ik:"hedef", sinif:il>=1?"bitti":"", act:"hedefac", bas:"Sezon hedefi",
     alt:`${tlk(S.seasonProfit||0)} / ${tlk(h.tutar)}`, rozet:il>=1?"&#10003;":`%${Math.round(il*100)}`, cubuk:il});
@@ -1888,6 +1893,8 @@ function viewAyar(){
         <div class="yazisec" style="margin-top:8px">${[[1,"Normal"],[1.15,"B&uuml;y&uuml;k"],[1.3,"&Ccedil;ok b&uuml;y&uuml;k"]].map(([v,l])=>
           `<button class="${(S.yazi||1)===v?"on":""}" data-act="yazi" data-v="${v}">${l}</button>`).join("")}</div></div>
       <div class="swsat"><span>Hareketi azalt<br><small style="color:var(--muted-2)">Animasyonlar ve sayaçlar durur</small></span>${swc("azhareket", !!S.azHareket)}</div>
+      <div class="swsat"><span>Usta notları<br><small style="color:var(--muted-2)">İlk g&uuml;nlerde gün raporunda tek c&uuml;mlelik ipucu</small></span>${swc("ustanot", !S.ustaNotKapali)}</div>
+      <div class="swsat"><span>B&uuml;t&uuml;n sistemler baştan a&ccedil;ık<br><small style="color:var(--muted-2)">Sipariş, emanet, grup, parti, nabız ve vaka satış beklemeden gelir</small></span>${swc("hepsiacik", !!S.hepsiAcik)}</div>
     </div>
 
     <div class="block"><h4>SES</h4>
@@ -2967,6 +2974,10 @@ function openReport(){
 
     ${ozet}
 
+    ${(()=>{ let u=null; try{ u=ustaNotu(ofs); }catch(e){}
+      return u?`<div class="usta-not"><span class="un-kim">Kaportacı Nuri</span><p>${u.t}</p>
+        <button class="btn small" data-act="${u.act}" ${u.data}>${u.etiket}</button></div>`:""; })()}
+
     ${ofs.length?`<div class="sec-head" style="margin:4px 2px 2px"><h2 class="sec" style="font-size:19px">Gelen teklifler</h2></div>
       ${ofs.map(o=>offerCard(o)).join("")}`
      :bosGunKart()}
@@ -3747,6 +3758,14 @@ document.addEventListener("click",e=>{
     return; }
   cal(SES_EYLEM[a]||"tik");
   titre(a==="endday"||a==="buy"||a==="acceptoffer" ? HAPTIK.orta : HAPTIK.hafif);
+  /* Yeni sistemin ilk dokunuşunda üç satırlık tanıtım (Ö1) */
+  if(b.dataset.yeni && S.yeniSistem && S.yeniSistem[b.dataset.yeni]){
+    const sis=b.dataset.yeni, ac=ACILIS.find(x=>x.k===sis);
+    delete S.yeniSistem[sis]; save();
+    if(ac){ onay(ac.ad, `<p style="margin:0 0 8px">${ac.d}</p><small style="color:var(--label-3)">Yeni bir sistem açıldı. Hazır olduğunda dene; satışların devam ettikçe yenileri gelir.</small>`,
+      "Göster", ()=>{ const t=b.cloneNode(true); delete t.dataset.yeni; t.hidden=true; document.body.appendChild(t); t.click(); t.remove(); }, false, ()=>{ closeSheet(); render(); });
+      return; }
+  }
   if(kancaEylem(a, b, car)) return;
 
   if(a==="ses"){ const kapali=sesAnahtar(); render();
@@ -4131,6 +4150,9 @@ document.addEventListener("click",e=>{
   if(a==="unlist"){ car.listPrice=null; save(); closeSheet(); render(); return; }
   if(a==="araac"){ ARA_ACIK=!ARA_ACIK; render(); if(ARA_ACIK){ const i=document.getElementById("araInput"); if(i) i.focus(); } return; }
   if(a==="alimgit"){ S.neg=null; closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render(); return; }
+  if(a==="ustapazar"){ S.report=null; S.reportStep=0; closeSheet(); S.tab="pazar"; S.filter="butce"; render(); return; }
+  if(a==="ustanot"){ S.ustaNotKapali=!S.ustaNotKapali; save(); render(); return; }
+  if(a==="hepsiacik"){ S.hepsiAcik=!S.hepsiAcik; save(); render(); return; }
   if(a==="yazi"){ S.yazi=+b.dataset.v||1; save(); render(); return; }
   if(a==="azhareket"){ S.azHareket=!S.azHareket; if(!S.azHareket){ try{ CILA.azHareket=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ CILA.azHareket=false; } } save(); render(); return; }
   if(a==="rayhepsi"){ RAY_HEPSI=true; render(); return; }

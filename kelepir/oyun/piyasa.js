@@ -114,7 +114,7 @@ function nabizSatir(seg){
 
 KANCA.ikon.nabiz='<path d="M3 13h4l2-5 4 10 2-5h6"/>';
 KANCA.ray.push(()=>{
-  if(S.day<3) return [];
+  if(S.day<3 || !acikMi("nabiz")) return [];
   const enCok=[...NABIZ_SEG].sort((a,b)=>Math.abs(nabizDegisim(b))-Math.abs(nabizDegisim(a)))[0];
   const ch=nabizDegisim(enCok);
   return [{ik:"nabiz", act:"nabizac", bas:"Piyasa nabzı",

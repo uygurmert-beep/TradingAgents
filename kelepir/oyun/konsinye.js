@@ -79,7 +79,7 @@ function konsinyeGun(rep){
     rep.events.push({t:`${konsSahip(S.konsTeklif.sahip).n} aracını başka bir galeriye bıraktı.`});
     S.konsTeklif=null;
   }
-  if(S.konsTeklif || S.day<KONS.ilkGun || yerDolu()) return;
+  if(S.konsTeklif || S.day<KONS.ilkGun || yerDolu() || !acikMi("emanet")) return;
   const sans=Math.min(KONS.sansTavan, KONS.sans+(S.stats.konsMemnun||0)*KONS.sansUn);
   if(!chance(sans)) return;
   S.konsTeklif=konsTeklifUret();

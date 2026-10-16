@@ -98,3 +98,42 @@ function gunlukSerit(){
     }).join("")}
   </div>`;
 }
+
+/* ==================================================================
+   USTA NOTU (1.1, kavranabilirlik oylaması Ö14)
+   Gün raporu rakam veriyordu ama "ne oldu, şimdi ne yapmalı" demiyordu.
+   İlk 7 günde ya da ilk 3 satışa kadar raporun başında Kaportacı Nuri'den
+   tek cümle (≤140 karakter, en az bir rakam) ve tek eylem düğmesi.
+   GNÇ'nin şartı: rapor en çok ~25 kelime uzar, kapat düğmesi yerinde kalır.
+   Kural sırası: pahalı ilan → maliyet altı teklif → boş garaj → ekspertizsiz araç.
+   ================================================================== */
+function ustaNotu(ofs){
+  if(S.ustaNotKapali) return null;
+  if(!(S.day<=7 || ((S.stats&&S.stats.sold)||0)<3)) return null;
+  ofs=ofs||[];
+  if(!ofs.length){
+    const ilan=S.cars.filter(c=>c.listPrice && c.daysListed>=2)
+      .map(c=>({c, fark:c.listPrice/valueOf(c,!c.disclosed&&!c.inspected)-1}))
+      .sort((a,b)=>b.fark-a.fark)[0];
+    if(ilan && ilan.fark>0.02){
+      const v=valueOf(ilan.c,!ilan.c.disclosed&&!ilan.c.inspected), yeni=Math.round(v*0.99/500)*500;
+      return {t:`${ilan.c.model.n} ilanı piyasanın %${Math.round(ilan.fark*100)} üstünde, alıcı az geliyor.`,
+              etiket:`${tlk(yeni)}'e indir`, act:"cutto", data:`data-id="${ilan.c.id}" data-v="${yeni}"`};
+    }
+  }
+  const dusuk=ofs.map(o=>({o, c:S.cars.find(x=>x.id===o.carId)})).filter(x=>x.c && x.o.amount<carCost(x.c))
+    .sort((a,b)=>(a.o.amount-carCost(a.c))-(b.o.amount-carCost(b.c)))[0];
+  if(dusuk) return {t:`Teklif maliyetinin ${tlk(carCost(dusuk.c)-dusuk.o.amount)} altında; pazarlıkta kozlarını kullan.`,
+              etiket:"Pazarlık et", act:"salenego", data:`data-oid="${dusuk.o.oid}"`};
+  if(!S.cars.length){
+    const n=S.market.filter(c=>c.ask<=S.cash).length;
+    if(n) return {t:`Garaj boş, bütçene uyan ${n} ilan var. Ucuz ve temiz olanla başla.`,
+                  etiket:"Pazara git", act:"ustapazar", data:""};
+  }
+  const ham=S.cars.find(c=>!c.listPrice && !c.konsinye);
+  if(ham && !ham.inspected) return {t:`${ham.model.n} ${Math.max(1,S.day-(ham.boughtDay||S.day))} gündür bekliyor. Ekspertizsiz araç satılmaz: önce Hazırla.`,
+              etiket:"Hazırla", act:"hazirla", data:`data-id="${ham.id}"`};
+  if(ham) return {t:`${ham.model.n} hâlâ ilanda değil; her gün otopark parası yakıyor.`,
+              etiket:"Hazırla", act:"hazirla", data:`data-id="${ham.id}"`};
+  return null;
+}
