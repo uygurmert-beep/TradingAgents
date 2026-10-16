@@ -1,0 +1,90 @@
+apply plugin: 'com.android.application'
+
+// ---- İmza bilgileri ----
+// Şifreler depoya girmez: android/keystore.properties dosyasından okunuyor.
+// Dosya yoksa release yine derlenir, sadece imzasız kalır (o hâliyle Play'e
+// yüklenemez) — böylece projeyi imza olmadan da açıp derleyebilirsin.
+def imzaDosya = rootProject.file("keystore.properties")
+def imza = new Properties()
+if (imzaDosya.exists()) { imza.load(new FileInputStream(imzaDosya)) }
+
+android {
+    namespace = "com.kelepiroyunu.kelepir"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.kelepiroyunu.kelepir"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (imzaDosya.exists()) {
+            release {
+                storeFile     rootProject.file(imza['storeFile'])
+                storePassword imza['storePassword']
+                keyAlias      imza['keyAlias']
+                keyPassword   imza['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (imzaDosya.exists()) { signingConfig signingConfigs.release }
+        }
+    }
+
+    // Play Console 2026: yeni uygulama ve güncellemeler hedef API 36 olmak
+    // zorunda. variables.gradle'da 36 ayarlı; burada yalnızca derleme
+    // seçenekleri sabitleniyor.
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    bundle {
+        language { enableSplit = false }   // tek dil: Türkçe. Bölme gereksiz.
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

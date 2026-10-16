@@ -1,0 +1,16 @@
+# türetilen çıktılar — derleyiciler yeniden üretiyor
+oyun/preloved.html
+oyun/app/
+kelepir-web/
+kelepir-tek.html
+kabuk/www/
+kabuk/node_modules/
+kabuk/android/build/
+kabuk/android/app/build/
+kabuk/android/.gradle/
+kabuk/ios/App/Pods/
+kabuk/ios/DerivedData/
+
+# GİZLİ — yükleme anahtarı asla herkese açık bir depoya girmemeli
+kabuk/android/kelepir-upload.jks
+kabuk/android/keystore.properties
