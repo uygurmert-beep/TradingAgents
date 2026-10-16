@@ -2670,6 +2670,10 @@ function doOffer(){
     return;
   }
   const offer2=offer;
+  if(n.sonRed && offer2<=n.sonRed && n.sonKarsi){
+    toast(`${tl(offer2)} teklifini zaten reddetti. Daha yukarı yaz ya da ${tl(n.sonKarsi)}'i kabul et.`,"warn");
+    return;
+  }
   say("you", tl(offer2));
   const er=negReserve();
   n.sonKarsiOnce=n.sonKarsi||c.ask;
@@ -2711,7 +2715,7 @@ function doOffer(){
       `${tl(r.price)} diyelim, biraz daha yaklaş.`].concat(
         Math.abs(r.price-(offer2+(n.sonKarsiOnce||c.ask))/2)<=Math.max(1000,r.price*.012) ? [`Ne sen yan ne ben: ${tl(r.price)}.`] : [])));
   }
-  n.sonKarsi=r.price;
+  n.sonKarsi=r.price; n.sonRed=offer2;
   if(r.taban) n.tabanSoz=r.price;
   n.counter = r.price<=(n.senet?senetTavanNakit():S.cash) ? r.price : null;
   if(n.pat<=0) endNeg(c);
@@ -2720,7 +2724,10 @@ function doOffer(){
 }
 
 function moveButtons(){
-  const c=findCar(S.neg.carId), n=S.neg, s=c.seller;
+  const c=findCar(S.neg.carId), n=S.neg;
+  // alımdan sonra araçta satıcı silinir: c.seller.sert hata veriyordu
+  if(!c || n.done) return "";
+  const s=c.seller||n.satici||SELLERS[0];
   const b=[];
   n.known.forEach((l,i)=>{
     if(n.usedKoz.includes(i)) return;
@@ -2813,13 +2820,23 @@ function renderNeg(){
           <span>Senetle &ouml;de<br><small>%50 peşin &middot; ${PARA.senetTaksit} taksit &middot; +%7
           &middot; tavan ${tlk(senetTavanNakit())}</small></span>
           ${swc("senetac", !!n.senet)}</div>`:""}
+        ${(()=>{ /* Önerilen teklif satıcının son sözünü bilir (kavranabilirlik
+             oylaması Ö4): "aşağısı yok" denince öneri aynı rakamı tekrar
+             gönderdirmiyordu, oyuncu döngüde kalıyordu. */
+          const son=n.tabanSoz||n.sonKarsi; if(!son) return "";
+          const o=onerilenTeklif(c), deger=valueOf(c,!c.inspected);
+          if(o>=son) return `<div class="oneri-not iyi">Satıcının ${n.tabanSoz?"son sözü":"teklifi"} ${tl(son)} &mdash; &ouml;nerilen tavanının i&ccedil;inde. Kabul etmek mantıklı.</div>`;
+          const pay=Math.round((deger-son)/son*100);
+          return `<div class="oneri-not">Satıcı ${tl(son)}'${n.tabanSoz?"in altına inmiyor":" istiyor"}. &Ouml;nerilen tavanın ${tl(o)}: bu fiyatta k&acirc;r payı ~%${pay}.${pay<5?" <b>Vazge&ccedil;mek mantıklı.</b>":""}</div>`; })()}
         ${n.counter?`<button class="btn primary full" data-act="acceptcounter">Kabul et &middot; ${tl(n.counter)}</button>`:""}
         <details class="hizli"><summary>Hızlı ayar &middot; &minus;%10 &hellip; tavan</summary><div class="quick">
           <button data-act="q" data-p="-10">&minus;%10</button>
           <button data-act="q" data-p="-5">&minus;%5</button>
           <button data-act="q" data-p="5">+%5</button>
           <button data-act="q" data-p="10">+%10</button>
-          ${(()=>{ const o=onerilenTeklif(c); return `<button class="oneri-kisa" data-act="oneriteklif" data-v="${o}" title="~%12 kâr payı bırakan tavan">Tavan ${tlk(o)}</button>`; })()}</div></details>
+          ${(()=>{ const o=onerilenTeklif(c), son=n.tabanSoz||n.sonKarsi;
+             const v=son&&o>=son?son:o;
+             return `<button class="oneri-kisa" data-act="oneriteklif" data-v="${v}" title="~%12 kâr payı bırakan tavan">Tavan ${tlk(v)}</button>`; })()}</div></details>
         <div class="teklifsatir">
           <input class="offer-input" id="negInput" type="text" inputmode="numeric" value="${num(start)}">
           <button class="btn ${n.counter?"":"primary"}" data-act="offer">Teklif ver</button></div>
@@ -3400,7 +3417,9 @@ function finishSale(price){
   }, 750);
 }
 function finishSaleAfter(){
-  dropOffer(S.sale.oid);
+  /* Kabulden sonraki 750 ms içinde × ile kapatılırsa S.sale null oluyordu
+     ve burada hata çıkıyordu (kavranabilirlik oylaması, yan bulgu). */
+  if(S.sale) dropOffer(S.sale.oid);
   S.sale=null; save(); render();
   if(S.lastDeal) openDealSummary(S.lastDeal); else closeSheet();
 }
@@ -3700,7 +3719,7 @@ function toastSiradaki(){
   el.className="toast "+kind;
   el.innerHTML=t;   // metinler uygulama içinde yazılır, kullanıcı girdisi değil
   document.getElementById("toasts").appendChild(el);
-  const sure=Math.min(4200, 1900+t.length*12);
+  const sure=document.body.classList.contains("ogret-ac") ? 2500 : Math.min(4200, 1900+t.length*12);   // rehber açıkken kısa (Ö3)
   setTimeout(()=>{el.style.transition="opacity .3s";el.style.opacity="0";},sure);
   setTimeout(()=>{el.remove(); TOAST_AKTIF=false; toastSiradaki();},sure+320);
 }
@@ -3721,7 +3740,11 @@ document.addEventListener("click",e=>{
   const a=b.dataset.act, id=b.dataset.id;
   const car=id?findCar(id):null;
   if(S.tutorial){ if(!S.ogretIz) S.ogretIz={}; S.ogretIz[a]=true; }
-  if(a==="ogretatla"){ ogretBitir(false); render(); return; }
+  if(a==="ogretatla"){
+    // tek dokunuşla ikramiye gidiyordu ve düğme 40×20px'ti (Ö3): onay ister
+    onay("Rehberi atla?", "Rehberi atlarsan ilk iş için verilen <b>₺30.000 ikramiye</b> gider. İstersen sonra Ayarlar'dan yeniden başlatabilirsin.",
+      "Atla", ()=>{ ogretBitir(false); render(); }, true, ()=>{ closeSheet(); try{ ogretCiz(); }catch(e){} });
+    return; }
   cal(SES_EYLEM[a]||"tik");
   titre(a==="endday"||a==="buy"||a==="acceptoffer" ? HAPTIK.orta : HAPTIK.hafif);
   if(kancaEylem(a, b, car)) return;

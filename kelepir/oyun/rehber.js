@@ -1,6 +1,11 @@
 /* ================= REHBER — ilk 90 saniye =================
    Elle tutulan bir başlangıç: her adımda tek bir iş, hedef düğme
    vurgulanır, oyuncu o işi yapınca adım kendiliğinden ilerler. */
+/* 1.1 (kavranabilirlik oylaması Ö2): 8 adımdan 7'ye. Elle tamir ve elle
+   ilan adımları "Hazırla ve ilana koy" tek adımına indi — rehberi izleyen
+   oyuncu ilk satışa 19 dokunuşta varıyordu, ilk ilan bir koşuda +%0,3 kârdaydı.
+   sec bir dizi olabilir: sırayla ilk bulunan vurgulanır. Sayfa (sheet) açıksa
+   önce onun içindeki hedef aranır; rehber görünürken vurgusuz an kalmasın. */
 const OGRET=[
  {k:"ac",      sekme:"pazar", sec:'#screen [data-act="open"]',
   bas:"Pazardan bir ilan aç",
@@ -14,23 +19,20 @@ const OGRET=[
   bas:"Pazarlığı başlat",
   alt:"Raporda çıkan kusurları masaya koy, fiyatı aşağı çek. Satıcının sabrı sınırlı.",
   tamam:()=>!!(S.ogretIz&&S.ogretIz.negotiate)||S.cars.length>0},
- {k:"al",
+ {k:"al", sec:['[data-act="acceptcounter"]','[data-act="offer"]'],
   bas:"Aracı al",
-  alt:"Teklifin satıcının gizli tabanına yaklaşınca kabul eder. Fazla zorlarsan masadan kalkar.",
+  alt:"Teklif ver; satıcı karşı teklif verirse \"Kabul et\" ile al. Fazla zorlarsan masadan kalkar.",
   tamam:()=>S.cars.length>0},
- {k:"tamir",   sekme:"garaj", sec:'[data-act="repair"]',
-  bas:"Kârlı tamiri yap",
-  alt:"Her tamir geri dönmez. Küçük kusurlar ucuz, büyük revizyonlar genelde zarar.",
-  tamam:()=>S.cars.some(c=>(c.faults||[]).some(f=>f.fixed))||S.cars.some(c=>c.listPrice)},
- {k:"ilan",    sekme:"garaj", sec:'[data-act="list"]',
-  bas:"Fiyat koy, satışa çıkar",
-  alt:"Yüksek fiyat alıcı akışını yavaşlatır, düşük fiyat kârı yer. Çubukla dene.",
-  tamam:()=>S.cars.some(c=>c.listPrice)},
+ {k:"hazirla", sekme:"garaj",
+  sec:['[data-act="alimgit"]','[data-act="onayevet"]','.garaj-ipucu [data-act="hazirla"]','[data-act="hazirla"]'],
+  bas:"Hazırla ve ilana koy",
+  alt:"Ekspertiz, kârlı tamir ve ilan tek dokunuşta. İnce ayar aracın sayfasında.",
+  tamam:()=>S.cars.some(c=>c.listPrice)||(S.stats.sold||0)>0},
  {k:"gun",     sec:'[data-act="endday"]',
   bas:"Günü bitir",
   alt:"Alıcılar gece gelir. Otopark ve sabit giderler de her gün işler.",
   tamam:()=>S.day>=2},
- {k:"sat",     sekme:"garaj", sec:'[data-act="salenego"]',
+ {k:"sat",     sekme:"garaj", sec:['[data-act="saleaccept"]','[data-act="saleoffer"]','[data-act="salenego"]','[data-act="dealdone"]'],
   bas:"Gelen teklifi değerlendir",
   alt:"Maliyetinin üstündeki ilk ciddi teklifi kaçırma; beklemek her gün paraya mal olur.",
   tamam:()=>(S.stats.sold||0)>0}
@@ -44,7 +46,9 @@ function ogretBitir(odul){
   ogretIsikTemizle();
   const el=document.getElementById("ogret"); if(el) el.classList.add("hidden");
   document.body.classList.remove("ogret-ac");
-  if(odul){ kasaHareket(30000, "Rehber ikramiyesi"); S.xp+=40; toast("Rehber tamam — ilk işin için ₺30.000 ikramiye.","good"); }
+  if(odul){ kasaHareket(30000, "Rehber ikramiyesi"); S.xp+=40; toast("Rehber tamam — ilk işin için ₺30.000 ikramiye.","good");
+    // STR ve ARB'nin şartı: kısa yol öğretildi, derinlik nerede söylensin
+    toast("Elle tamir, parça, ilan dili ve sunum aracın sayfasında: en iyi kâr orada.","good"); }
   save();
 }
 function ogretCiz(){
@@ -63,9 +67,20 @@ function ogretCiz(){
   if(i>=OGRET.length){ ogretBitir(true); render(); return; }
 
   const ad=OGRET[i];
-  const sekmeGerek = ad.sekme && S.tab!==ad.sekme && unlocked(ad.sekme);
-  const bas = sekmeGerek ? `${TABLBL[ad.sekme]} sekmesine geç` : ad.bas;
-  const alt = sekmeGerek ? ad.bas + " — oradan devam edeceğiz." : ad.alt;
+  const modalAcik=!document.getElementById("modal").classList.contains("hidden");
+  const secler=[].concat(ad.sec||[]);
+  const bul=(kok)=>{ for(const q of secler){ const h=kok.querySelector(q); if(h && h.offsetParent!==null) return h; } return null; };
+  // Önce açık sayfanın içi; yoksa doğru sekmede ekran; o da yoksa sekmeye yönlendir.
+  let hedef = modalAcik ? bul(document.getElementById("modal")) : null;
+  const sekmeGerek = !hedef && !modalAcik && ad.sekme && S.tab!==ad.sekme && unlocked(ad.sekme);
+  if(!hedef && !sekmeGerek && !modalAcik) hedef=bul(document);
+  let bas = sekmeGerek ? `${TABLBL[ad.sekme]} sekmesine geç` : ad.bas;
+  let alt = sekmeGerek ? ad.bas + " — oradan devam edeceğiz." : ad.alt;
+  // Hedef ekranda yoksa ara adım: araca dokun (vurgusuz an kalmasın)
+  if(!hedef && !sekmeGerek && !modalAcik){
+    const kart=document.querySelector('#screen [data-act="open"]');
+    if(kart){ hedef=kart; alt="Önce araca dokun. "+alt; }
+  }
   el.innerHTML=`<div class="kutu">
      <div class="say">${i+1}</div>
      <div class="gov">
@@ -73,22 +88,21 @@ function ogretCiz(){
        <div class="alt">${alt}</div>
        <div class="ilerle">${OGRET.map((_,k)=>`<i class="${k<i?"ok":""}"></i>`).join("")}</div>
      </div>
-     <button class="atla" data-act="ogretatla">Atla</button>
+     <button class="atla" data-act="ogretatla" aria-label="Rehberi atla">Atla</button>
    </div>`;
   el.classList.remove("hidden");
   document.body.classList.add("ogret-ac");
-  const modalAcik=!document.getElementById("modal").classList.contains("hidden");
   el.classList.toggle("ust", modalAcik);
   if(!modalAcik){
     const tabs=document.getElementById("tabs");
     el.style.bottom=((tabs?tabs.offsetHeight:62)+6)+"px";
   } else el.style.bottom="";
+  /* Kartın boyu bir değişkende: açık sayfa kartın altından başlar, bildirimler
+     kartın altına dizilir (Ö3: kart sayfa başlığını, bildirim kartı örtüyordu). */
+  document.documentElement.style.setProperty("--ogret-h", (el.offsetHeight||0)+"px");
 
-  const sec = sekmeGerek ? `#tabs button[data-t="${ad.sekme}"]` : ad.sec;
-  if(sec){
-    const h=document.querySelector(sec);
-    if(h){ h.classList.add("ogret-isik"); _ogretIsik=h; }
-  }
+  if(sekmeGerek) hedef=document.querySelector(`#tabs button[data-t="${ad.sekme}"]`);
+  if(hedef){ hedef.classList.add("ogret-isik"); _ogretIsik=hedef; }
 }
 
 /* tıklama sonrası rehberi tazele (sheet açılışları render çağırmaz) */
