@@ -2042,18 +2042,26 @@ const W3D=(()=>{
        araçta kapıların altında kahverengi bir bant çiziyordu. */
     const kabOrtZ=(kabinZ0+kabinZ1)/2;
     const icX=(y)=>Math.min(xAt(kabinZ0+.15,y), xAt(kabOrtZ,y), xAt(kabinZ1-.15,y));
+    /* Taban ve iç etek eşik hizasında, yani teker kemerinin tepesinden aşağıda.
+       Kabin kemerin üstüne uzanan araçta (Hessler 190: kısa bagaj, arka teker
+       kabin altında) bu kutular kemer boşluğundan görünüp jantın önüne
+       kahverengi bir köşe gibi düşüyordu. Alçak iç parçalar iki kemerin
+       arasında kalır. */
+    const icRa=R*KEMER_ORAN+.03;
+    const icZ0=Math.max(kabinZ0-.15, onZ+icRa), icZ1=Math.min(kabinZ1+.19, arkaZ-icRa);
+    const icUz=Math.max(.3, icZ1-icZ0), icOrt=(icZ0+icZ1)/2;
     // taban + halı
-    KUTU("ic", icX(tabanY-.06)*2-.06,.09,kabinUz+.34, [0, tabanY-.02, kabOrtZ+.02]);
-    KUTU("hali", Math.min(s.W*.84, icX(tabanY+.03)*2-.10),.012,kabinUz*.95, [0, tabanY+.035, kabOrtZ]);
+    KUTU("ic", icX(tabanY-.06)*2-.06,.09,icUz, [0, tabanY-.02, icOrt]);
+    KUTU("hali", Math.min(s.W*.84, icX(tabanY+.03)*2-.10),.012,Math.min(kabinUz*.95, icUz), [0, tabanY+.035, icOrt]);
     for(const sx of [-1,1])
-      KUTU("ic", .06,.34,kabinUz+.30, [sx*(icX(tabanY+.02)-.06), tabanY+.14, kabOrtZ+.02]);
+      KUTU("ic", .06,.34,icUz-.04, [sx*(icX(tabanY+.02)-.06), tabanY+.14, icOrt]);
     // kapı içleri: plastik gövde + döşeme dolgusu + kolçak
     for(const sx of [-1,1]){
       // üst kenar kuşağın 6 cm altında ve dar yerdeki genişliğe göre: kuşak hizasına
       // çıkınca ön cam dibinde gövdenin daraldığı yerden dışarı taşıyordu (bej çıkıntı)
       const kapiUst=belOrt-.06;
-      KUTU("ic", .055, Math.max(.12,kapiUst-tabanY), kabinUz*.92,
-        [sx*(Math.min(icX(tabanY+.04), icX(kapiUst))-.07), (tabanY+kapiUst)/2, kabOrtZ+.02]);
+      KUTU("ic", .055, Math.max(.12,kapiUst-tabanY), Math.min(kabinUz*.92, icUz),
+        [sx*(Math.min(icX(tabanY+.04), icX(kapiUst))-.07), (tabanY+kapiUst)/2, icOrt]);
       KUTU("doseme", .022, Math.max(.08,(belOrt-tabanY)*.46), kabinUz*.52,
         [sx*(HW-.108), (tabanY+belOrt)/2+.02, kabinZ0+kabinUz*.36]);
       KUTU("ic", .075,.10, kabinUz*.42, [sx*(HW-.115), belOrt-.16, kabinZ0+.62]);
@@ -2581,8 +2589,20 @@ const W3D=(()=>{
        düşerse xAt kenarda sıfıra yaklaşır ve yama gövdeden kopup havada asılı
        görünür. Bu yüzden her sütunda y, o kesitin alt/üst hattına kırpılır:
        yama çamurluğun etrafından dolanır, boşlukta durmaz. */
+    /* Kemer boşluğu: yamanın alt kenarı davlumbaz tepesinin altına iniyorsa
+       yama o z aralığına girmemeli. Girerse kırpma sütunları kemer çizgisine
+       sıçrar, aradaki üçgenler boşluğu çaprazlama kapatıp jantın üstüne
+       kahverengi bir köşe gibi oturuyordu (Hessler 190'da arka teker). */
+    const kemerRa=R*KEMER_ORAN, kemerTepe=R+kemerRa;
     const yanKaplama=(sx, z, w, h, mat, dy)=>{
-      const y0=yanY+(dy||0)-h/2, y1=y0+h, z0=z-w/2, z1=z+w/2;
+      const y0=yanY+(dy||0)-h/2, y1=y0+h;
+      let z0=z-w/2, z1=z+w/2;
+      if(y0<kemerTepe+.05) for(const zc of [onZ, arkaZ]){
+        const a=zc-kemerRa-.03, b=zc+kemerRa+.03;
+        if(z1<=a || z0>=b) continue;
+        if(z<zc) z1=Math.min(z1,a); else z0=Math.max(z0,b);
+      }
+      if(z1-z0<.10) return null;
       const geo=yuzey(9,6,(u,v)=>{
         const zz=z0+(z1-z0)*u;
         const yT=ustHat(zz)-.030, yB=altHat(zz)+.050;
@@ -3755,16 +3775,20 @@ const W3D=(()=>{
     const c=focus.car;
     const fiyat = mode==="pazar" ? c.ask : (c.listPrice||valueOf(c,!c.inspected));
     const gz=(typeof gozDurum==="function")?gozDurum(c):"";
+    /* Tek araçta oklar hiçbir şey yapmıyordu ama tam renkli duruyordu;
+       oyuncu garajda 1/1 iken "sağ sol tuşları çalışmıyor" dedi. Sönük
+       çiziliyor, dokununca neden geçmediği söyleniyor (ui.js w3dsonra). */
+    const tek = items.length<=1 ? " tek" : "";
     bar.innerHTML=`
       <div class="w3dcar">
-        <button class="w3dok" data-act="w3donce" aria-label="Önceki araç">&lsaquo;</button>
+        <button class="w3dok${tek}" data-act="w3donce" aria-label="Önceki araç">&lsaquo;</button>
         <div style="min-width:0;flex:1">
           <div class="w3dname">${c.model.n} <span style="color:var(--muted)">${c.year}</span></div>
           <div class="w3dsub">${typeof mesafe==="function"?mesafe(c.km):c.km+" km"} · ${c.gear} · ${c.fuel}
             <span class="w3dsira">${VT.i+1}/${items.length}</span></div>
         </div>
         <div class="w3dprice">${tl(fiyat)}</div>
-        <button class="w3dok" data-act="w3dsonra" aria-label="Sonraki araç">&rsaquo;</button>
+        <button class="w3dok${tek}" data-act="w3dsonra" aria-label="Sonraki araç">&rsaquo;</button>
       </div>
       ${gz}
       <button class="btn primary full" data-act="w3dopen">${mode==="garaj"&&!c.listPrice?"A&ccedil; &middot; ilana koy":"İncele"}</button>

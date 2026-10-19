@@ -203,10 +203,20 @@ Object.assign(I18N.TAM, {
 "Hepsi tamam":"All done","Yurt dışına taşınan Selin":"Selin, moving abroad","Miras kalan araba":"Inherited car",
 "Emekli öğretmen Nail Bey":"Retired teacher Mr Nail","Muhasebeci Ferda Hanım":"Ms Ferda, accountant",
 "Borcu sıkışan Erkan":"Erkan, short on cash",
+/* --- 1.2: duvar takvimi, günün notu --- */
+"Seviye":"Level","Kira bu gece":"Rent due tonight","Kira günü":"Rent day","Kesilecek kira":"Rent to be charged",
+"SEZON TAKVİMİ":"SEASON CALENDAR","Kira gecesi tahmini kasa":"Estimated cash on rent night",
+"Kaportacı Nuri":"Nuri the bodyworker",
 });
 
 /* ---- sayı taşıyan kalıplar (uzun olanlar önce) ---- */
 I18N.DESEN.push(
+ [/^Kira (\d+) gün$/,                 "Rent in $1 days"],
+ [/^Kira ₺(.+)$/,                     "Rent ₺$1"],
+ [/^₺(.+) eksik$/,                    "₺$1 short"],
+ [/^(\d+)\. gün için$/,               "For day $1"],
+ [/^Garajda tek araç var.*$/,         "Only one car in the garage — buy another at the market to browse between them"],
+ [/^Pazarda başka ilan yok$/,         "No other listings at the market"],
  [/^(\d+)\. gün kapandı$/,            "Day $1 closed"],
  [/^(\d+)\. gün$/,                    "Day $1"],
  [/^(.+) · (\d+)\. gün$/,             "$1 · Day $2"],

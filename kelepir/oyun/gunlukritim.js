@@ -137,3 +137,28 @@ function ustaNotu(ofs){
               etiket:"Hazırla", act:"hazirla", data:`data-id="${ham.id}"`};
   return null;
 }
+
+/* ---------------- GÜNÜN NOTLARI ----------------
+   Gün raporunun altında yeni günün takvimi: sanayi günü, müzayede, taksit
+   vadesi, süresi dolan teklif, kira gecesi. Eskiden bunlar "BUGÜN NE OLDU"
+   olayları arasında kayboluyordu; galerici bunları masasındaki sarı nota
+   yazar. En çok üç satır, önemli olan önce. */
+function gunNotlari(){
+  const n=[];
+  try{ renderHud(); }catch(e){}     // HUD_SON yeni günün giderini taşısın
+  const tk=(typeof takvimHesap==="function") ? takvimHesap(HUD_SON?HUD_SON.bugun:0) : null;
+  if(tk && tk.eksik>0) n.push({kotu:true, t:`Kira gecesine ${tl(Math.ceil(tk.eksik/500)*500)} eksik var. Bir araç sat ya da gideri kıs.`});
+  else if(tk && tk.kalan===1) n.push({t:`Bu gece kira kesiliyor: ${tl(tk.kira)}.`});
+  else if(tk && tk.kalan<=3) n.push({t:`Kira ${tk.kalan} gün sonra: ${tl(tk.kira)}. Nakdi bağlama.`});
+  const son=(S.offers||[]).filter(o=>o.expires<=S.day && S.cars.some(c=>c.id===o.carId)).length;
+  if(son) n.push({t:`${son} teklifin bugün son günü; yarına kalmaz.`});
+  const vade=(S.receivables||[]).filter(r=>r.due===S.day+1).reduce((a,r)=>a+r.amount,0);
+  if(vade) n.push({t:`Yarın taksit vadesi: ${tl(vade)} gelmesi bekleniyor.`});
+  if(typeof sanayiGunu==="function" && sanayiGunu()) n.push({t:`Bugün sanayi günü: tamirler %${Math.round(SANAYI.indirim*100)} ucuz.`});
+  else if(typeof sanayiyeKalan==="function" && sanayiyeKalan()===1) n.push({t:`Yarın sanayi günü: acil olmayan tamiri bekle.`});
+  if(typeof unlocked==="function" && unlocked("muzayede")){
+    if(S.auction.length && S.auctionDay===S.day) n.push({t:`Müzayede kuruldu: ${S.auction.length} araç, kapalı zarf.`});
+    else if(typeof muzayedeyeKalan==="function" && muzayedeyeKalan()===1) n.push({t:`Yarın müzayede: nakit ve boş yer ayır.`});
+  }
+  return n.slice(0,3);
+}

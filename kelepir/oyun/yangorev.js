@@ -157,12 +157,10 @@ function sanayiyeKalan(){ const r=S.day%SANAYI.aralik; return r===0?0:SANAYI.ara
 function sanayiKat(){ return sanayiGunu() ? 1-SANAYI.indirim : 1; }
 
 /* ---------------- SEZON HEDEFİ ---------------- */
-/* Hedefin dönemi kira kapanışına göre sayılıyor, takvim sezonuna göre
-   değil: kapanış 16., 31., … günün SONUNDA işliyor, o gün takvimde yeni
-   sezonun ilk günü olsa da kâr hâlâ biten döneme yazılıyor. seasonIndex()
-   kullanılınca 16. gün hedef erkenden yenileniyor, oyuncu son gününde
-   başka bir rakama bakıyordu. */
-function hedefDonem(){ return Math.floor(Math.max(0,S.day-2)/SEASON_LEN); }
+/* Hedefin dönemi kira kapanışına göre sayılıyor. Kapanış eskiden 16., 31.
+   … günün sonundaydı ve burada iki günlük kaydırma vardı; 1.2'den beri
+   kira sezonun son (15.) gecesi kesiliyor, dönem takvim sezonuyla aynı. */
+function hedefDonem(){ return Math.floor(Math.max(0,S.day-1)/SEASON_LEN); }
 function hedef(){
   const si=hedefDonem();
   if(!S.hedef || S.hedef.sezon!==si){

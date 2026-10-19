@@ -148,6 +148,45 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('ekspertizli araçta GÖZLE BAK yok', await p.evaluate(()=>{ closeSheet(); S.neg=null; S.market[0].inspected=true; W3D.refresh(); return true; }) &&
     await (async()=>{ await p.waitForTimeout(2500); return p.evaluate(()=>{ W3D.sec(0); return !document.querySelector('.w3dgoz'); }); })());
 
+  console.log('1.2) teker kemeri ve tek araçta oklar');
+  const tek=await p.evaluate(()=>{
+    /* Hessler 190: iç taban kemer boşluğundan jantın önüne taşıyordu; pas
+       yaması kemeri çaprazlama kapatıyordu. Tekere yandan atılan ışın önce
+       teker parçasına çarpmalı. Klasik + sedan + hatch + SUV örneği. */
+    const IZIN=new Set(["jant","sacJant","jantIc","yanak","lastik","amblem","disk","kaliper","kovuk","temas","koyu","plastik"]);
+    const rc=new THREE.Raycaster(), kotu=[];
+    for(const ad of ["Hessler 190 2.0", MODELS[3].n, MODELS[40].n, MODELS[90].n]){
+      const m=MODELS.find(x=>x.n===ad); if(!m) continue;
+      for(let t=0;t<2;t++){
+        const c=genCar({model:m}); c.id=5000+t;
+        c.faults=["Alt sac pas onarımı","Çamurluk düzeltme + boya","Kapı boyası gerekli"].map(n=>({...FAULTS.find(f=>f.n===n),visible:true}));
+        c.wear={kaporta:60}; c.boyali=5; c.degisen=3;
+        const g=W3D_buildCar(c); g.updateMatrixWorld(true);
+        const pr=g.userData.pr, R=g.userData.spec.wr, W=g.userData.spec.W;
+        for(const zc of [pr.onZ,pr.arkaZ]) for(const sx of [-1,1]) for(let a=0;a<12;a++) for(const rf of [.3,.6]){
+          const an=a/12*Math.PI*2;
+          rc.set(new THREE.Vector3(sx*(W+1), R+Math.sin(an)*R*rf, zc+Math.cos(an)*R*rf), new THREE.Vector3(-sx,0,0));
+          const h=rc.intersectObject(g,true)[0];
+          if(h && !IZIN.has(h.object.name)) kotu.push(ad+":"+(h.object.name||h.object.material.type));
+        }
+      }
+    }
+    return kotu;
+  });
+  t('teker önüne gövde/iç parça/yama düşmüyor', tek.length===0, tek.slice(0,4).join(", "));
+  const ok1=await p.evaluate(async()=>{
+    closeSheet&&closeSheet(); S.neg=null;
+    const c=genCar(); c.owned=true; c.boughtFor=1; S.cars=[c]; S.tab="garaj"; S.view3d=true; render();
+    await new Promise(z=>setTimeout(z,2500));
+    const btn=document.querySelector('#w3dbar .w3dok');
+    const r={tek:!!btn && btn.classList.contains('tek'), boy:btn?btn.getBoundingClientRect().height:0};
+    btn && btn.click(); await new Promise(z=>setTimeout(z,300));
+    r.toast=(TOAST_Q||[]).map(x=>x.m||x.t||x[0]||String(x)).join(" ")+" "+((document.querySelector('.toast')||{}).textContent||"");
+    return r;
+  });
+  t('tek araçta oklar sönük, 44px', ok1.tek && ok1.boy>=44, JSON.stringify(ok1));
+  t('tek araçta oka basınca neden geçmediği söyleniyor', /tek araç/.test(ok1.toast), ok1.toast);
+
   console.log('\nsayfa hataları:', errs.slice(0,3));
   if(errs.length) fail+=errs.length;
   console.log(`\n${ok} geçti, ${fail} kaldı`);

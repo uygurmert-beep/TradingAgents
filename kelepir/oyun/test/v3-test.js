@@ -226,6 +226,70 @@ const t=(ad,kos)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;consol
   t('usta notu: ekspertizsiz araçta Hazırla', un.k4);
   t('usta notu: ilk günler geçince çıkmıyor', un.yok);
 
+  console.log('10) duvar takvimi, kira gecesi, gün notları (1.2)');
+  const dt=await p.evaluate(async()=>{
+    const r={}; S.cars=[]; S.receivables=[]; S.kiraDonuk=null; S.kiraIndirim=null; S.debt=0; S.staff={}; S.seasonGross=0;
+    closeSheet&&closeSheet();
+    const hud=()=>{ renderHud(); return document.getElementById('hud'); };
+    S.day=7; S.cash=2600000; let h=hud();
+    r.yuk=h.getBoundingClientRect().height; r.serit=document.querySelector('.hudserit').getBoundingClientRect().height;
+    r.gun=document.querySelectorAll('.takvim .tk-gun').length; r.kira=document.querySelectorAll('.takvim .tk-kira').length;
+    r.gecti=document.querySelectorAll('.tk-gun.tk-gecti').length; r.bugun=(document.querySelector('.tk-gun.tk-bugun')||{}).textContent;
+    r.metin=h.innerText; r.not7=document.querySelector('.tk-not').textContent;
+    r.kucuk=[...h.querySelectorAll('*')].filter(e=>e.childNodes.length && [...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize)<12 && e.offsetParent).map(e=>e.className||e.tagName);
+    r.tint=[...document.querySelectorAll('.takvim, .takvim *')].some(e=>{const c=getComputedStyle(e); return [c.color,c.backgroundColor,c.borderTopColor].includes('rgb(14, 94, 75)');});
+    S.day=13; S.cash=900000; hud(); r.s13=[document.querySelector('.takvim').className, document.querySelector('.tk-not').textContent];
+    S.day=15; hud(); r.s15=[document.querySelector('.takvim').className, document.querySelector('.tk-not').textContent, document.querySelectorAll('.tk-gun.tk-bugun').length];
+    S.day=13; S.cash=60000; hud(); r.s13e=[document.querySelector('.takvim').className, document.querySelector('.tk-not').textContent];
+    // gider etkisi: 4 araç, kasa kira+1
+    S.day=10; S.cars=[0,1,2,3].map(()=>{const c=genCar(); c.owned=true; return c;}); S.cash=kiraTahmini()+1; hud();
+    r.gider=document.querySelector('.takvim').className; S.cars=[];
+    // vade
+    S.day=10; S.cash=2600000; S.receivables=[{due:12,amount:1000,n:'x',who:'y',risk:0,left:1,saleId:9}]; hud();
+    r.vade=[...document.querySelectorAll('.takvim > span')][11].className; S.receivables=[];
+    // donuk kira: tahmin = gerçekten kesilen
+    S.day=15; S.cash=5e6; S.kiraDonuk=80000; S.kiraIndirim=.1; hud(); r.donukNot=document.querySelector('.tk-not').textContent;
+    S.day=7; hud(); r.donukNot7=document.querySelector('.tk-not').textContent; S.day=15;
+    const tahmin=kiraTahmini(), once=S.cash; S.seasonGross=0;
+    nextDay(); const kesilen=(S.report.costs.find(c=>/kirası/.test(c[0]))||[])[1];
+    r.donuk=[tahmin, kesilen, S.day];
+    // durum
+    S.day=7; S.kiraDonuk=null; S.kiraIndirim=null; openDurum(); await new Promise(z=>setTimeout(z,200));
+    const sh=document.querySelector('.sheet'); r.durum=[!!sh.querySelector('.takvim.buyuk'), /Kira günü/.test(sh.innerText), /biriken/i.test(sh.innerText)];
+    closeSheet&&closeSheet();
+    // gün notları
+    S.day=13; S.cash=60000; S.receivables=[{due:14,amount:42000,n:'x',who:'y',risk:0,left:1,saleId:8}];
+    const gn=gunNotlari(); r.gn=gn.map(x=>x.t); r.gnKotu=gn[0]&&gn[0].kotu; S.receivables=[];
+    return r;
+  });
+  t('kokpit en çok 86px, şerit en az 44px', dt.yuk<=86 && dt.serit>=44, dt.yuk+'/'+dt.serit);
+  t('takvimde 14 gün + kira halkası', dt.gun===14 && dt.kira===1);
+  t('7. gün: 6 gün çizili, bugün "7"', dt.gecti===6 && dt.bugun==='7');
+  t('"Sv" ve "7K/110K" yok, "Seviye" var', !/\bSv\b/.test(dt.metin) && !/\d+K\/\d+K/.test(dt.metin) && /Seviye/.test(dt.metin));
+  t('kokpitte 12px altı yazı yok', dt.kucuk.length===0, JSON.stringify(dt.kucuk));
+  t('takvimde eylem yeşili yok', !dt.tint);
+  t('normal: "Kira ₺110K" gibi', /^Kira ₺\d+K$/.test(dt.not7), dt.not7);
+  t('13. gün: yakın, "Kira 3 gün"', /yakin/.test(dt.s13[0]) && dt.s13[1]==='Kira 3 gün', JSON.stringify(dt.s13));
+  t('15. gün: "Kira bu gece", bugün halkayla birleşik', /songun/.test(dt.s15[0]) && dt.s15[1]==='Kira bu gece' && dt.s15[2]===0, JSON.stringify(dt.s15));
+  t('kasa yetmiyor: "₺50K eksik"', /eksik/.test(dt.s13e[0]) && dt.s13e[1]==='₺50K eksik', JSON.stringify(dt.s13e));
+  t('günlük giderler eksik hesabına giriyor', /eksik/.test(dt.gider));
+  t('taksit vadesi takvimde altın nokta', /tk-vade/.test(dt.vade), dt.vade);
+  t('donuk kira kokpitte doğru tutar', dt.donukNot7==='Kira ₺72K', dt.donukNot7);
+  t('kira 15. gün gecesi kesiliyor ve tahmin = kesilen', dt.donuk[0]===dt.donuk[1] && dt.donuk[2]===16, JSON.stringify(dt.donuk));
+  t('Durum: büyük takvim, kira günü, "biriken" yok', dt.durum[0] && dt.durum[1] && !dt.durum[2], JSON.stringify(dt.durum));
+  t('gün notu: eksik önce, taksit vadesi yazıyor', dt.gnKotu && dt.gn.some(x=>/taksit/.test(x)), JSON.stringify(dt.gn));
+
+  // rapor: notlar yapışkan kâğıtta
+  const rp=await p.evaluate(async()=>{
+    S.day=12; S.cash=5e6; S.cars=[]; S.ustaNotKapali=false; S.stats.sold=0; render();
+    nextDay(); S.report.seasonSeen=true; S.karne=null; openReport(); await new Promise(z=>setTimeout(z,250));
+    const g=document.querySelector('.not-pano .yapiskan.gun-not'), u=document.querySelector('.not-pano .usta-not.yapiskan');
+    const r={gun:!!g, usta:!!u, egik:g?getComputedStyle(g).transform!=='none':false};
+    closeSheet&&closeSheet(); return r;
+  });
+  t('raporda günün notu sarı kâğıtta', rp.gun && rp.egik, JSON.stringify(rp));
+  t('usta notu da kâğıtta', rp.usta);
+
   console.log('\nsayfa hataları:', errs.length, errs.slice(0,3));
   console.log(`\n${ok} geçti, ${fail} kaldı`);
   await b.close();

@@ -91,8 +91,8 @@ node test/gunluk.js        # günlük görevler
 node test/kayittest.js     # kayıt / dışa aktarma / içe alma
 node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
-node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz (27 kontrol, ~1 dk)
-node test/v3-test.js       # v3 kararları + 1.1: araç karakteri, taksit, pazarlık/satış/müzayede, yeni ekranlar, kademeli açılış, usta notu (44 kontrol)
+node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz + teker kemeri + tek araçta oklar (30 kontrol, birkaç dk)
+node test/v3-test.js       # v3 kararları + 1.1 + 1.2: araç karakteri, taksit, pazarlık/satış/müzayede, yeni ekranlar, kademeli açılış, usta notu, duvar takvimi, gün notları (62 kontrol)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
 
@@ -307,6 +307,12 @@ modelin kendi profilini aldığını ölçüyor.
   cihazda oyunun tamamı açılmaz; `test.js` 3. bölüm yakalar. Tembel oluştur
 - sol jantların arka yüzü dışarı bakıyordu: `jantGeo` +x yüzüne göre kurulu,
   solda y ekseninde yarım tur döndürülüyor
+- jantın üstünde kahverengi çeyrek (Hessler 190, 1.2): kabin arka tekerin üstüne
+  uzanınca iç taban/etek kutuları kemer boşluğundan görünüyordu → eşik hizasındaki
+  iç parçalar iki kemerin arasında (`icZ0/icZ1`). Yan yamalar (`yanKaplama`) da
+  alt kenarı kemer tepesinin altındaysa kemer aralığına girmez; girerse kırpılan
+  sütunlar kemer çizgisine sıçrayıp boşluğu çaprazlama kapatıyordu. `vitrin-test`
+  tekere yandan ışın atıp ilk çarpanın teker parçası olduğunu ölçüyor
 
 Değişiklikten sonra 150 modeli çiz ve bak (oyun açıkken `W3D_buildCar`).
 
@@ -421,6 +427,17 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   vurguyu izleyen oyuncu ilk satışı ≤15 dokunuşta yapar).
 - **Usta notu** (`gunlukritim.js ustaNotu`): ilk 7 gün ya da ilk 3 satışa kadar gün
   raporunda tek cümle + tek düğme; 4 kural sırası `v3-test.js`'te.
+- **Kokpit "duvar takvimi"** (1.2, ekip uzlaşması): 14 gün kutusu + kira halkası +
+  kuyruk notu (`takvimHesap`, `takvimHtml`). Kira **sezonun 15. gecesi** kesilir
+  (`S.day%SEASON_LEN===0`; 1.1'e kadar 16. gece kesiliyordu, takvim bir gün kayık
+  söz veriyordu). Gösterilen kira `kiraTahmini()` = `kapanisKirasi()` hesabı (donuk/
+  indirimli kira dahil); ayrı bir formül yazma. Eksik yalnız nakde göre (taksit kasa
+  değil). Takvimde `--tint` yok. Sınıflar `tk-` önekli: düz `.bugun` rayın sınıfı.
+- **Gün raporunda yapışkan notlar** (`gunlukritim.js gunNotlari`, `.not-pano .yapiskan`):
+  sarı = yeni günün notu (kira gecesi, son günü dolan teklif, taksit vadesi, sanayi,
+  müzayede; en çok 3), pembe = usta notu. Yeni bir "yarın olacak" bilgisi buraya.
+- **3B oklar tek araçta sönük** (`.w3dok.tek`) ve dokununca neden geçmediğini söyler;
+  oklar 44px. Tam renkli ama işlemeyen ok "çalışmıyor" diye bildirildi.
 - **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir

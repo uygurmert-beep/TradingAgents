@@ -32,7 +32,7 @@ const PARA={
 };
 
 /* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
-const OYUN_SURUM="1.1";
+const OYUN_SURUM="1.2";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
@@ -351,8 +351,11 @@ function nextDay(){
   if(salary) rep.costs.push(["Personel maaşı", salary]);
   let interest=0;
   if(S.debt>0){ interest=Math.round(S.debt*(perk("banka")?0.0018:0.0035)); rep.costs.push(["Kredi faizi", interest]); }
-  // sezon kapanışı: sabit giderler
-  if(S.day>1 && (S.day-1)%SEASON_LEN===0){
+  /* Sezon kapanışı: sabit giderler. Eskiden yeni sezonun 1. gününün
+     gecesi kesiliyordu (16, 31, 46…); kokpitteki duvar takvimi kirayı
+     15. günün gecesine çiziyor, oyuncu bir gün kayık hesap yapıyordu.
+     Artık sezonun son gecesi. */
+  if(S.day%SEASON_LEN===0){
     const kira=kapanisKirasi(rep);
     /* Vergi tabanı = sezon satış kârı − kira; zararlı sezonda vergi yok
        (v3 kararı 10: zarar eden sezonda da vergi kesiliyordu). */
@@ -361,7 +364,7 @@ function nextDay(){
     rep.vergiTaban=vergiTaban;
     rep.costs.push([`Sezon kapanışı — dükkân kirası`, kira]);
     if(vergi) rep.costs.push(["Sezon kapanışı — vergi (%8)", vergi]);
-    rep.season={from:seasonOf(S.day-1).k, to:seasonOf(S.day).k};
+    rep.season={from:seasonOf(S.day).k, to:seasonOf(S.day+1).k};
     S.cash-=kira+vergi;
     kasaNot(-kira, "Sezon kirası"); if(vergi) kasaNot(-vergi, "Sezon vergisi (%8)");
     rep.total+=kira+vergi;
@@ -1015,7 +1018,6 @@ function renderHud(){
      sonunda tek seferde kesiliyor. Altı testçinin altısı bu farkı "hata"
      sandı. Artık şeritte yalnız bugün kasadan çıkan; kira ayrı bir sayaç. */
   const bugun=park+maas+faiz;
-  const kiraBiriken=kira*(i+1), kiraSezon=sezonKirasi();
   const yakim=park+maas+faiz+kira;
   const parts=[[park,"var(--zarar)"],[maas,"#D98C8F"],[faiz,"#E6AFB1"],[kira,"#F0CFD0"]];
   const dolu=clamp(yakim/Math.max(S.cash,1)*2000,3,100);   // nakdinin %5'i = tam çubuk
@@ -1041,40 +1043,92 @@ function renderHud(){
   // Sezon zemine de işliyor: her mevsimin kendi ışık sıcaklığı var.
   document.documentElement.dataset.sezon=
     ["kis","ilkbahar","yaz","sonbahar"][SEASONS.indexOf(sez)]||"kis";
-  /* Kokpit sadeleşti: eskiden kasa + gider çubuğu + dört etiketli metrik üç
-     katman yer kaplıyordu; liste ikinci ekrana itiliyordu. Artık tek ince
-     şerit — sezon ilerlemesi, stok, itibar, seviye, günlük gider — ve
-     dokununca ayrıntılı Durum sayfası. */
-  const sezonOran=(i+1)/SEASON_LEN;
+  /* Kokpit "duvar takvimi" (1.2, ekip uzlaşması 8/8). Eskiden 2px etiketsiz
+     bir sezon çizgisi (boşu görünmüyordu, rengi eylem yeşili) ve "Kira 7K/110K"
+     biriken sayacı vardı; oyuncu çizginin ne olduğunu, kiranın ne zaman ve ne
+     kadar kesileceğini anlamıyordu. Galericinin duvarındaki takvim gibi:
+     geçen günler çizili, bugün koyu yaprak, kira günü halkalı, taksit vadesi
+     altın nokta. Tek soru: kira gecesine kasa yetecek mi? */
   const xpOran=l>=XP_LEVELS.length?1:clamp((S.xp-prev)/Math.max(1,next-prev),0,1);
+  const tk=takvimHesap(bugun);
+  const sesli=`${sez.k}, sezonun ${i+1}. günü, ${SEASON_LEN} günden. `+
+    (tk.kalan===1?"Kira bu gece, ":`Kira ${tk.kalan-1} gün sonra, `)+`${tl(tk.kira)}. `+
+    (tk.eksik>0?`Kira gecesi kasada ${tl(tk.eksik)} eksik kalıyor. `:"Kasa yetiyor. ")+
+    `Stok ${S.cars.length}/${S.slots}, İtibar ${Math.round(S.rep)}, Seviye ${l}. Ayrıntılar.`;
   document.getElementById("hudRow").innerHTML=`
-    <button class="hudserit" data-act="durumac" aria-label="Durum ayrıntıları">
-      <span class="hs-sezon" title="Sezon: ${kalan} gün kaldı"><i style="width:${Math.round(sezonOran*100)}%"></i></span>
-      <span class="hs-oge"><em>Stok</em><b>${S.cars.length}/${S.slots}</b></span>
-      <span class="hs-oge"><em>İtibar</em><b style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</b></span>
-      <span class="hs-oge"><em>Sv</em><b>${l}${bekleyen?'<span class="dot-badge"></span>':''}</b><u><i style="width:${Math.round(xpOran*100)}%"></i></u></span>
-      <span class="hs-oge gider"><b>${bugun?"&minus;"+tlk(bugun):"₺0"}</b><em>bugün</em></span>
-      <span class="hs-oge gider kira" title="Sezon sonunda kesilecek kira: ${tl(kiraBiriken)} / ${tl(kiraSezon)}"><em>Kira</em><b>${kisaTl(kiraBiriken)}/${kisaTl(kiraSezon)}</b></span>
+    <button class="hudserit" data-act="durumac" aria-label="${sesli}">
+      ${takvimHtml(false, tk)}
+      <span class="hs-satir">
+        <span class="hs-oge"><em>Stok</em><b>${S.cars.length}/${S.slots}</b></span>
+        <span class="hs-oge"><em>İtibar</em><b style="color:${S.rep>60?'var(--kar)':S.rep>35?'var(--sodium)':'var(--zarar)'}">${Math.round(S.rep)}</b></span>
+        <span class="hs-oge"><em>Seviye</em><b>${l}${bekleyen?'<span class="dot-badge"></span>':''}</b><u><i style="width:${Math.round(xpOran*100)}%"></i></u></span>
+        <span class="hs-oge gider"><b>${bugun?"&minus;"+tlk(bugun):"₺0"}</b><em>bugün</em></span>
+      </span>
     </button>`;
-  HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar,bugun,kiraBiriken,kiraSezon};
+  HUD_SON={park,maas,faiz,kira,yakim,kalan,ticks,bar,bugun,tk};
+}
+/** Sezon kapanışında kesilecek kira — kapanisKirasi() ile aynı hesap, yan etkisiz.
+    Kokpit eskiden sezonKirasi() gösteriyordu; hedefi tutup kirası donan
+    oyuncu kesilecek olandan yüksek bir rakam görüyordu. */
+function kiraTahmini(){
+  let k=sezonKirasi();
+  if(S.kiraDonuk){
+    const ind = S.kiraIndirim!=null ? S.kiraIndirim : HEDEF.indirim;
+    k=Math.round(Math.min(k, S.kiraDonuk)*(1-ind)/500)*500;
+  }
+  return k;
+}
+/** Takvimin sayıları. kalan bugünü de sayar (son gün = 1). Eksik yalnız
+    nakde göre: tahsil edilmemiş taksit kasa değildir. */
+function takvimHesap(bugun){
+  const i=(S.day-1)%SEASON_LEN, kalan=SEASON_LEN-i;
+  const kira=kiraTahmini();
+  const vergi=Math.round(Math.max(0,(S.seasonGross||0)-kira)*.08);
+  const gece=S.cash-(bugun||0)*kalan;
+  const eksik=Math.max(0, kira+vergi-gece);
+  const vadeler=new Set();
+  for(const r of (S.receivables||[])){ const g=r.due-S.day; if(g>=0 && g<kalan) vadeler.add(i+g); }
+  return {i, kalan, kira, vergi, gece, eksik, vadeler};
+}
+function takvimHtml(buyuk, tk){
+  const {i, kalan, kira, eksik, vadeler}=tk;
+  const durum = eksik>0 ? "eksik" : kalan===1 ? "songun" : kalan<=3 ? "yakin" : "";
+  const son = kalan===1;
+  let kutu="";
+  for(let k=0;k<SEASON_LEN-1;k++){
+    const c = k<i ? "tk-gecti" : k===i ? "tk-bugun" : "";
+    kutu+=`<span class="tk-gun ${c}${vadeler.has(k)?" tk-vade":""}">${(k===i||buyuk)?k+1:""}</span>`;
+  }
+  const not = eksik>0 ? `₺${kisaTl(Math.ceil(eksik/1000)*1000)} eksik`
+            : son ? "Kira bu gece"
+            : kalan<=3 ? `Kira ${kalan} gün`
+            : `Kira <b>₺${kisaTl(kira)}</b>`;
+  return `<span class="takvim ${durum}${son&&durum!=="songun"?" songun":""}${buyuk?" buyuk":""}">
+    ${kutu}<span class="tk-kira${son?" tk-bugun":""}${vadeler.has(SEASON_LEN-1)?" tk-vade":""}">${SEASON_LEN}</span>
+    <span class="tk-not">${not}</span></span>`;
 }
 let HUD_SON=null;   // Durum sayfası için son hesap — geçici, kayda yazılmaz
 function openDurum(){
   renderHud(); const h=HUD_SON||{}; const l=level(), next=nextXp(), sez=seasonOf(S.day);
-  openBilgi("Durum", `${sez.k} · ${S.day}. gün · sezon bitimine ${h.kalan} gün`, `
-    <div class="block"><h4>SEZON</h4><div class="rail">${h.ticks}</div></div>
+  openBilgi("Durum", `${sez.k} · ${S.day}. gün · kira gününe ${h.tk.kalan===1?"bu gece":(h.tk.kalan-1)+" gün"}`, `
+    <div class="block"><h4>SEZON TAKVİMİ</h4>${takvimHtml(true, h.tk)}
+      <div class="kv" style="margin-top:10px"><span>Kira günü</span><b>${SEASON_LEN}. gün gecesi &middot; ${h.tk.kalan===1?"bu gece":`${h.tk.kalan-1} gün sonra`}</b></div>
+      <div class="kv"><span>Kesilecek kira</span><b style="color:var(--gold)">${tl(h.tk.kira)}</b></div>
+      ${S.kiraDonuk?`<div class="sec-note">Sezon hedefini tuttun: kira donuk${S.kiraIndirim?` ve %${Math.round(S.kiraIndirim*100)} indirimli`:""} (normali ${tl(sezonKirasi())}).</div>`:""}
+      ${h.tk.vergi?`<div class="kv"><span>Vergi (sezon kârının %8'i, şimdilik)</span><b>${tl(h.tk.vergi)}</b></div>`:""}
+      <div class="kv"><span>Kira gecesi tahmini kasa</span><b>${h.tk.gece<0?"&minus;":""}${tl(Math.abs(h.tk.gece))}</b></div>
+      <div class="sec-note" style="margin-top:6px">Bugünkü giderler (${tl(h.bugun)}) ${h.tk.kalan} gün boyunca düşüldü. Kira ve vergi her gün değil, sezonun son gecesi tek seferde kasadan çıkar.
+        ${h.tk.eksik>0?` <b style="color:var(--red)">Bu gidişle ${tl(Math.ceil(h.tk.eksik/500)*500)} eksik kalıyor.</b>`:""}
+        ${(()=>{ const t=(S.receivables||[]).filter(r=>r.due<=S.day+h.tk.kalan-1).reduce((a,r)=>a+r.amount,0);
+          return t?` Vadesi gelen taksitlerle ${tl(t)} gelebilir (garanti değil).`:""; })()}</div></div>
     <div class="block"><h4>BUGÜN KASADAN ÇIKAN &middot; ${tl(h.bugun)}</h4>
       <div class="kv"><span>Otopark (${S.cars.length} araç)</span><b>${tl(h.park)}</b></div>
       ${h.maas?`<div class="kv"><span>Personel</span><b>${tl(h.maas)}</b></div>`:""}
       ${h.faiz?`<div class="kv"><span>Kredi faizi</span><b>${tl(h.faiz)}</b></div>`:""}</div>
-    <div class="block"><h4>SEZON SONUNDA KESİLECEK</h4>
-      <div class="kv"><span>Dükkân kirası (biriken / toplam)</span><b>${tl(h.kiraBiriken)} / ${tl(h.kiraSezon)}</b></div>
-      <div class="kv"><span>Vergi (sezon kârının %8'i, şimdilik)</span><b>${tl(Math.round(Math.max(0,S.seasonProfit||0)*.08))}</b></div>
-      <div class="sec-note" style="margin-top:6px">Kira ve vergi her gün değil, ${h.kalan} gün sonra sezon kapanışında tek seferde kasadan düşer.${S.cash<h.kiraSezon?` <b style="color:var(--red)">Kasadaki nakit kiradan az.</b>`:""}</div></div>
     <div class="block"><h4>KASA DEFTERİ &middot; SON HAREKETLER</h4>
       ${(S.kasa||[]).slice(-12).reverse().map(k=>`<div class="kv"><span>${k.g}. gün &middot; ${k.e}</span><b class="${k.t>=0?"pos":"neg"}" style="white-space:nowrap">${k.t>=0?"+":"&minus;"}${tl(Math.abs(k.t))}</b></div>`).join("")||`<div class="sec-note">Henüz hareket yok.</div>`}</div>
     <div class="block"><h4>KARİYER</h4>
-      <div class="kv"><span>Seviye</span><b>Sv ${l} &middot; ${S.xp}/${next} XP</b></div>
+      <div class="kv"><span>Seviye</span><b>${l} &middot; ${S.xp}/${next} XP</b></div>
       <div class="kv"><span>İtibar</span><b>${Math.round(S.rep)} / 100</b></div>
       <div class="kv"><span>Stok</span><b>${S.cars.length} / ${S.slots} park yeri</b></div>
       <div class="sec-note" style="margin-top:6px">İtibar temiz satışla yükselir, yakalanan kusurla düşer; alıcı akışını ve krediyi etkiler.</div></div>`);
@@ -2974,9 +3028,16 @@ function openReport(){
 
     ${ozet}
 
-    ${(()=>{ let u=null; try{ u=ustaNotu(ofs); }catch(e){}
-      return u?`<div class="usta-not"><span class="un-kim">Kaportacı Nuri</span><p>${u.t}</p>
-        <button class="btn small" data-act="${u.act}" ${u.data}>${u.etiket}</button></div>`:""; })()}
+    ${(()=>{ let u=null, gn=[]; try{ u=ustaNotu(ofs); }catch(e){} try{ gn=gunNotlari(); }catch(e){}
+      /* Notlar masadaki sarı kâğıtlar gibi: bant, hafif eğik, gölgeli.
+         Nuri'nin notu pembe, günün notu sarı — ikisi aynı anda olabilir. */
+      if(!u && !gn.length) return "";
+      return `<div class="not-pano">
+        ${gn.length?`<div class="yapiskan sari gun-not"><span class="yp-bas">${S.day}. gün için</span>
+          <ul>${gn.map(x=>`<li class="${x.kotu?"kotu":""}">${x.t}</li>`).join("")}</ul></div>`:""}
+        ${u?`<div class="usta-not yapiskan pembe"><span class="un-kim">Kaportacı Nuri</span><p>${u.t}</p>
+          <button class="btn small" data-act="${u.act}" ${u.data}>${u.etiket}</button></div>`:""}
+      </div>`; })()}
 
     ${ofs.length?`<div class="sec-head" style="margin:4px 2px 2px"><h2 class="sec" style="font-size:19px">Gelen teklifler</h2></div>
       ${ofs.map(o=>offerCard(o)).join("")}`
@@ -3975,7 +4036,13 @@ document.addEventListener("click",e=>{
     return;
   }
   if(a==="view"){ toggle3d(b.dataset.v==="1"); return; }
-  if(a==="w3dsonra"){ W3D.sonraki(); return; }
+  if(a==="w3dsonra"||a==="w3donce"){
+    if((W3D.vitrin||{}).adet<=1){
+      toast(S.tab==="garaj"?"Garajda tek araç var — pazardan yenisini alınca burada sırayla gezersin":"Pazarda başka ilan yok");
+      return;
+    }
+    if(a==="w3dsonra") W3D.sonraki(); else W3D.onceki(); return;
+  }
   if(a==="goz3b"){
     // 3B vitrini bu araçla aç
     const id=+b.dataset.id; closeSheet(); S.tab="pazar";
@@ -3984,7 +4051,6 @@ document.addEventListener("click",e=>{
                        else if(n>0) setTimeout(()=>bekle(n-1),250); };
     bekle(40); return;
   }
-  if(a==="w3donce"){ W3D.onceki(); return; }
   if(a==="w3dopen"){ const f=W3D.focus; if(f){ W3D.pause();
       if(S.tab==="pazar") openMarketCar(f.car); else openOwnCar(f.car); } return; }
   if(a==="filter"){ S.filter=b.dataset.f; render(); return; }
