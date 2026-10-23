@@ -14,7 +14,7 @@
       d.innerHTML=
         '<div style="max-width:520px;margin:0 auto">'+
         '<div style="font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px">'+
-        'Pre-Loved Auto açılamadı</div>'+
+        'Kelepir açılamadı</div>'+
         '<div style="color:#8E9AA3;font-size:13.5px;margin-bottom:18px">'+baslik+'</div>'+
         '<pre style="white-space:pre-wrap;word-break:break-word;background:#141A22;'+
         'border:1px solid #28323D;border-radius:12px;padding:12px;font-size:12px;'+

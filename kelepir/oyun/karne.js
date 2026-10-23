@@ -147,7 +147,7 @@ function karneMetni(){
   const k=S.karne; if(!k) return "";
   const cubuk=k.gunler.map(g=>g.kar>400?"█":g.kar>0?"▄":g.kar<0?"▁":"·").join("");
   return [
-    `Pre-Loved Auto — ${EN()?"weekly report":"haftalık karne"} ${k.bas}-${k.bit}`,
+    `Kelepir — ${EN()?"weekly report":"haftalık karne"} ${k.bas}-${k.bit}`,
     `${EN()?"Grade":"Not"}: ${k.not.harf} · ${k.satis} ${EN()?"sales":"satış"} · ${k.netKar>=0?"+":""}${tlk(k.netKar)}`,
     cubuk,
     `${EN()?"Rank":"Sıra"}: ${k.sira}/${k.tablo.length} · ${EN()?"net worth":"özsermaye"} ${tlk(k.net)}`

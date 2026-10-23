@@ -207,6 +207,14 @@ Object.assign(I18N.TAM, {
 "Seviye":"Level","Kira bu gece":"Rent due tonight","Kira günü":"Rent day","Kesilecek kira":"Rent to be charged",
 "SEZON TAKVİMİ":"SEASON CALENDAR","Kira gecesi tahmini kasa":"Estimated cash on rent night",
 "Kaportacı Nuri":"Nuri the bodyworker",
+/* --- 1.3: satış anı, yedek, ses, cihaz testi, kelepir --- */
+"Ufak ama kâr":"Small but a profit","İyi kâr":"Good profit","Büyük kâr":"Big profit",
+"Efekt seviyesi":"Effects volume","Müzik seviyesi":"Music volume","Kısık":"Low","Orta":"Medium","Tam":"Full",
+"Otomatik yedek":"Automatic backup","Yedeği yükle":"Load backup","Yedeğe dön":"Restore backup",
+"CİHAZ VE PERFORMANS":"DEVICE AND PERFORMANCE","3B kalite":"3D quality","Otomatik":"Auto","Hafif":"Light",
+"Cihaz testi (15 sn)":"Device test (15 s)","Cihaz testi":"Device test","Sonucu kopyala":"Copy result",
+"Son test sonucunu göster":"Show last test result","Liste kaydırma":"List scrolling","Sayfa açma":"Opening a page","3B saha":"3D lot",
+"iyi":"good","orta":"fair","zayıf":"poor","Kelepiri paylaş":"Share the steal","Kelepir!":"A steal!",
 });
 
 /* ---- sayı taşıyan kalıplar (uzun olanlar önce) ---- */

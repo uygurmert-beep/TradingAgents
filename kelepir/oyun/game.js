@@ -408,6 +408,68 @@ function genCar(opt={}){
   }
   return car;
 }
+/* ================= NADİR İLAN (1.3, procedural-gen) =================
+   Pazar her gün aynı dokudaydı: ilanların hepsi piyasanın %90–110'unda.
+   Gerçek galericiyi sabah erkenden sahibinden'e baktıran şey arada bir
+   düşen gerçek kelepir. Ağırlıklı tablo; kelepir aynı anda en çok bir
+   tane, iki gün içinde biri kapar. Üretilen kelepir oyuncuya verilmeden
+   doğrulanır: gizli ağır arıza ya da büyük hasar varsa "kelepir" değil,
+   tuzaktır — o zaman yalnız "uygun" fiyatlı sıradan ilana iner. */
+const NADIRLIK=[
+  {k:"normal",  w:91},
+  {k:"uygun",   w:6,  ask:[.86,.92]},
+  {k:"kelepir", w:3,  ask:[.70,.78]}
+];
+const KELEPIR_NEDEN=[
+  "Yurt dışına taşınıyor, hafta sonuna kadar gitmesi lazım",
+  "Miras kaldı, kardeşler bir an önce bölüşmek istiyor",
+  "Borcu sıkıştı, bugün nakit lazım",
+  "Şirket aracı yeniledi, eskisini hemen çıkarıyor",
+  "Boşanma: araçtan bir an önce kurtulmak istiyor",
+  "Yaşlı sahibi ehliyetini bıraktı, oğlu satıyor"
+];
+function nadirlikCek(rng){
+  const r=(rng||Math.random)()*NADIRLIK.reduce((a,x)=>a+x.w,0);
+  let t=0; for(const x of NADIRLIK){ t+=x.w; if(r<t) return x; }
+  return NADIRLIK[0];
+}
+/** Kelepir olmaya uygun mu: gerçek değerine göre gizli kusur ve hasar küçük. */
+function kelepirSaglam(c){
+  const tv=valueOf(c,false);
+  const gizli=(c.faults||[]).filter(f=>!f.visible).reduce((a,f)=>a+f.cost,0);
+  return tv>=120000 && gizli<tv*.08 && c.tramer<tv*.05 && c.degisen<=1 && !c.kmOynama && c.story!=="sel";
+}
+/** İlanı tablodan bir kademeye taşı. kelepirVar: pazarda zaten biri var mı. */
+function nadirlikUygula(c, kelepirVar, rng){
+  if(!c.seller || !c.ask) return c;
+  let n=nadirlikCek(rng);
+  if(n.k==="kelepir" && (kelepirVar || !kelepirSaglam(c))) n=NADIRLIK[1];
+  if(n.k==="normal") return c;
+  const tv=valueOf(c,false), k=rnd(n.ask[0], n.ask[1]);
+  c.ask=roundTo(tv*k, 2500);
+  c.reserve=Math.min(c.reserve, Math.round(c.ask*rnd(.95,.98)));
+  if(n.k==="kelepir"){ c.kelepir=true; c.kelepirNeden=pick(KELEPIR_NEDEN); }
+  return c;
+}
+/* İlan başına tablo tek başına yetmiyordu: pazara günde ortalama bir
+   yeni ilan giriyor, doğrulamadan geçen kelepir ilanların %1,5'i — 120
+   günlük simülasyonda oyuncu yalnız 2 gün kelepir gördü. Günlük zar:
+   sağlam bir aday bulunana dek en çok 30 araç denenir. */
+const KELEPIR_GUN=.12;
+function gununKelepiri(rng){
+  const R=rng||Math.random;
+  if(R()>=KELEPIR_GUN) return null;
+  for(let i=0;i<30;i++){
+    const c=genCar();
+    if(!c.seller || !kelepirSaglam(c)) continue;
+    const tv=valueOf(c,false), k=NADIRLIK[2].ask;
+    c.ask=roundTo(tv*rnd(k[0],k[1]), 2500);
+    c.reserve=Math.min(c.reserve, Math.round(c.ask*rnd(.95,.98)));
+    c.kelepir=true; c.kelepirNeden=pick(KELEPIR_NEDEN);
+    return c;
+  }
+  return null;
+}
 /* Satıcı modele uysun (v3 kararı 9, M4): 1985 E30 "filo çıkışı", 2024
    araç "koleksiyoncu" çıkıyordu. Ağırlık = tablo w × model/yaş çarpanı. */
 function saticiCarpan(k, m, year){

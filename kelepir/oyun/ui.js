@@ -32,7 +32,7 @@ const PARA={
 };
 
 /* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
-const OYUN_SURUM="1.2";
+const OYUN_SURUM="1.3";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)
@@ -156,14 +156,31 @@ function gocEt(){
   setTimeout(()=>toast("Oyun Türkiye pazarına taşındı — fiyatlar TL'ye çevrildi, piyasa ve kasan yeniden kuruldu. Kariyerin duruyor.","good"), 900);
   return true;
 }
+let YEDEKTEN=null;   // açılışta yedekten dönüldüyse {gun} — bildirim için, kayda yazılmaz
 function load(){
+  let raw=null;
+  try{ raw=localStorage.getItem("preloved_v1"); }catch(e){}
+  if(!raw) return false;
   try{
-    const raw=localStorage.getItem("preloved_v1");
-    if(!raw) return false;
-    S=deserialize(JSON.parse(raw));
-    if(!S.stats) return false;
-    return true;
-  }catch(e){ return false; }
+    const d=deserialize(JSON.parse(raw));
+    if(d && d.stats){ S=d; return true; }
+  }catch(e){}
+  return yedektenAc();
+}
+/** Ana kayıt açılmıyor: kenara koy, en yeni sağlam yedekten devam et. */
+function yedektenAc(){
+  if(typeof KAYIT==="undefined" || !KAYIT.yedekler) return false;
+  try{ KAYIT.bozukKenara(); }catch(e){}
+  for(const y of KAYIT.yedekler()){
+    if(y.kaynak==="silinen") continue;      // bilerek silinen oyuna kendiliğinden dönme
+    try{
+      const d=deserialize(JSON.parse(y.v));
+      if(!d || !d.stats) continue;
+      S=d; KAYIT.yedektenYukle(y); YEDEKTEN={gun:y.gun};
+      return true;
+    }catch(e){}
+  }
+  return false;
 }
 
 /* ================= piyasa ================= */
@@ -177,6 +194,8 @@ function fillMarket(){
     const c=genCar();
     const m=sayim();
     if((m[c.model.n]||0)>=2 && guard<500) continue;   // aynı modelden en çok iki ilan
+    // nadir ilan ilk iki günden sonra: rehber sırasında kafa karıştırmasın
+    if(S.day>=3) nadirlikUygula(c, S.market.some(x=>x.kelepir));
     S.market.push(c);
   }
   // İlk günlerde tüm sermayeyi tek araca gömme tuzağı olmasın: nakdinin
@@ -247,6 +266,11 @@ function contactListings(rep){
 function ageMarket(rep){
   for(const c of [...S.market]){
     c.age=(c.age||0)+1;
+    if(c.kelepir && c.age>=2){
+      S.market=S.market.filter(x=>x!==c);
+      rep.events.push({bad:true, t:`Kelepir ${c.model.n} ${c.year} ilandan kalktı — sabah erkenden bir galerici kapmış.`});
+      continue;
+    }
     if(c.age>2 && chance(.09)){
       S.market=S.market.filter(x=>x!==c);
       if(c.inspected) rep.events.push({t:`${c.model.n} ${c.year} ilandan kalktı — satıcı vazgeçti. Ekspertiz parası cepte kaldı.`});
@@ -476,6 +500,11 @@ function nextDay(){
   ageMarket(rep);
   rivalsDay(rep);
   fillMarket();
+  if(S.day>=3 && !S.market.some(c=>c.kelepir)){
+    const k=gununKelepiri();
+    if(k){ S.market.unshift(k);
+      rep.events.push({t:`<b>Kelepir düştü:</b> ${k.model.n} ${k.year}, piyasanın belirgin altında. İki gün içinde biri kapar.`}); }
+  }
   contactListings(rep);
   try{ yerGun(rep); }catch(e){}
   try{ konsinyeGun(rep); }catch(e){}
@@ -666,6 +695,10 @@ function buyCar(car, price, via, senetli){
   car.boughtVia = via || "pazarlık";
   car.askedAt = car.ask || null;
   car.priceCuts = 0; car.extras = car.extras || [];
+  if(car.kelepir){
+    S.stats.kelepir=(S.stats.kelepir||0)+1;
+    setTimeout(()=>{ try{ parla("Kelepir!", `${car.model.n} piyasanın altında senin`, "var(--gold)"); cal("buyukSatis"); dokun("seviye"); }catch(e){} }, 350);
+  }
   car.owned=true; car.boughtFor=price; car.seller=null; car.ask=null;
   car.boughtDay=S.day; car.daysListed=0; car.leadsSeen=0;
   S.cars.push(car);
@@ -740,10 +773,12 @@ function sellCar(car, price, note, alacak){
   if(profit>(S.stats.rekorKar||0)) S.stats.rekorKar=profit;
   SON_SATILAN=car;   // özet fotoğrafı için — geçici, kayda yazılmaz
   S.lastDeal={n:`${car.model.n} ${car.year}`, buy:car.boughtFor, repair:car.spent, extra, rekor, carId:car.id,
-    sell:price+alacak, pesin:alacak?price:0, alacak, ceza:car.cezalar||0, profit, xp:gain, rep:Math.round((repDelta||0)*10)/10, days:car.daysListed, note:note||"", lesson};
+    sell:price+alacak, pesin:alacak?price:0, alacak, kelepir:!!car.kelepir, ceza:car.cezalar||0, profit, xp:gain, rep:Math.round((repDelta||0)*10)/10, days:car.daysListed, note:note||"", lesson};
+  S.lastDeal.kademe=satisKademe(profit, cost);
   cGain("yilmaz");
-  cal(profit>=0?"satis":"reddet");
-  dokun(profit>=0?"sat":"hata"); nefes(profit>=0?"good":"bad");
+  /* Ses, titreşim ve sayaç satış özetinde (satisAni) — kademe kârın büyüklüğüne
+     göre. Burada yalnız ekran nefesi: özet açılmayan yollarda da bir iz kalsın. */
+  nefes(profit>=0?"good":"bad");
   // "satıldı — kâr" bildirimi yok: anlaşma özeti aynı bilgiyi büyük gösteriyor (v3 kararı 11)
   if(level()>before){
     S.perkPts += level()-before;
@@ -1157,6 +1192,7 @@ function cardHtml(c, mode){
   if(mode==="market"){
     // künye tek satır: plaka + en fazla iki çip. Önem sırası önde.
     const aday=[];
+    if(c.kelepir) aday.push(`<span class="chip kelepir">Kelepir &middot; ${c.age?"son gün":"2 gün"}</span>`);
     if(c.gunun) aday.push(`<span class="chip firsat">Günün fırsatı</span>`);
     if((S.orders||[]).some(o=>orderMatches(o,c))) aday.push(`<span class="chip solid">Siparişe uyuyor</span>`);
     if(c.story) aday.push(`<span class="chip gold">${STORIES.find(s=>s.k===c.story).t}</span>`);
@@ -1956,6 +1992,9 @@ function viewAyar(){
       <div class="swsat"><span>M&uuml;zik ve ambiyans<br>
         <small style="color:var(--muted-2)">Men&uuml;, saha ve pazarlık i&ccedil;in ayrı katmanlar</small></span>
         ${swc("muzik", muzikAcikMi(), sesKapaliMi()?"disabled":"")}</div>
+      ${[["efekt","Efekt seviyesi"],["muzik","M&uuml;zik seviyesi"]].map(([g,l])=>`<div class="swsat" style="display:block"><span>${l}</span>
+        <div class="yazisec" style="margin-top:8px">${["Kısık","Orta","Tam"].map((t,i)=>
+          `<button class="${sesSeviye(g)===i?"on":""}" data-act="sesseviye" data-g="${g}" data-v="${i}" ${sesKapaliMi()?"disabled":""}>${t}</button>`).join("")}</div></div>`).join("")}
     </div>
 
     ${dilSecilebilir()?`<div class="block"><h4>DİL / LANGUAGE</h4>
@@ -1981,6 +2020,22 @@ function viewAyar(){
         <button class="btn" data-act="kayitice">Y&uuml;kle</button>
       </div>
       <div class="sec-note" style="margin-top:7px">İlerlemen bu cihazda saklanır &mdash; yedeği kopyalayıp başka bir cihaza taşıyabilirsin.</div>
+      ${(()=>{ const ys=(typeof KAYIT!=="undefined"&&KAYIT.yedekler)?KAYIT.yedekler():[];
+        const oto=ys.filter(y=>y.kaynak!=="silinen"), sil=ys.find(y=>y.kaynak==="silinen");
+        return `<div class="kv" style="margin-top:8px"><span>Otomatik yedek</span><b>${oto.length?oto.map(y=>y.gun+". gün").join(" &middot; "):"ilk gün sonunda"}</b></div>
+          ${oto.length?`<button class="btn ghost full" data-act="yedekdon" data-i="0" style="margin-top:6px">${oto[0].gun}. günün başına dön</button>`:""}
+          ${sil?`<button class="btn ghost full" data-act="yedekdon" data-sil="1" style="margin-top:6px">Silinen oyunu geri getir (${sil.gun}. gün)</button>`:""}`; })()}
+    </div>
+
+    <div class="block"><h4>CİHAZ VE PERFORMANS</h4>
+      <div class="swsat" style="display:block"><span>3B kalite</span>
+        <div class="yazisec" style="margin-top:8px">${[["","Otomatik"],["0","Tam"],["1","Hafif"]].map(([v,l])=>{
+          let c=""; try{ c=localStorage.getItem("preloved_hafif")||""; }catch(e){}
+          return `<button class="${c===v?"on":""}" data-act="kalite3b" data-v="${v}">${l}</button>`; }).join("")}</div>
+        <small style="color:var(--muted-2);display:block;margin-top:6px">Şu an: ${hafifCizimMi()?"hafif (cila katı, kenar yumuşatma ve yumuşak gölge kapalı)":"tam"}. Takılma varsa Hafif'i dene.</small></div>
+      <button class="btn full" data-act="cihaztesti" style="margin-top:6px">Cihaz testi (15 sn)</button>
+      ${OLCUM.son||(()=>{ try{ return JSON.parse(localStorage.getItem("preloved_olcum")||"[]")[0]; }catch(e){ return null; } })()
+        ?`<button class="btn ghost full" data-act="olcumgoster" style="margin-top:6px">Son test sonucunu göster</button>`:""}
     </div>
 
     <div class="block"><h4>NASIL OYNANIR</h4>
@@ -2254,6 +2309,8 @@ function openMarketCar(c){
       ${st.riskli?`<div class="sec-note" style="color:var(--red);margin-top:7px">Bu hik&acirc;ye riskli — g&ouml;r&uuml;nmeyeni ekspertizsiz anlayamazsın.</div>`
                  :`<div class="sec-note" style="margin-top:7px">Meraklı alıcılar b&ouml;yle ara&ccedil;lara prim &ouml;der.</div>`}
     </div>`;})() : "";
+  const kelepirBlok = c.kelepir ? `<div class="block kelepir-blok"><h4>KELEPİR &middot; ${c.age?"BUGÜN SON GÜN":"2 GÜN İÇİNDE KAPILIR"}</h4>
+      <div style="font-size:13.5px;line-height:1.5">${c.kelepirNeden}. Fiyat piyasanın belirgin altında; galericiler duyunca kapar.</div></div>` : "";
   const claims=`<div class="block"><h4>İLAN METNİ</h4>
      <div class="quote">"${c.claims.join(". ")}. ${c.seller.d}"</div>
      <div class="card-foot" style="border:none;padding:9px 0 0"><span class="chip">${c.seller.n}</span>
@@ -2266,7 +2323,7 @@ function openMarketCar(c){
      <div class="kv"><span>Vites / yakıt</span><b>${c.gear} &middot; ${c.fuel}</b></div>
      <div class="kv"><span>Renk</span><b>${c.color}</b></div>
      <div class="kv"><span>İstenen fiyat</span><b style="color:var(--sodium)">${tl(c.ask)}</b></div></div>`;
-  openSheet(sheetHead(c)+hikaye+valueBlock(c)+bilinenDert(c.model,c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
+  openSheet(sheetHead(c)+kelepirBlok+hikaye+valueBlock(c)+bilinenDert(c.model,c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
     (c.inspected?notSatiri(c.model):"")+faultBlock(c,false)+historyBlock(c)+claims+specs+
     `<div class="actionbar">
        <div class="btn-row">
@@ -3620,17 +3677,33 @@ function refreshOfferView(){
   render();
 }
 
+/* ---- cihaz testi sonucu ---- */
+function olcumGoster(r){
+  if(!r){ toast("Henüz test yok.","bad"); return; }
+  const renk={iyi:"var(--green)", orta:"var(--orange)", "zayıf":"var(--red)"};
+  openSheet(`<div class="sheet-head"><div><div class="sheet-title">Cihaz testi</div>
+      <div class="sheet-sub">${r.cihaz.cekirdek||"?"} çekirdek · ${r.cihaz.bellek||"?"} GB · ${r.cihaz.dpr}x ekran${r.cihaz.hafif?" · hafif 3B":""}</div></div>
+      <button class="x" data-act="closesheet" aria-label="Kapat">&times;</button></div>
+    <div class="block">${r.evre.map(e=>`<div class="kv"><span>${e.etiket}<br><small style="color:var(--label-3)">${e.sayfa?`medyan ${e.medyan} ms · en uzun ${e.enUzun} ms`:`${e.fps} fps · takılma %${e.takilmaOran}`}</small></span>
+      <b style="color:${renk[e.karne]||"var(--label)"}">${e.karne}</b></div>`).join("")}</div>
+    ${r.evre.some(e=>e.karne==="zayıf"&&/3B/.test(e.etiket)) && !r.cihaz.hafif?`<div class="sec-note" style="margin:0 0 10px">3B saha bu cihazda zorlanıyor: Ayarlar'da <b>3B kalite → Hafif</b> seç.</div>`:""}
+    <pre class="olcum-metin">${olcumMetin(r)}</pre>
+    <button class="btn primary full" data-act="olcumkopya">Sonucu kopyala</button>`);
+}
+
 /* ---- anlaşma özeti ---- */
 function openDealSummary(d){
   /* Satış anı: aracın fotoğrafı üstüne damga gibi inen SATILDI mührü; kariyer
      rekorunda altın şerit. Kısa ve atlanabilir — Devam her an basılabilir. */
   const car=(SON_SATILAN && SON_SATILAN.id===d.carId) ? SON_SATILAN : null;
   const kazanc=d.profit>=0;
+  const ilkGosterim=!d.canlandi; d.canlandi=true;
   if(d.rekor && !d.kutlandi){
     d.kutlandi=true;
     // parla katmanı satırların üstüne biniyordu; damga zaten sahnede yazıyor, yalnız ses ve titreşim
-    setTimeout(()=>{ try{ cal("seviye"); titre(HAPTIK.basari); }catch(e){} }, 450);
+    setTimeout(()=>{ try{ cal("seviye"); titre(HAPTIK.basari); }catch(e){} }, 900);
   }
+  if(d.kademe==null) d.kademe=satisKademe(d.profit, d.buy+(d.repair||0)+(d.extra||0));
   openSheet(`<div class="sheet-head">
       <div><div class="sheet-title">Anlaşma</div>
         <div class="sheet-sub">${d.n}</div></div>
@@ -3640,6 +3713,7 @@ function openDealSummary(d){
       <div class="satildi">${d.alacak?(kazanc?"TAKSİTLE SATILDI":"ZARARINA SATILDI"):(kazanc?"SATILDI":"ZARARINA SATILDI")}</div>
       ${d.rekor?`<div class="rekor">REKOR K&Acirc;R</div>`:""}
       <div class="satis-kar ${kazanc?"pos":"neg"}">${kazanc?"+":""}${tl(d.profit)}</div>
+      ${d.kademe?`<div class="satis-kademe k${d.kademe}">${SATIS_KADEME_AD[d.kademe]}</div>`:""}
     </div>
     ${d.takas?`<div class="block takas-ozet">
       <h4>TAKASLI SATIŞ</h4>
@@ -3669,7 +3743,9 @@ function openDealSummary(d){
     </div>
     ${d.lesson?`<div class="block" style="border-color:var(--sodium-dim)">
       <div style="font-size:12.5px;line-height:1.55;color:var(--label-2)">${d.lesson}</div></div>`:""}
+    ${d.kelepir&&d.profit>0?`<button class="btn full" data-act="kelepirpaylas" style="margin-bottom:8px">Kelepiri paylaş</button>`:""}
     <button class="btn primary full" data-act="dealdone">Devam</button>`);
+  if(ilkGosterim) satisAni(d);
 }
 
 /* ---- müzayede zarf ---- */
@@ -3829,6 +3905,7 @@ document.addEventListener("click",e=>{
   }
   if(kancaEylem(a, b, car)) return;
 
+  if(a==="sesseviye"){ sesSeviye(b.dataset.g, +b.dataset.v); sesAc(); cal(b.dataset.g==="efekt"?"para":"tik"); render(); return; }
   if(a==="ses"){ const kapali=sesAnahtar(); render();
     toast(kapali?"Ses kapatıldı.":"Ses açıldı."); return; }
   if(a==="tab"){
@@ -4363,6 +4440,40 @@ document.addEventListener("click",e=>{
     const p=Math.min(S.cash,S.debt); S.cash-=p; S.debt-=p; kasaNot(-p, "Kredi ödemesi");
     toast(`${tl(p)} borç ödendi.`,"good"); save(); render(); return;
   }
+  if(a==="kelepirpaylas"){
+    /* Kelepir paylaşım anı: oyuncu bir hikâye anlatıyor ("piyasanın altında
+       kaptım, şu kârla sattım"). Kabukta sistem paylaşım sayfası, tarayıcıda
+       Web Share, o da yoksa pano. */
+    const d=S.lastDeal; if(!d) return;
+    const metin=`Kelepir'de ${d.n} aracını ${tl(d.buy)}'ye kaptım, ${tl(d.sell)}'ye sattım: ${tl(d.profit)} kâr. Sen olsan kaça bırakırdın?`;
+    const P=(window.Capacitor&&window.Capacitor.Plugins)||{};
+    const bitti=r=>toast(r,"good");
+    if(kartYerliMi() && P.Share) P.Share.share({title:"Kelepir", text:metin}).then(()=>{}, ()=>{});
+    else if(navigator.share) navigator.share({title:"Kelepir", text:metin}).catch(()=>{});
+    else if(navigator.clipboard) navigator.clipboard.writeText(metin).then(()=>bitti("Metin panoya kopyalandı."), ()=>toast("Kopyalanamadı.","bad"));
+    return;
+  }
+  if(a==="kalite3b"){
+    try{ if(b.dataset.v) localStorage.setItem("preloved_hafif", b.dataset.v); else localStorage.removeItem("preloved_hafif"); }catch(e){}
+    save(); toast("3B kalite yeniden açılışta uygulanıyor.","good");
+    setTimeout(()=>location.reload(), 700); return;
+  }
+  if(a==="cihaztesti"){
+    if(OLCUM.calisiyor) return;
+    const kat=document.createElement("div"); kat.className="olcum-perde";
+    kat.innerHTML=`<b>Cihaz testi</b><span>Başlıyor…</span><small>Ekrana dokunma, ~15 saniye sürer.</small>`;
+    document.body.appendChild(kat);
+    cihazTesti(m=>{ const sp=kat.querySelector("span"); if(sp) sp.textContent=m; })
+      .then(r=>{ kat.remove(); olcumGoster(r); }, ()=>kat.remove());
+    return;
+  }
+  if(a==="olcumgoster"){ let r=OLCUM.son; if(!r) try{ r=JSON.parse(localStorage.getItem("preloved_olcum")||"[]")[0]; }catch(e){} olcumGoster(r); return; }
+  if(a==="olcumkopya"){
+    const m=olcumMetin(OLCUM.son||JSON.parse(localStorage.getItem("preloved_olcum")||"[]")[0]);
+    try{ navigator.clipboard.writeText(m).then(()=>toast("Sonuç panoya kopyalandı.","good"), ()=>toast("Kopyalanamadı — metni elle seç.","bad")); }
+    catch(e){ toast("Kopyalanamadı — metni elle seç.","bad"); }
+    return;
+  }
   if(a==="kayitdisa"){
     const m=(typeof KAYIT!=="undefined") ? KAYIT.disaAktar() : null;
     if(!m){ toast("Kopyalanacak kayıt yok.","bad"); return; }
@@ -4380,11 +4491,30 @@ document.addEventListener("click",e=>{
     return;
   }
   if(a==="kayitice"){
-    const m=prompt("Yedek metnini yapıştır:");
-    if(!m) return;
-    if(typeof KAYIT==="undefined" || !KAYIT.iceAl(m)){ toast("Bu metin geçerli bir kayıt değil.","bad"); return; }
+    /* window.prompt() Capacitor WebView'da confirm() gibi sessizce null
+       döner: "Yükle" mağaza sürümünde hiçbir şey yapmıyordu. Oyunun kendi
+       sayfası, metin kutusuyla. */
+    openSheet(`<div class="sheet-head"><div><div class="sheet-title">Yedeği y&uuml;kle</div>
+        <div class="sheet-sub">Kopyaladığın kayıt metnini yapıştır</div></div>
+        <button class="x" data-act="closesheet" aria-label="Kapat">&times;</button></div>
+      <textarea id="iceMetin" rows="6" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid var(--sep);padding:10px;font:13px/1.4 ui-monospace,monospace;background:var(--surface);color:var(--label)"></textarea>
+      <div class="sec-note" style="margin:8px 0">Şu anki ilerlemenin yerine geçer.</div>
+      <button class="btn primary full" data-act="kayiticeyap">Y&uuml;kle</button>`);
+    return;
+  }
+  if(a==="kayiticeyap"){
+    const m=(document.getElementById("iceMetin")||{}).value;
+    if(!m || typeof KAYIT==="undefined" || !KAYIT.iceAl(m.trim())){ toast("Bu metin geçerli bir kayıt değil.","bad"); return; }
     toast("Kayıt yüklendi.","good");
     setTimeout(()=>location.reload(), 600);
+    return;
+  }
+  if(a==="yedekdon"){
+    const ys=KAYIT.yedekler(), y=b.dataset.sil ? ys.find(x=>x.kaynak==="silinen") : ys.filter(x=>x.kaynak!=="silinen")[+b.dataset.i||0];
+    if(!y) return;
+    onay(b.dataset.sil?"Silinen oyunu geri getir":"Yedeğe dön",
+      `${y.gun}. g&uuml;ndeki kayda d&ouml;n&uuml;l&uuml;r; şu anki ilerleme onun yerine ge&ccedil;mez, kaybolur.`,
+      "Evet, yedeğe dön", ()=>{ KAYIT.hemen(); KAYIT.yedektenYukle(y); setTimeout(()=>location.reload(), 300); }, true);
     return;
   }
   if(a==="reset"){
@@ -4546,6 +4676,8 @@ function boot(fresh){
   gunlukKur(false);
   seriGuncelle();
   render();
+  if(YEDEKTEN){ const g=YEDEKTEN.gun; YEDEKTEN=null;
+    setTimeout(()=>toast(`Kayıt dosyası bozulmuştu; ${g}. günün başındaki yedekten devam ediyorsun.`,"good"), 700); }
   window.__plAcildi=true;
 }
 (function bind3d(){
@@ -4574,6 +4706,15 @@ function boot(fresh){
 function acilis(){
   try{ boot(); }
   catch(e){
+    /* Kayıt yükleniyor ama açılışta patlıyor (ör. bozuk bir alan render'ı
+       düşürüyor). Eskiden kayıt siliniyordu; şimdi önce yedeklerle denenir. */
+    try{ if(typeof KAYIT!=="undefined" && KAYIT.yedekler){
+      KAYIT.bozukKenara();
+      for(const y of KAYIT.yedekler()){
+        if(y.kaynak==="silinen") continue;
+        try{ KAYIT.yedektenYukle(y); if(load()){ YEDEKTEN={gun:y.gun}; boot(); return; } }catch(_){}
+      }
+    } }catch(_){}
     try{ localStorage.removeItem("preloved_v1"); }catch(_){}
     try{ boot(true); }
     catch(e2){

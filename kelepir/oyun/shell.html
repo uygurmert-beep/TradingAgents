@@ -314,6 +314,9 @@ body.ogret-ac.sheetacik #toasts{top:calc(var(--sat,0px) + var(--ogret-h,0px) + 1
 .gunluk .gilerle{font-size:12px;color:var(--label-3);font-variant-numeric:tabular-nums}
 .gunluk .godul{font-size:13px;font-weight:650;color:var(--green);font-variant-numeric:tabular-nums}
 .gunluk .gsatir.ok .godul{color:var(--label-3)}
+.block.kelepir-blok{box-shadow:inset 3px 0 0 var(--gold),var(--shadow);background:linear-gradient(90deg,var(--gold-soft),var(--surface) 70%)}
+.block.kelepir-blok h4{color:var(--gold)}
+.chip.kelepir{background:linear-gradient(90deg,#FFD978,var(--gold));color:#2A1A00;font-weight:700;letter-spacing:.02em}
 .chip.firsat{background:linear-gradient(135deg,#F2A007,#E2544C);color:#fff;font-weight:700}
 
 /* ---------- BUGÜN rayı ----------
@@ -444,6 +447,16 @@ body.ogret-ac.sheetacik #toasts{top:calc(var(--sat,0px) + var(--ogret-h,0px) + 1
 .rekor{position:absolute;top:10px;right:-34px;transform:rotate(35deg);background:linear-gradient(90deg,#FFD978,var(--gold));
   color:#2A1A00;font-family:var(--imza-font);font-weight:700;font-size:11px;letter-spacing:.1em;padding:4px 40px}
 .satis-kar{font-family:var(--imza-font);font-weight:700;font-size:28px;margin-top:2px;font-variant-numeric:tabular-nums}
+.satis-kar.pop{animation:karPop .42s cubic-bezier(.2,1.7,.4,1)}
+@keyframes karPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+.satis-kademe{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.06em;
+  color:var(--label-2);background:var(--fill)}
+.satis-kademe.k2{color:var(--gold);background:var(--gold-soft)}
+.satis-kademe.k3{color:#2A1A00;background:linear-gradient(90deg,#FFD978,var(--gold))}
+.kivilcim{position:absolute;z-index:3;margin:-9px 0 0 -6px;font-style:normal;font-family:var(--imza-font);font-weight:700;font-size:22px;
+  color:var(--gold);text-shadow:0 1px 2px rgba(80,50,0,.25);pointer-events:none;opacity:0;animation:kivilcim 1.1s cubic-bezier(.15,.7,.3,1) both}
+@keyframes kivilcim{0%{opacity:0;transform:translate(0,0) scale(.5)}15%{opacity:1}
+  70%{opacity:1}100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 30px)) rotate(var(--rt)) scale(1.15)}}
 .sezon-afis{text-align:center;margin:2px 0 14px;padding:18px 12px 16px;border-radius:var(--r);
   background:radial-gradient(90% 120% at 50% 0%, rgba(14,94,75,0.176), transparent 70%), var(--surface)}
 .sezon-afis span{display:block;font-size:11px;letter-spacing:.16em;color:var(--label-3);font-weight:700}
@@ -451,7 +464,7 @@ body.ogret-ac.sheetacik #toasts{top:calc(var(--sat,0px) + var(--ogret-h,0px) + 1
   animation:afisGel .6s ease both}
 .sezon-afis em{font-style:normal;font-size:13px;color:var(--label-2)}
 @keyframes afisGel{from{opacity:0;letter-spacing:.4em}to{opacity:1;letter-spacing:.06em}}
-@media (prefers-reduced-motion:reduce){.satildi,.sezon-afis b{animation:none}}
+@media (prefers-reduced-motion:reduce){.satildi,.sezon-afis b,.satis-kar.pop{animation:none}.kivilcim{display:none}}
 /* ---------- imza yazı tipi ---------- */
 .sheet-title,h2.sec,.hud-cash,.kart-fiyat,.kart-ad,.pval,.w3dname,.w3dprice,.bd-bas,
 .aj-deger,.ozet b,.ro b,.lb-et,.bugun-bas span,.hz-bas b,.sec-head .sec{
@@ -989,6 +1002,11 @@ html.azhareket *,html.azhareket *:before,html.azhareket *:after{animation:none!i
 .usta-not .un-kim{grid-column:1/-1;margin-bottom:0}
 .usta-not p{margin:0;font-size:14.5px;line-height:1.4;color:#2E2A22}
 .usta-not .btn.small{width:auto;min-height:40px;padding:6px 12px;font-size:14px;white-space:nowrap;background:rgba(255,255,255,.72);color:#2E2A22}
+.olcum-perde{position:fixed;inset:auto 16px calc(90px + var(--sab,0px)) 16px;z-index:200;padding:14px 16px;border-radius:16px;
+  background:rgba(20,24,28,.92);color:#fff;display:flex;flex-direction:column;gap:3px;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.olcum-perde span{font-size:14px}.olcum-perde small{font-size:12px;opacity:.7}
+.olcum-metin{white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,monospace;background:var(--fill);color:var(--label-2);
+  border-radius:12px;padding:10px;margin:0 0 10px}
 .ajkart.yeni{box-shadow:0 0 0 1.5px var(--tint),var(--shadow)}
 .ajkart.yeni .aj-roz{background:var(--tint);color:var(--tint-ink,#fff)}
 .bosgun-satir{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:.5px solid var(--sep-soft)}

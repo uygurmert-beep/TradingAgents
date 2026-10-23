@@ -2,6 +2,16 @@
    3B DÜNYA — oto pazarını ve kendi galerini gezerek incelemek
    Kararlar hâlâ 2B sayfalarda veriliyor; burası sadece bakma yeri.
    ================================================================== */
+/** 3B kalite: Ayarlar'daki seçim ("1" hafif, "0" tam) yoksa cihazdan karar
+    verilir. W3D dışında, çünkü cihaz testi ve Ayarlar da okuyor. */
+function hafifCizimMi(){
+  let s=null; try{ s=localStorage.getItem("preloved_hafif"); }catch(e){}
+  if(s==="1") return true;
+  if(s==="0") return false;
+  return typeof navigator!=="undefined" &&
+    ((navigator.deviceMemory && navigator.deviceMemory<=2) ||
+     (navigator.hardwareConcurrency && navigator.hardwareConcurrency<=2));
+}
 const W3D=(()=>{
   let ren=null, scene=null, cam=null, raf=null, mode="pazar";
   let items=[];            // {obj, car, sprite, ring}
@@ -419,9 +429,8 @@ const W3D=(()=>{
      2 GB ve altı bellek ya da 2 çekirdekli eski telefonlarda sahne 9 araçla
      takılmasın diye orada Phong + aynı boya ortamı kullanılıyor: yansıma
      yine var, cila katı yok. */
-  const HAFIF_CIZIM = typeof navigator!=="undefined" &&
-    ((navigator.deviceMemory && navigator.deviceMemory<=2) ||
-     (navigator.hardwareConcurrency && navigator.hardwareConcurrency<=2));
+  const HAFIF_CIZIM = hafifCizimMi();
+  let yavasPencere=0, hafifOnerildi=false;
   // tembel: bu kapsam sayfa yüklenirken çalışıyor, three.js henüz yoksa THREE tanımsız
   const fiziksel = ()=> typeof THREE!=="undefined" && !!THREE.MeshPhysicalMaterial && !HAFIF_CIZIM;
   function boyaOrtamTex(){
@@ -3709,6 +3718,17 @@ const W3D=(()=>{
       const taban=Math.max(1.0, Math.min(1.5, ideal*0.65));
       isinma++;                       // ilk iki pencere ölçüm gürültüsü, atlanır
       if(isinma>2){
+        /* Piksel oranı tabana indiği hâlde 24 fps'in altında kalıyorsa (art
+           arda üç pencere) bu cihazda tam kalite fazla: bir kez Hafif öner.
+           Kendiliğinden geçmiyor; malzemeler yeniden açılışta kuruluyor. */
+        if(fps<24 && dprHedef<=taban+0.02 && !HAFIF_CIZIM){
+          yavasPencere++;
+          let secim=null; try{ secim=localStorage.getItem("preloved_hafif"); }catch(e){}
+          if(yavasPencere>=3 && !hafifOnerildi && secim===null){
+            hafifOnerildi=true;
+            try{ toast("3B saha bu cihazda yavaş çalışıyor. Ayarlar → 3B kalite → Hafif daha akıcı olur."); }catch(e){}
+          }
+        } else yavasPencere=0;
         if(fps<36 && dprHedef>taban+0.02){
           dprHedef=Math.max(taban, dprHedef-0.20); ren.setPixelRatio(dprHedef); resize();
         } else if(fps>50 && dprHedef<ideal-0.05){
@@ -3850,11 +3870,16 @@ const W3D=(()=>{
     document.getElementById("app").classList.add("in3d");
 
     try{
-      ren=new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance",
+      /* Hafif çizimde kenar yumuşatma yok, piksel oranı 1,5'te tavan ve sert
+         gölge: zayıf GPU'da kareyi en çok bunlar yiyor (piksel sayısı ve
+         gölge haritası örneklemesi). */
+      ren=new THREE.WebGLRenderer({antialias:!HAFIF_CIZIM, powerPreference:"high-performance",
         stencil:false, alpha:false});
     }catch(e){ failed=true; host.classList.add("hidden"); return false; }
+    // derleme günlüğü okuması derlemeyi eşzamanlı bekletir (bkz. foto.js)
+    if(ren.debug) ren.debug.checkShaderErrors=false;
     const dpr=window.devicePixelRatio||1;
-    dprTavan=Math.min(dpr, 2.75);
+    dprTavan=Math.min(dpr, HAFIF_CIZIM?1.5:2.75);
     dprHedef=Math.min(dpr, dpr>2.2?2.2:dprTavan);
     ren.setPixelRatio(dprHedef); isinma=0;
     if(THREE.sRGBEncoding) ren.outputEncoding=THREE.sRGBEncoding;
@@ -3864,7 +3889,7 @@ const W3D=(()=>{
     }
     try{ ANISO=Math.min(8, ren.capabilities.getMaxAnisotropy()||4); }catch(e){ ANISO=4; }
     ren.shadowMap.enabled=true;
-    ren.shadowMap.type=THREE.PCFSoftShadowMap;
+    ren.shadowMap.type=HAFIF_CIZIM?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;
     ren.shadowMap.autoUpdate=false;
     kare=0; kareSure=0; olcumT=performance.now();
     const kutu=document.getElementById("w3dcanvas");

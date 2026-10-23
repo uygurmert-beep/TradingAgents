@@ -61,6 +61,10 @@ function _ftCizici(){
     if(THREE.sRGBEncoding) r.outputEncoding=THREE.sRGBEncoding;
     if(THREE.ACESFilmicToneMapping){ r.toneMapping=THREE.ACESFilmicToneMapping; r.toneMappingExposure=1.05; }
     r.setClearColor(0x000000, 0);
+    /* three her gölgelendiriciden sonra derleme günlüğünü okuyor; bu okuma
+       derlemeyi eşzamanlı bekletir. 1.3 ölçümü: 9 sn'lik 3B oturumunda 1,3 sn.
+       Gölgelendiriciler sabit, hata denetimine yayında gerek yok. */
+    if(r.debug) r.debug.checkShaderErrors=false;
     FOTO.ren=r;
   }catch(e){ FOTO.kapali=true; }
   return FOTO.ren;
@@ -79,34 +83,60 @@ function _ftCek(c){
   const d=L*1.55+1.05;   // 3:1 şeritte araç boyu kadrajın ~%85i
   cam.position.set(d*.66, 1.35, -d*.75); cam.lookAt(0, .58, 0);
   r.render(sc, cam);
-  let url;
-  try{ url=r.domElement.toDataURL("image/webp", .86); }catch(e){}
-  if(!url || url.indexOf("image/webp")<0) url=r.domElement.toDataURL("image/png");
   // paylaşılmayan geometri ve malzemeleri bırak; dokular W3D önbelleğinde
   car.traverse(o=>{
     if(o.geometry && !(o.geometry.userData&&o.geometry.userData.paylasimli)) o.geometry.dispose();
     if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose()); }
   });
-  return url;
+  /* toDataURL görüntüyü ana iş parçacığında kodluyordu: ölçümde fotoğraf
+     başına yüzlerce ms, 3B sahada kare takılmasının en büyük kalemi. toBlob
+     kodlamayı arka plana alır; img'ye nesne URL'si verilir. */
+  const cv=r.domElement;
+  if(cv.toBlob && typeof URL!=="undefined" && URL.createObjectURL){
+    return new Promise(coz=>{
+      try{ cv.toBlob(bl=>coz(bl?URL.createObjectURL(bl):null), "image/webp", .86); }catch(e){ coz(null); }
+    });
+  }
+  let url;
+  try{ url=cv.toDataURL("image/webp", .86); }catch(e){}
+  if(!url || url.indexOf("image/webp")<0) url=cv.toDataURL("image/png");
+  return Promise.resolve(url);
 }
+function _ftBirak(url){ if(url && url.startsWith("blob:")) try{ URL.revokeObjectURL(url); }catch(e){} }
 function _ftPlanla(gecikme){
   if(FOTO.zamanlayici) return;
   FOTO.zamanlayici=setTimeout(()=>{
     FOTO.zamanlayici=null;
     if(Date.now()-FOTO.sonEtkilesim<700){ _ftPlanla(350); return; }
+    /* 3B sahadayken fotoğraf çekme: fotoğraflar orada görünmüyor, ikinci
+       WebGL bağlamı sahneyle GPU'yu paylaşıp kareyi düşürüyordu (1.3 ölçümü:
+       3B oturum süresinin %45'i). Sahneden çıkınca kuyruk kaldığı yerden sürer. */
+    const app=document.getElementById("app");
+    if(app && app.classList.contains("in3d")){ _ftPlanla(1200); return; }
     if(typeof requestIdleCallback==="function") requestIdleCallback(_ftCalis, {timeout:1500});
     else _ftCalis();
   }, gecikme);
 }
 function _ftCalis(){
   const is=FOTO.sira.shift(); if(!is) return;
-  let url=null;
-  try{ url=_ftCek(is.c); }catch(e){ FOTO.kapali=true; }
+  let soz=null;
+  try{ soz=_ftCek(is.c); }catch(e){ FOTO.kapali=true; }
+  Promise.resolve(soz).then(url=>_ftYerlestir(is, url), ()=>_ftYerlestir(is, null));
+}
+function _ftYerlestir(is, url){
   if(url){
+    const onceki = is.c.id!=null ? FOTO.son.get(is.c.id) : null;
     FOTO.bellek.set(is.k, url);
     if(is.c.id!=null) FOTO.son.set(is.c.id, url);
-    if(FOTO.son.size>FOTO.sinir*2) FOTO.son.delete(FOTO.son.keys().next().value);
-    if(FOTO.bellek.size>FOTO.sinir) FOTO.bellek.delete(FOTO.bellek.keys().next().value);
+    // ekrandaki eski fotoğraf bir kare daha görünsün diye bırakma gecikmeli
+    if(onceki && onceki!==url) setTimeout(()=>{
+      if(![...FOTO.bellek.values()].includes(onceki) && ![...FOTO.son.values()].includes(onceki)) _ftBirak(onceki); }, 3000);
+    /* Nesne URL'si elle bırakılmazsa bellekte kalır. İki önbellek aynı URL'yi
+       tutabildiği için yalnız hiçbirinde kalmayan bırakılır. */
+    const cik=(m)=>{ const k=m.keys().next().value, u=m.get(k); m.delete(k);
+      if(![...FOTO.bellek.values()].includes(u) && ![...FOTO.son.values()].includes(u)) _ftBirak(u); };
+    if(FOTO.son.size>FOTO.sinir*2) cik(FOTO.son);
+    if(FOTO.bellek.size>FOTO.sinir) cik(FOTO.bellek);
     const sec=`.fotobekle[data-foto="${CSS.escape(encodeURIComponent(is.k))}"]`;
     document.querySelectorAll(sec).forEach(el=>{
       const img=document.createElement("img");

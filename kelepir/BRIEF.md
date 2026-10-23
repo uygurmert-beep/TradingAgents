@@ -154,6 +154,18 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
 
 ### Sırada
 
+- **Yayın sonrası ilk güncelleme (1.3 kararı, gamedev-skills taraması):**
+  - *Rakip kişilikleri* — 4 rakip galeri kural tabanlı. Her rakibe puanlamalı
+    (utility) karar: fiyat avantajı, araç durumu, nakit, risk iştahı 0..1'e
+    normalize, kişilik ağırlıkları (agresif teklifçi, yalnız temiz araç alan,
+    taksitçi), eşitlikte küçük histerezis. Kararların skorları debug'da görünsün.
+  - *Diyalog verisi* — alıcı ve satıcı replikleri kodun içinde. Satır kimlikli
+    tabloya (id → {tr, en}) taşınmalı; seçenekler arketip, sabır ve teklif
+    farkıyla koşullu. Her dal bir bitişe ulaşmalı (yürüyen test).
+- **Cihaz testi verisi** — kapalı testte en ucuz Android'de Ayarlar → Cihaz testi
+  metni toplanmalı. Sandbox'ta GPU yazılımsal (SwiftShader); 3B rakamı ancak
+  cihazdan gelir. 3B saha "zayıf" çıkarsa Otomatik kalite eşiği (şu an ≤2 GB
+  bellek ya da ≤2 çekirdek) cihaz verisine göre ayarlanmalı.
 - **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da
   bir sezon itibar kaybı. Yalanın uzun vadeli faturası. Dönen müşterinin
   karşılığı: itibar artık hem kazandırıyor hem de kaybettiriyor olmalı.

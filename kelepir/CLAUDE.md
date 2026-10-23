@@ -36,7 +36,7 @@ parça kalitesi, ilan fotoğrafı, piyasa nabzı, galericiler grubu, canlı aç�
 birleştirip `shell.html` içindeki `/*BUNDLE*/` işaretinin yerine koyuyor.
 
 ```
-hata.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → kanca.js → world.js
+hata.js → olcum.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → kanca.js → world.js
 → rehber.js → gunlukritim.js → koleksiyon.js → galeri.js → konsinye.js
 → yangorev.js → kolay.js → foto.js → parca.js → takas.js → ilanfoto.js → piyasa.js
 → grup.js → canli.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
@@ -92,6 +92,7 @@ node test/kayittest.js     # kayıt / dışa aktarma / içe alma
 node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
 node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz + teker kemeri + tek araçta oklar (30 kontrol, birkaç dk)
+node test/v13-test.js      # 1.3: satış anı, kayıt yedeği, ses grupları, ölçüm, nadir kelepir (29 kontrol)
 node test/v3-test.js       # v3 kararları + 1.1 + 1.2: araç karakteri, taksit, pazarlık/satış/müzayede, yeni ekranlar, kademeli açılış, usta notu, duvar takvimi, gün notları (62 kontrol)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
@@ -164,8 +165,9 @@ iş listesine yaz.
 | Dosya | Satır | Sorumluluk |
 |---|---:|---|
 | `hata.js` | 51 | genel hata yakalayıcı, beyaz ekranı önler |
+| `olcum.js` | 150 | kare süresi örnekleyici, Ayarlar → Cihaz testi (liste, sayfa, 3B) |
 | `aracciz.js` | 442 | **araç çizimi** — 150 model için kodla üretilen SVG |
-| `kayit.js` | 142 | localStorage, göç, dışa/içe aktarma, servis çalışanı |
+| `kayit.js` | 260 | localStorage + IndexedDB + cihaz deposu, günlük yedek, bozuk kayıttan dönüş, servis çalışanı |
 | `i18n.js` | 216 | dil katmanı (tek dil kilidi burada) |
 | `ses.js` | 354 | WebAudio ses ve müzik |
 | `game.js` | 910 | **kural motoru** — model tablosu, değerleme, arızalar, alıcı/satıcı |
@@ -438,6 +440,30 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   müzayede; en çok 3), pembe = usta notu. Yeni bir "yarın olacak" bilgisi buraya.
 - **3B oklar tek araçta sönük** (`.w3dok.tek`) ve dokununca neden geçmediğini söyler;
   oklar 44px. Tam renkli ama işlemeyen ok "çalışmıyor" diye bildirildi.
+- **Satış anı** (`cila.js satisAni`, 1.3): kâr maliyete oranla 3 kademe (`satisKademe`:
+  ≥%8 iyi, ≥%20 ya da ₺250K büyük). Ses/titreşim/sayaç `openDealSummary` ilk açılışında
+  (`d.canlandi`), `sellCar` yalnız nefes verir. Hareket azaltmada sayaç ve kıvılcım yok.
+- **Kayıt yedeği** (`kayit.js`, 1.3): gün değişince sağlam kayıt `preloved_yedek` (+`yedek2`
+  bir önceki gün), IndexedDB "yedek" ve kabukta Capacitor Filesystem DATA dosyası.
+  Açılmayan kayıt **silinmez**: `preloved_bozuk`'a konur, en yeni yedekten açılır
+  (`yedektenAc`, oyuncuya bildirilir). "Baştan başla" son oyunu `preloved_silinen`'de tutar.
+  Testte kayıt bozacaksan `addInitScript` ile yap: sayfa kapanırken oyun yeniden yazar.
+- **`window.prompt`/`confirm` kullanma**: Capacitor WebView'da sessizce null/false döner.
+  Kayıt içe alma da artık oyunun kendi sayfası (`kayitice` → `#iceMetin`).
+- **Ses grupları** (`ses.js`, 1.3): efektler `SES.efekt`, müzik + ambiyans `SES.muzikBus`
+  üzerinden; seviye `sesSeviye(grup,kademe)` (`preloved_seviye`), satışta `sesKis()`.
+  Tekrar eden efektler (`SES_DEGISKEN`) ±%6 perde, akorlar sabit. Yeni bir sentez
+  düğümünü doğrudan `SES.ana`'ya bağlama.
+- **Performans** (1.3 ölçümü, SwiftShader vekili): 3B'deki uzun takılmaların kaynağı
+  arka plandaki fotoğraf çiziciydi (`toDataURL` + derleme günlüğü). Fotoğraf kuyruğu
+  `#app.in3d` iken bekler, çekim `toBlob` + nesne URL'si (LRU'dan çıkınca bırakılır),
+  iki çizicide `debug.checkShaderErrors=false`. 3B kalite `preloved_hafif` (`hafifCizimMi`);
+  tabanda 24 fps altı sürerse bir kez Hafif önerilir. Gerçek cihaz rakamı Ayarlar →
+  Cihaz testi metninden gelir; sandbox rakamı GPU'yu temsil etmez.
+- **Nadir kelepir** (`game.js NADIRLIK`, `gununKelepiri`, 1.3): ilan başına ağırlıklı tablo
+  (normal 91 / uygun 6 / kelepir 3) + günlük %12 zar; kelepir `kelepirSaglam` ile
+  doğrulanır (gizli ağır kusur, büyük hasar, km oynaması yok), aynı anda en çok bir
+  tane, 2 günde kapılır. Simülasyon: günlerin ~%21'inde pazarda bir kelepir.
 - **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir

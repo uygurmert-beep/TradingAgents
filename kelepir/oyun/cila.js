@@ -131,3 +131,66 @@ function dokun(ad){
   const p=DOKUN[ad];
   if(p) titre(p);
 }
+
+/* ==================================================================
+   SATIŞ ANI (1.3, game-feel)
+   Satış özeti tek bir statik rakamdı: ₺4.000 kâr ile ₺400.000 kâr aynı
+   sessizlikte iniyordu. Oyunun en tatlı anı bu; puan isteyeceğimiz an da
+   bu. Kâr, maliyete oranına göre üç kademe:
+     1 ufak  — rakam sayar, kısa para sesi
+     2 iyi   — rakam sayar + pop, satış akoru, birkaç ₺ kıvılcımı
+     3 büyük — uzun sayaç, bol kıvılcım, ekran nefesi, ikinci akor
+   Müzik bu sürede kısılır ki akor duyulsun. Hareket azaltmada yalnız ses.
+   ================================================================== */
+function satisKademe(kar, maliyet){
+  if(!(kar>0)) return 0;
+  const o=kar/Math.max(1, maliyet);
+  if(o>=.20 || kar>=250000) return 3;
+  if(o>=.08 || kar>=80000) return 2;
+  return 1;
+}
+const SATIS_KADEME_AD=["", "Ufak ama kâr", "İyi kâr", "Büyük kâr"];
+function satisAni(d){
+  const k=d.kademe||0;
+  try{
+    if(typeof sesKis==="function") sesKis(k>=3?2.2:1.4);
+    if(k===0){ cal("reddet"); dokun("hata"); }
+    else if(k===1){ cal("para"); dokun("al"); }
+    else { cal("satis"); dokun(k>=3?"seviye":"sat"); }
+    if(k>=3) setTimeout(()=>cal("buyukSatis"), 420);
+  }catch(e){}
+  const el=document.querySelector(".satis-kar");
+  if(!el) return;
+  const hedef=d.profit, metin=v=>(v>=0?"+":"")+tl(v);
+  if(CILA.azHareket || k===0){ el.textContent=metin(hedef); return; }
+  const sure=[0,520,850,1250][k], t0=performance.now();
+  el.textContent=metin(0);
+  const adim=t=>{
+    const u=Math.min(1,(t-t0)/sure), e=1-Math.pow(1-u,3);
+    el.textContent=metin(Math.round(hedef*e/100)*100);
+    if(u<1) requestAnimationFrame(adim);
+    else{
+      el.textContent=metin(hedef);
+      el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+      if(k>=2) paraKivilcim(el, k>=3?16:8);
+      if(k>=3) nefes("big");
+    }
+  };
+  requestAnimationFrame(adim);
+}
+/** Rakamın çevresinden saçılan ₺ kıvılcımları. Saf CSS: tuval ve döngü yok,
+    sahne kapanınca kendiliğinden silinir. */
+function paraKivilcim(el, adet){
+  const kap=el.closest(".satis-sahne"); if(!kap) return;
+  const r=el.getBoundingClientRect(), k=kap.getBoundingClientRect();
+  const x0=r.left-k.left+r.width/2, y0=r.top-k.top+r.height/2;
+  for(let i=0;i<adet;i++){
+    const s=document.createElement("i");
+    s.className="kivilcim";
+    const a=-Math.PI/2+(Math.random()-.5)*Math.PI*1.1, uz=70+Math.random()*80;
+    s.style.cssText=`left:${x0}px;top:${y0}px;--dx:${Math.cos(a)*uz}px;--dy:${Math.sin(a)*uz}px;--rt:${(Math.random()-.5)*160}deg;animation-delay:${i*18}ms`;
+    s.textContent="₺";
+    kap.appendChild(s);
+    setTimeout(()=>s.remove(), 1300+i*18);
+  }
+}

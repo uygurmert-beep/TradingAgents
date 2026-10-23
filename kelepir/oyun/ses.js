@@ -6,8 +6,40 @@
    ================================================================== */
 const SES={
   ac:null, ana:null, acik:false, kapali:false, hazir:false,
-  sonZaman:0
+  sonZaman:0, efekt:null, muzikBus:null, perde:1, sonPerde:{}
 };
+/* Ses grupları (1.3, audio-design): efektler ve müzik/ambiyans ayrı
+   kanallardan ana çıkışa gider. Eskiden hepsi doğrudan anaya bağlıydı;
+   müziği kısmak isteyen efektleri de kısıyordu ve satış akoru müziğin
+   altında boğuluyordu. Seviyeler üç kademe: kısık / orta / tam. */
+const SES_KADEME=[.35,.7,1];
+function sesSeviyeOku(){
+  try{ const v=JSON.parse(localStorage.getItem("preloved_seviye")||"null");
+    return {efekt:v&&v.efekt!=null?v.efekt:2, muzik:v&&v.muzik!=null?v.muzik:2}; }
+  catch(e){ return {efekt:2, muzik:2}; }
+}
+function sesSeviye(grup, kademe){
+  const v=sesSeviyeOku();
+  if(kademe!=null){ v[grup]=Math.max(0,Math.min(2,kademe|0));
+    try{ localStorage.setItem("preloved_seviye", JSON.stringify(v)); }catch(e){} }
+  if(SES.hazir){
+    const node = grup==="efekt" ? SES.efekt : SES.muzikBus;
+    if(node) node.gain.setTargetAtTime(SES_KADEME[v[grup]], SES.ac.currentTime, .05);
+  }
+  return v[grup];
+}
+/** Müziği kısa süre kıs (ducking): satış akoru ve kutlama duyulsun. */
+function sesKis(sure){
+  if(!SES.hazir || !SES.muzikBus) return;
+  try{
+    const g=SES.muzikBus.gain, t=SES.ac.currentTime, tam=SES_KADEME[sesSeviyeOku().muzik];
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(tam*.22, t+.08);
+    g.setValueAtTime(tam*.22, t+(sure||1.4));
+    g.linearRampToValueAtTime(tam, t+(sure||1.4)+.7);
+  }catch(e){}
+}
 function sesAyarOku(){
   try{ return localStorage.getItem("preloved_ses")==="0"; }catch(e){ return false; }
 }
@@ -22,6 +54,9 @@ function sesKur(){
     SES.ana=SES.ac.createGain();
     SES.ana.gain.value=0.5;
     SES.ana.connect(SES.ac.destination);
+    const sv=sesSeviyeOku();
+    SES.efekt=SES.ac.createGain(); SES.efekt.gain.value=SES_KADEME[sv.efekt]; SES.efekt.connect(SES.ana);
+    SES.muzikBus=SES.ac.createGain(); SES.muzikBus.gain.value=SES_KADEME[sv.muzik]; SES.muzikBus.connect(SES.ana);
     SES.hazir=true;
     SES.kapali=sesAyarOku();
     MUZ.acik=muzikAyarOku();
@@ -59,10 +94,11 @@ function _ton(frek, sure, tip, hacim, kayma){
   const ac=SES.ac, t0=ac.currentTime;
   const o=ac.createOscillator(), g=ac.createGain();
   o.type=tip||"sine";
-  o.frequency.setValueAtTime(frek, t0);
-  if(kayma) o.frequency.exponentialRampToValueAtTime(Math.max(20,kayma), t0+sure);
+  const p=SES.perde||1;
+  o.frequency.setValueAtTime(frek*p, t0);
+  if(kayma) o.frequency.exponentialRampToValueAtTime(Math.max(20,kayma*p), t0+sure);
   _zarf(g, t0, 0.006, sure*0.35, 0.35, sure*0.6, hacim||0.25);
-  o.connect(g); g.connect(SES.ana);
+  o.connect(g); g.connect(SES.efekt||SES.ana);
   o.start(t0); o.stop(t0+sure+0.08);
 }
 function _gurultu(sure, hacim, filtre, q){
@@ -73,14 +109,15 @@ function _gurultu(sure, hacim, filtre, q){
   for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
   const src=ac.createBufferSource(); src.buffer=buf;
   const bp=ac.createBiquadFilter();
-  bp.type="bandpass"; bp.frequency.value=filtre||1200; bp.Q.value=q||1.2;
+  bp.type="bandpass"; bp.frequency.value=(filtre||1200)*(SES.perde||1); bp.Q.value=q||1.2;
   const g=ac.createGain();
   _zarf(g, t0, 0.004, sure*0.3, 0.2, sure*0.6, hacim||0.2);
-  src.connect(bp); bp.connect(g); g.connect(SES.ana);
+  src.connect(bp); bp.connect(g); g.connect(SES.efekt||SES.ana);
   src.start(t0); src.stop(t0+sure+0.05);
 }
 function _akor(frekler, sure, hacim, gecikme){
-  frekler.forEach((f,i)=>setTimeout(()=>{ if(!SES.kapali) _ton(f, sure, "triangle", hacim); },
+  const p=SES.perde||1;     // gecikmeli notalar çalınırken perde sıfırlanmış olur; yakala
+  frekler.forEach((f,i)=>setTimeout(()=>{ if(!SES.kapali) _ton(f*p, sure, "triangle", hacim); },
     i*(gecikme||70)));
 }
 
@@ -98,6 +135,7 @@ const SESLER={
   tamir:    ()=>{ _gurultu(.07,.14,2200,3); setTimeout(()=>_gurultu(.07,.12,1800,3),95);
                   setTimeout(()=>_gurultu(.08,.10,1500,3),190); },
   satis:    ()=>{ _akor([523,659,784,1047], .30, .14, 85); },
+  buyukSatis:()=>{ _akor([1047,1319,1568,2093], .40, .10, 70); setTimeout(()=>_gurultu(.35,.05,6200,4),300); },
   alim:     ()=>{ _akor([392,523,659], .24, .12, 75); },
   hata:     ()=>{ _ton(220,.16,"square",.12,150); },
   uyari:    ()=>{ _ton(440,.10,"triangle",.11); setTimeout(()=>_ton(392,.14,"triangle",.11),110); },
@@ -107,6 +145,7 @@ const SESLER={
   reddet:   ()=>{ _ton(196,.20,"sawtooth",.09,140); },
   sayfa:    ()=>{ _gurultu(.10,.07,900,.8); }
 };
+const SES_DEGISKEN={tik:1, sekme:1, ac:1, kapa:1, para:1, kasa:1, anahtar:1, tamir:1, teklif:1, sayfa:1, hata:1};
 function cal(ad){
   if(SES.kapali) return;
   if(!SES.hazir){ sesKur(); if(!SES.hazir) return; }
@@ -115,7 +154,16 @@ function cal(ad){
   if(ad==="tik" && now-SES.sonZaman<40) return;   // tık spam'ini kes
   SES.sonZaman=now;
   const f=SESLER[ad];
+  /* Tekrar eden seslerde küçük perde farkı: art arda on "tık" ya da "para"
+     makineli tüfek gibi aynı duyuluyordu. ±%6 (bir yarım ton kadar), bir önceki
+     ile aynı perdeye düşmesin. Müzikal akorlar (satış, seviye) sabit kalır. */
+  SES.perde=1;
+  if(SES_DEGISKEN[ad]){
+    let p; do{ p=1+(Math.random()-.5)*.12; }while(Math.abs(p-(SES.sonPerde[ad]||0))<.008);
+    SES.perde=SES.sonPerde[ad]=p;
+  }
   if(f){ try{ f(); }catch(e){} }
+  SES.perde=1;
 }
 /* ==================================================================
    MÜZİK VE AMBİYANS (madde 1)
@@ -161,7 +209,7 @@ function muzikKur(){
   if(!MUZ.gain){
     MUZ.gain=SES.ac.createGain();
     MUZ.gain.gain.value=0;
-    MUZ.gain.connect(SES.ana);
+    MUZ.gain.connect(SES.muzikBus||SES.ana);
   }
   return true;
 }
@@ -256,7 +304,7 @@ function ambiyansAc(){
     const src=ac.createBufferSource(); src.buffer=buf; src.loop=true;
     const lp=ac.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=520; lp.Q.value=0.4;
     const g=ac.createGain(); g.gain.value=0.0001;
-    src.connect(lp); lp.connect(g); g.connect(SES.ana);
+    src.connect(lp); lp.connect(g); g.connect(SES.muzikBus||SES.ana);
     src.start();
     g.gain.linearRampToValueAtTime(0.055, ac.currentTime+2.0);
     MUZ.amb={src, g, olay:null};
@@ -301,7 +349,7 @@ function ambArac(){
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(0.045, t0+sure*0.45);
     g.gain.linearRampToValueAtTime(0.0001, t0+sure);
-    src.connect(bp); bp.connect(g); g.connect(SES.ana);
+    src.connect(bp); bp.connect(g); g.connect(SES.muzikBus||SES.ana);
     src.start(t0); src.stop(t0+sure+0.05);
   }catch(e){}
 }
@@ -317,7 +365,7 @@ function ambKus(){
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.024, t+0.012);
       g.gain.exponentialRampToValueAtTime(0.0001, t+0.09);
-      o.connect(g); g.connect(SES.ana);
+      o.connect(g); g.connect(SES.muzikBus||SES.ana);
       o.start(t); o.stop(t+0.12);
     }
   }catch(e){}
