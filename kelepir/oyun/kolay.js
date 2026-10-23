@@ -52,9 +52,16 @@ function hazirlaYap(c){
   // Nakit yettiği kadar, en kârlı tamirden başla. Kasa hiç sıfırlanmasın:
   // bir sonraki alım için bir yastık bırak.
   const yastik=Math.min(150000, S.cash*0.15);
-  for(const f of karliTamirler(c)){
+  /* Liste her tamirden sonra yeniden çıkarılıyor: bir tamir aracın değerini
+     yükseltince başka bir arıza yeni kârlı olabiliyor; tek seferlik listede
+     o tamir yapılmıyor, araç "kârlı tamir var" rozetiyle ilana çıkıyordu
+     (ux-test'te 11 koşuda 1). */
+  const atlanan=new Set();
+  for(let tur=0; tur<12; tur++){
+    const f=karliTamirler(c).find(x=>!atlanan.has(x.id));
+    if(!f) break;
     const bd=_hzBedel(f);
-    if(S.cash-bd<yastik) continue;
+    if(S.cash-bd<yastik){ atlanan.add(f.id); continue; }
     S.cash-=bd; c.spent+=bd; f.fixed=true; S.stats.repairs++;
     kasaNot(-bd, `Tamir: ${f.n}`);
     if(PARCA_SECIM==="orijinal"){ delete f.parca; delete f.parcaGun; }
