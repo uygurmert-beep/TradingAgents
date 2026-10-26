@@ -424,6 +424,20 @@ function genCar(opt={}){
   }
   return car;
 }
+/* ================= OTO PAZARI SABAHI (1.4, test grubu V1) =================
+   Haftada bir (7, 14, 21… gün) açık oto pazarı kurulur: pazar sahası alçak
+   sabah güneşinde ve pusta açılır, çay tezgâhı ve kalabalık gelir, ilan
+   sayısı artar. Türkiye'de ikinci elin en tanıdık sahnesi. */
+function pazarGunu(gun){ return ((gun||(typeof S!=="undefined"&&S&&S.day)||1)%7)===0; }
+/** Galerinin büyüklük kademesi (V9): saha dekoru ve bina bununla değişir. */
+function galeriKademe(){
+  if(typeof S==="undefined" || !S) return 1;
+  const sv=(typeof level==="function")?level():1;
+  if((S.prestij||0)>0 || sv>=6 || (S.slots||3)>=8) return 2;
+  if(sv>=3 || (S.slots||3)>=5) return 1;
+  return 0;
+}
+
 /* ================= KAPORTA ŞEMASI (1.4, test grubu V6) =================
    Türkiye'de ikinci el aracın kimlik kâğıdı ekspertiz şeması: 13 parça,
    orijinal / lokal boyalı / boyalı / değişen. Eskiden yalnız "boyalı 3,

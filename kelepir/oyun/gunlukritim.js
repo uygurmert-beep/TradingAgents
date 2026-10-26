@@ -152,6 +152,8 @@ function gunNotlari(){
   else if(tk && tk.kalan<=3) n.push({t:`Kira ${tk.kalan} gün sonra: ${tl(tk.kira)}. Nakdi bağlama.`});
   const son=(S.offers||[]).filter(o=>o.expires<=S.day && S.cars.some(c=>c.id===o.carId)).length;
   if(son) n.push({t:`${son} teklifin bugün son günü; yarına kalmaz.`});
+  if(typeof pazarGunu==="function" && pazarGunu()) n.push({t:"Bugün oto pazarı kurulu: sahada üç ilan fazla, erken gelen kapar."});
+  else if(typeof pazarGunu==="function" && pazarGunu(S.day+1)) n.push({t:"Yarın oto pazarı kuruluyor: nakit ayır."});
   for(const sk of (typeof sikayetAcik==="function"?sikayetAcik():[]))
     n.push({kotu:true, t:`Hakem heyeti: ${sk.car.model.n} şikâyeti · ${Math.max(0,SIKAYET.sure-(S.day-sk.acildi))} gün içinde cevap ver.`});
   for(const c of (S.cars||[])) if(c.kapora && c.kapora.gelis===S.day)

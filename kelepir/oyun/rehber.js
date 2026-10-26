@@ -36,7 +36,10 @@ const OGRET=[
   bas:"Günü bitir",
   alt:"Alıcılar gece gelir. Otopark ve sabit giderler de her gün işler.",
   tamam:()=>S.day>=2},
- {k:"sat",     sekme:"garaj", sec:['[data-act="saleaccept"].karli','[data-act="saleoffer"]','[data-act="salenego"]','[data-act="dealdone"]'],
+ /* İlk gece alıcı gelmeyebilir (1.4'te rakip ve kapora zarları sırayı
+    değiştirince tohumlu koşuda öyle oldu): rapor açık, vurgulanacak teklif
+    yok, oyuncu takılıyordu. Teklif yoksa rapor kapat → günü bitir. */
+ {k:"sat",     sekme:"garaj", sec:['[data-act="saleaccept"].karli','[data-act="saleoffer"]','[data-act="salenego"]','[data-act="dealdone"]','[data-act="closereport"]','[data-act="endday"]'],
   bas:"Gelen teklifi değerlendir",
   alt:"Maliyetinin üstündeki ilk ciddi teklifi kaçırma; beklemek her gün paraya mal olur.",
   tamam:()=>(S.stats.sold||0)>0}

@@ -18,9 +18,13 @@ const KISILIK={
   merakli:{ad:"Klasik meraklısı",  w:{a:.6, d:1.0, n:.5}, zarf:.95,  d:"Klasik ve lüks araca gönlünü kaptırır.", bonus:{klasik:1.7, lux:1.3}}
 };
 /* Ayar (240 günlük simülasyon, 3 koşu): ilk değerlerle (eşik .16, kapma .55)
-   ilanların %36'sı rakibe gidiyordu; STR şartı ≤%25. Şimdi %22–25, kapışların
-   ~%90'ı önceden "baktı" etiketiyle uyarılmış ilanlarda. */
-const RAKIP={ esik:.24, histerezis:.90, kapma:.32, sessiz:.15 };
+   ilanların %36'sı rakibe gidiyordu; STR şartı ≤%25. Kapma .32 ile oyunculu
+   koşuda %22–25 çıktı ama oyuncu almadıkça ilan sahada kalıyor ve aynı rakip
+   her gece yeniden zar atıyordu (oyuncusuz koşu %19–31). Artık rakip baktığı
+   ilanı bir gece geçerse ondan vazgeçer (`c.rakipPas`): ilan başına tek şans,
+   o şans daha yüksek (.50). 200 günlük oyuncusuz koşu ×6: %17–24, kapışların
+   %80–90'ı "baktı" etiketli ilanlarda. */
+const RAKIP={ esik:.24, histerezis:.90, kapma:.50, sessiz:.15 };
 const _RK_ROL={ucuz:"agresif", aile:"temiz", ticari:"taksit", lux:"merakli"};
 function rakipKisilik(st,i){ return KISILIK[_RK_ROL[rivalDef(st,i).rol]] || KISILIK.agresif; }
 function _rkDurum(c){
@@ -44,6 +48,7 @@ function rakipHedef(st,i,haric){
   let en=null, es=0, onceki=null, os=0;
   for(const c of S.market){
     if(haric && haric.has(c.id)) continue;
+    if(c.rakipPas && c.rakipPas.includes(st.n)) continue;
     const sk=rakipSkor(st,i,c);
     if(sk>es){ es=sk; en=c; }
     if(c.id===st.goz){ onceki=c; os=sk; }
@@ -67,6 +72,7 @@ function rakipGece(st,i,rep,al){
   // 1) dün baktığı ilan hâlâ duruyorsa: büyük olasılıkla alır (oyuncu uyarıldı)
   const dunku=st.goz ? S.market.find(c=>c.id===st.goz) : null;
   if(dunku && rakipSkor(st,i,dunku)>0 && chance(RAKIP.kapma)){ al(dunku); alinan.add(dunku.id); }
+  else if(dunku){ (dunku.rakipPas=dunku.rakipPas||[]).push(st.n); }
   // 2) oyuncunun görmediği ilanı bazen sessizce alır (eski davranışın yumuşağı)
   else{
     const h=rakipHedef(st,i,alinan);

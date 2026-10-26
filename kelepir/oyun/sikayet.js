@@ -106,3 +106,12 @@ KANCA.eylem.sikayetitiraz=(b)=>{ const s=_skBul(b); if(!s) return;
     toast(`İtiraz reddedildi: ${tl(t)} ödendi, itibar −4.`,"bad");
   }
   sikayetKapat(s); };
+
+/* Galeri büyüdü (V9): kademe değişince rapora bir satır — saha da değişti. */
+KANCA.gun.push(rep=>{
+  const k=galeriKademe(), eski=S.galeriKademe;
+  if(eski!=null && k>eski) rep.events.push({t:k===2
+    ? "<b>Galerin büyüdü:</b> yüksek camlı showroom, kırmızı halı, bayraklar. Sahaya bir bak."
+    : "<b>Galerin büyüdü:</b> konteyner ofisten cam cepheli dükkâna taşındın."});
+  S.galeriKademe=k;
+});

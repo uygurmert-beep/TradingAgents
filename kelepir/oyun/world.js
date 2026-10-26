@@ -312,9 +312,14 @@ const W3D=(()=>{
      yerRenk:0x7D7488, sis:0xE0C8AE, sisY:36, sisU:124, pozlama:1.22, vinyet:"rgba(150,70,15,.18)"}
   ];
   let SAAT=SAATLER[1];
+  /* Oto pazarı sabahı (V1): alçak, sıcak güneş, uzun gölge, yakın pus. */
+  const PAZAR_SABAH={k:"pazar", gokUst:"#5A86B8", gokOrta:"#A9C3D8", gokAlt:"#F2D9B0",
+     gunes:0xFFD9A0, guc:1.05, yon:[-18,6,14], ortam:0xE6DCCB, ortamGuc:.36,
+     yerRenk:0x7A765E, sis:0xE4D8C4, sisY:18, sisU:92, pozlama:1.10, vinyet:"rgba(140,90,30,.20)"};
   function saatSec(){
     const g=(typeof S!=="undefined" && S && S.day) ? S.day : 1;
     SAAT=SAATLER[(g-1)%SAATLER.length];
+    if(mode==="pazar" && typeof pazarGunu==="function" && pazarGunu(g)) SAAT=PAZAR_SABAH;
     return SAAT;
   }
 
@@ -3164,17 +3169,38 @@ const W3D=(()=>{
     return m;
   }
   /** Cam cepheli galeri binası + çatı tabelası. */
-  function galeriBinasi(z, en, ad, alt, renk, zemin){
+  /* Galeri büyüdükçe bina değişir (V9): 0 konteyner ofis, 1 cam cepheli
+     dükkân, 2 büyük showroom (yüksek cam, içi aydınlık, kırmızı halı,
+     bayrak direkleri). Tek seferlik kurulum, ek ışık yok: içerideki aydınlık
+     ışık değil, kendinden ışıklı yüzey. */
+  function konteynerOfis(z, en, ad, alt, renk, zemin){
     const g=new THREE.Group();
-    const Y=4.6, D=7.0;
+    const govde=new THREE.Mesh(new THREE.BoxGeometry(6.2,2.6,2.5), new THREE.MeshLambertMaterial({color:0x6F8796}));
+    govde.position.set(-en*.35,1.3,-1.25); govde.castShadow=true; govde.receiveShadow=true; g.add(govde);
+    const nervur=new THREE.MeshLambertMaterial({color:0x5E7584});
+    for(let i=0;i<14;i++){ const n=new THREE.Mesh(new THREE.BoxGeometry(.08,2.5,.04), nervur); n.position.set(-en*.35-2.9+i*.45,1.3,.02); g.add(n); }
+    const kapi=new THREE.Mesh(new THREE.PlaneGeometry(.9,2.0), new THREE.MeshLambertMaterial({color:0x3A444C}));
+    kapi.position.set(-en*.35+1.8,1.0,.05); g.add(kapi);
+    const pen=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.9), new THREE.MeshPhongMaterial({color:0x6E9FC0, shininess:90}));
+    pen.position.set(-en*.35-1.2,1.5,.05); g.add(pen);
+    const tb=new THREE.Mesh(new THREE.PlaneGeometry(4.2,1.1), new THREE.MeshBasicMaterial({map:signTex(ad, alt, renk, zemin), transparent:true}));
+    tb.position.set(-en*.35,3.25,.02); g.add(tb);
+    g.position.set(0,0,z);
+    return g;
+  }
+  function galeriBinasi(z, en, ad, alt, renk, zemin, kademe){
+    if(kademe===0) return konteynerOfis(z, en, ad, alt, renk, zemin);
+    const g=new THREE.Group();
+    const buyuk=kademe===2;
+    const Y=buyuk?6.4:4.6, D=7.0;
     const duvar=new THREE.MeshLambertMaterial({color:0xE9EDF0});
     const govde=new THREE.Mesh(new THREE.BoxGeometry(en*1.62, Y, D), duvar);
     govde.position.set(0, Y/2, -D/2); govde.castShadow=true; govde.receiveShadow=true; g.add(govde);
     // cam cephe
     const cam=new THREE.Mesh(new THREE.PlaneGeometry(en*1.40, Y*.72),
       new THREE.MeshPhongMaterial({color:0x6E9FC0, shininess:90, specular:0x9FC8E0,
-        transparent:true, opacity:.78}));
-    cam.position.set(0, Y*.42, .02); g.add(cam);
+        transparent:true, opacity:buyuk?.38:.78}));
+    cam.position.set(0, Y*.42, .04); g.add(cam);
     // cam bölme çıtaları
     const cita=new THREE.MeshLambertMaterial({color:0x36404A});
     for(let i=-3;i<=3;i++){
@@ -3198,6 +3224,22 @@ const W3D=(()=>{
       const a=new THREE.Mesh(new THREE.BoxGeometry(.12,.9,.12),
         new THREE.MeshLambertMaterial({color:0x7B858E}));
       a.position.set(sx*en*.44, Y+.5, .18); g.add(a);
+    }
+    if(buyuk){
+      // içerisi aydınlık showroom: camın arkasında kendinden ışıklı sıcak yüzey.
+      // Bina gövdesi dolu kutu; yüzey kutunun içinde kalırsa ön yüz onu örtüyordu,
+      // bu yüzden kutu yüzüyle cam arasında (1,5 cm önde)
+      const ic=new THREE.Mesh(new THREE.PlaneGeometry(en*1.38, Y*.70), new THREE.MeshBasicMaterial({color:0xFFD898}));
+      ic.position.set(0, Y*.42, .015); g.add(ic);
+      const hali=new THREE.Mesh(new THREE.PlaneGeometry(2.4, 6.5), new THREE.MeshLambertMaterial({color:0xB3121C}));
+      hali.rotation.x=-Math.PI/2; hali.position.set(0,.018,3.3); hali.receiveShadow=true; g.add(hali);
+      const bayrakRenk=[0xE30A17, 0xFFFFFF, 0x1E4FA3];
+      for(let i=0;i<3;i++){
+        const x=-en*.95+i*1.1, direk=new THREE.Mesh(new THREE.CylinderGeometry(.05,.06,7.2,8), new THREE.MeshLambertMaterial({color:0xC9CED3}));
+        direk.position.set(x,3.6,1.6); direk.castShadow=true; g.add(direk);
+        const b=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.85), new THREE.MeshLambertMaterial({color:bayrakRenk[i], side:THREE.DoubleSide}));
+        b.position.set(x+.68,6.6,1.6); g.add(b);
+      }
     }
     g.position.set(0,0,z);
     return g;
@@ -3428,7 +3470,7 @@ const W3D=(()=>{
     D.add(citPaneli(en*2+1.0, 0, z0+.5, 0));
 
     /* --- galeri binası ya da giriş takı --- */
-    if(o.bina) D.add(galeriBinasi(z1-1.2, en, o.ad, o.alt, o.renk, o.koyu));
+    if(o.bina) D.add(galeriBinasi(z1-1.2, en, o.ad, o.alt, o.renk, o.koyu, o.kademe));
     else{
       const tb=new THREE.Mesh(new THREE.PlaneGeometry(7.2,1.8),
         new THREE.MeshBasicMaterial({map:signTex(o.ad,o.alt,o.renk,o.koyu), transparent:true}));
@@ -3504,9 +3546,50 @@ const W3D=(()=>{
   }
 
   function buildLot(){
+    const pazar=typeof pazarGunu==="function" && pazarGunu();
     acikSaha({en:9.6, z0:13.4, z1:-20.4, bina:false,
-      ad:"OTO PAZARI", alt:"günün ilanları · açık saha"});   // pazar herkesin, kişiselleştirilmez
+      ad:"OTO PAZARI", alt:pazar?"bugün pazar kurulu · erken gelen kapar":"günün ilanları · açık saha"});   // pazar herkesin, kişiselleştirilmez
+    if(pazar && !HAFIF_CIZIM) pazarDekoru();
     bounds={x:2.65, z:11.8};
+  }
+  /** Çay tezgâhı, kalabalık silueti, yerde dağınık ilan kâğıtları. Hepsi tek
+      seferlik, ışıksız; kalabalık düz sprite (kameraya döner, 1 çizim çağrısı
+      kişi başına). Hafif çizimde yalnız ışık değişir. */
+  function pazarDekoru(){
+    const tezgah=new THREE.Group();
+    const tahta=new THREE.MeshLambertMaterial({color:0x8A5A32});
+    const ust=new THREE.Mesh(new THREE.BoxGeometry(2.2,.9,.8), tahta); ust.position.y=.45; ust.castShadow=true; tezgah.add(ust);
+    const tente=new THREE.Mesh(new THREE.BoxGeometry(2.6,.08,1.4), new THREE.MeshLambertMaterial({color:0xD3242C}));
+    tente.position.set(0,2.15,.1); tente.castShadow=true; tezgah.add(tente);
+    for(const sx of [-1,1]){ const d=new THREE.Mesh(new THREE.BoxGeometry(.06,2.1,.06), new THREE.MeshLambertMaterial({color:0x5A5F66}));
+      d.position.set(sx*1.2,1.05,.6); tezgah.add(d); }
+    const semaver=new THREE.Mesh(new THREE.CylinderGeometry(.16,.2,.5,12), new THREE.MeshPhongMaterial({color:0xC9CCD0, shininess:80}));
+    semaver.position.set(-.6,1.15,0); tezgah.add(semaver);
+    for(let i=0;i<5;i++){ const b=new THREE.Mesh(new THREE.CylinderGeometry(.035,.03,.09,8), new THREE.MeshLambertMaterial({color:0xB0261C}));
+      b.position.set(.1+i*.16,.95,.15); tezgah.add(b); }      // ince belli çay bardakları
+    tezgah.position.set(-8.4,0,9.6); tezgah.rotation.y=Math.PI/2; scene.add(tezgah);
+    // kalabalık: tohumlu yerleşim, kişi siluetleri sahanın kenarlarında
+    let h=(S.day||1)*977; const r=()=>{ h=(h*1664525+1013904223)>>>0; return h/4294967296; };
+    /* Doku beyaz, renk malzemeden: koyu dokuyla çarpınca herkes kapkara
+       gölge gibi görünüyordu. Baş ten rengi ayrı çizilir. */
+    const kisiTex=tex("pazarKisi2", 64, 128, (g)=>{
+      g.fillStyle="#FFFFFF"; g.beginPath(); g.arc(32,22,13,0,7); g.fill();
+      g.beginPath(); g.moveTo(14,44); g.quadraticCurveTo(32,34,50,44); g.lineTo(54,92); g.lineTo(10,92); g.fill();
+      g.fillStyle="#9AA0A8"; g.fillRect(16,90,13,36); g.fillRect(35,90,13,36);
+      g.fillStyle="#E8C4A0"; g.beginPath(); g.arc(32,22,13,0,7); g.fill();
+    });
+    for(let i=0;i<10;i++){
+      const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:kisiTex, color:new THREE.Color().setHSL(r(),.35,.42+r()*.22), transparent:true}));
+      const sx=r()<.5?-1:1;
+      sp.position.set(sx*(7.2+r()*1.6), .88, -16+r()*26); sp.scale.set(.85,1.75,1);
+      scene.add(sp);
+    }
+    // yerde uçuşmuş ilan kâğıtları
+    const kagit=new THREE.MeshLambertMaterial({color:0xF2EFE6});
+    for(let i=0;i<14;i++){
+      const k=new THREE.Mesh(new THREE.PlaneGeometry(.21,.30), kagit);
+      k.rotation.x=-Math.PI/2; k.rotation.z=r()*6.28; k.position.set((r()-.5)*15, .016, -18+r()*30); scene.add(k);
+    }
   }
 
   function buildShowroom(){
@@ -3518,7 +3601,8 @@ const W3D=(()=>{
     acikSaha({en:9.6, z0:9.0, z1:Math.min(-12,z1), bina:true,
       ad:(typeof lotAd==="function")?lotAd():"GALERİN",
       alt:`${S.cars.length}/${S.slots} dolu · ${S.day}. gün`,
-      renk:kr.h, koyu:kr.koyu, zemin:kis.zemin, flama:kis.flama!==false});
+      renk:kr.h, koyu:kr.koyu, zemin:kis.zemin, flama:kis.flama!==false,
+      kademe:(typeof galeriKademe==="function")?galeriKademe():1});
     // müşteri masası + şemsiye
     const masa=new THREE.Mesh(new THREE.CylinderGeometry(.62,.62,.07,14),
       new THREE.MeshLambertMaterial({color:0xE6E2D8}));

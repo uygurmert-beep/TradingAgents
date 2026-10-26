@@ -187,7 +187,8 @@ function yedektenAc(){
 }
 
 /* ================= piyasa ================= */
-function marketSize(){ return 6+Math.min(3,level()-1); }
+// pazar günü sahada ilan bollaşır (V1)
+function marketSize(){ return 6+Math.min(3,level()-1)+(typeof pazarGunu==="function"&&pazarGunu()?3:0); }
 function fillMarket(){
   const n=marketSize();
   const budget=Math.max(900000, S.cash*1.06);
@@ -498,8 +499,18 @@ function nextDay(){
   }
   if(S.marketingDays>0) S.marketingDays--;
   S.day++;
+  const dunkuIlan=new Set(S.market.map(c=>c.id));
   ageMarket(rep);
   rivalsDay(rep);
+  /* Sabah pazarda en az bir yeni ilan olsun. 1.4'te rakipler kişilikle ve
+     "baktı" uyarısıyla seçici alınca ilk günlerde gece hiçbir ilan
+     kalkmıyordu; pazar ertesi gün aynen duruyor, oyun durmuş gibiydi.
+     Oyuncunun açmadığı en eski ilan bireysel alıcıya gitmiş sayılır. */
+  if(S.market.length>=marketSize() && S.market.every(c=>dunkuIlan.has(c.id))){
+    const giden=S.market.filter(c=>!c.gorulen && !c.inspected && !c.kelepir && !c.rakipGoz)
+      .sort((a,b)=>(b.age||0)-(a.age||0))[0];
+    if(giden) S.market=S.market.filter(c=>c!==giden);
+  }
   fillMarket();
   if(S.day>=3 && !S.market.some(c=>c.kelepir)){
     const k=gununKelepiri();
