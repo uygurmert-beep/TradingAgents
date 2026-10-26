@@ -151,7 +151,7 @@ const MODELS=[
  {n:"Hessler GLE 2.9 Dizel",              seg:"lux",      np:  8200000, dem:1.12, rel:0.76, f:"Dizel", g:1.00, y:[2015,2023], zf:["turbo","beyin"], km:210},
  {n:"Vernon Highland 3.0 Dizel",          seg:"lux",      np: 16400000, dem:1.08, rel:0.58, f:"Dizel", g:1.00, y:[2013,2021], zf:["suspansiyon","beyin"], km:170},
  {n:"Vernon Sporta 3.0 Dizel",            seg:"lux",      np: 10800000, dem:1.06, rel:0.58, f:"Dizel", g:1.00, y:[2014,2022], zf:["multimedya","turbo"], km:170},
- {n:"Halloway Warden 3.0 Dizel",          seg:"lux",      np:  9200000, dem:0.98, rel:0.60, f:"Dizel", g:1.00, y:[2016,2023], zf:["klima","otosanziman"], km:180},
+ {n:"Halloway Warden 3.0 Dizel",          seg:"suv",      np:  9200000, dem:0.98, rel:0.60, f:"Dizel", g:1.00, y:[2016,2023], zf:["klima","otosanziman"], km:210},
  {n:"Nordahl XC90 2.0 Hibrit",            seg:"lux",      np:  7400000, dem:1.02, rel:0.81, f:"Hibrit", g:1.00, y:[2017,2024], zf:["multimedya","aku"], km:220},
  {n:"Calvetti Stelvo 2.2 Dizel",          seg:"lux",      np:  6200000, dem:0.96, rel:0.64, f:"Dizel", g:1.00, y:[2018,2024], zf:["multimedya","turbo"], km:190},
  {n:"Brickley Contin 3.0 Benzin",         seg:"lux",      np: 26800000, dem:0.82, rel:0.56, f:"Benzin", g:1.00, y:[2016,2023], zf:["yagkacak","suspansiyon"], km:170},
@@ -273,13 +273,29 @@ const CLAIMS_LIE=["Hatasız boyasız","Tramer kaydı yok","Motoru sıfır gibi",
 
 /* ============ araç üretimi ============ */
 let _uid=1;
-function plate(){
-  const L="ABCDEFGHJKLMNPRSTUVWXYZ";
+/* İl kodlu Türk plakası (1.3 test grubu, V3). Eskiden plakalar ABD biçimindeydi
+   ("2NDL305", üstünde CALIFORNIA): oyunun en çok görünen yüzeyi Türkiye
+   değildi. İl, nüfusa kabaca orantılı ağırlıkla; harf grubu Türk plakasında
+   kullanılmayan Ç, Ğ, İ, Ö, Ş, Ü, Q, W, X ve karışan I/O dışında. Rastgele bir
+   plakanın gerçek bir araca denk gelmesi mümkün; oyun içi, kişiyle eşleşmez. */
+const IL_PLAKA=[[34,"İstanbul",18],[6,"Ankara",7],[35,"İzmir",5],[16,"Bursa",4],[7,"Antalya",3],
+  [41,"Kocaeli",3],[1,"Adana",3],[42,"Konya",3],[27,"Gaziantep",3],[33,"Mersin",2],[38,"Kayseri",2],
+  [26,"Eskişehir",1.5],[55,"Samsun",1.5],[61,"Trabzon",1],[21,"Diyarbakır",2],[20,"Denizli",1],
+  [54,"Sakarya",1],[59,"Tekirdağ",1],[10,"Balıkesir",1],[45,"Manisa",1.5],[31,"Hatay",1.5],[44,"Malatya",1]];
+function ilCek(){
+  const top=IL_PLAKA.reduce((a,x)=>a+x[2],0); let r=Math.random()*top;
+  for(const x of IL_PLAKA){ r-=x[2]; if(r<=0) return x; }
+  return IL_PLAKA[0];
+}
+function plakaIl(p){ const k=parseInt(String(p||""),10); const x=IL_PLAKA.find(i=>i[0]===k); return x?x[1]:null; }
+function plate(il){
+  const L="ABCDEFGHJKLMNPRSTUVYZ";
   const h=()=>L[ri(0,L.length-1)];
+  const kod=String((il||ilCek())[0]).padStart(2,"0");
   const r=ri(0,2);
-  if(r===0) return `${h()}${h()}${h()} ${ri(100,9999)}`;
-  if(r===1) return `${ri(1,9)}${h()}${h()}${h()}${ri(100,999)}`;
-  return `${h()}${h()}${h()}-${h()}${ri(10,99)}`;
+  if(r===0) return `${kod} ${h()} ${ri(1000,99999)}`;
+  if(r===1) return `${kod} ${h()}${h()} ${ri(100,9999)}`;
+  return `${kod} ${h()}${h()}${h()} ${ri(10,999)}`;
 }
 
 function genCar(opt={}){
@@ -454,16 +470,19 @@ function nadirlikUygula(c, kelepirVar, rng){
 /* İlan başına tablo tek başına yetmiyordu: pazara günde ortalama bir
    yeni ilan giriyor, doğrulamadan geçen kelepir ilanların %1,5'i — 120
    günlük simülasyonda oyuncu yalnız 2 gün kelepir gördü. Günlük zar:
-   sağlam bir aday bulunana dek en çok 30 araç denenir. */
+   sağlam ve kasaya uygun bir aday bulunana dek en çok 60 araç denenir. */
 const KELEPIR_GUN=.12;
 function gununKelepiri(rng){
   const R=rng||Math.random;
   if(R()>=KELEPIR_GUN) return null;
-  for(let i=0;i<30;i++){
+  for(let i=0;i<60;i++){
     const c=genCar();
     if(!c.seller || !kelepirSaglam(c)) continue;
     const tv=valueOf(c,false), k=NADIRLIK[2].ask;
     c.ask=roundTo(tv*rnd(k[0],k[1]), 2500);
+    /* Oyuncunun ulaşamayacağı kelepir tantalizm: 1.3 testinde 1. gün kasa
+       ₺2,6M iken ₺3,68M'lik kelepir düştü. Senetle alınabilecek kadarı (×1,4). */
+    if(typeof S!=="undefined" && S && S.cash && c.ask>Math.max(300000, S.cash*1.4)) continue;
     c.reserve=Math.min(c.reserve, Math.round(c.ask*rnd(.95,.98)));
     c.kelepir=true; c.kelepirNeden=pick(KELEPIR_NEDEN);
     return c;

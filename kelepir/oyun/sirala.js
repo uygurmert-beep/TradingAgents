@@ -54,7 +54,8 @@ function ulusalKart(){
     <div class="siraust">
       <div class="sirano"><b>${u.sira}</b><span>/ ${u.toplam}</span></div>
       <div class="sirayan">
-        <div class="sirayuzde">En iyi %${u.dilim}'lik dilimdesin</div>
+        <div class="sirayuzde">${/* "En iyi %73'lük dilim" ters okunuyordu (v3 ve 1.3 testi) */
+          u.sira===1?"Türkiye birincisisin":`Arkanda kalan: ${u.toplam-u.sira} galeri (%${Math.round((u.toplam-u.sira)/u.toplam*100)})`}</div>
         ${u.ust?`<div class="sec-note">Bir &uuml;sttekini ge&ccedil;mek i&ccedil;in ${tl(u.fark)} daha gerek.</div>`
                :`<div class="sec-note">Listenin tepesindesin.</div>`}
       </div>

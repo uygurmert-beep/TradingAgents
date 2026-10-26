@@ -70,7 +70,7 @@ function _ifCizici(){
   }catch(e){ IFOTO.ren=false; }
   return IFOTO.ren;
 }
-function _ifZemin(g, s, W, H){
+function _ifZemin(g, s, W, H, golge){
   const ufuk=H*.58;
   if(s.zemin==="studyo"){
     const rg=g.createRadialGradient(W/2,H*.45,40,W/2,H*.5,W*.75);
@@ -108,10 +108,13 @@ function _ifZemin(g, s, W, H){
     ak.addColorStop(0,"rgba(255,140,60,.30)"); ak.addColorStop(1,"rgba(70,30,60,.22)");
     g.fillStyle=ak; g.fillRect(0,0,W,H);
   }
-  // aracın gölgesi
-  const sg=g.createRadialGradient(W/2,H*.83,10,W/2,H*.83,W*.36);
-  sg.addColorStop(0,"rgba(0,0,0,.42)"); sg.addColorStop(1,"rgba(0,0,0,0)");
-  g.fillStyle=sg; g.beginPath(); g.ellipse(W/2,H*.83,W*.36,H*.07,0,0,Math.PI*2); g.fill();
+  /* Aracın gölgesi tekerin bastığı yerde. Eskiden sabit H*.83'teydi; çekim
+     açısına göre teker hizası ~40 px yukarıda kalıyor, araç havada duruyordu
+     (1.3 testi, H3). Gölgenin yeri ve eni artık 3B izdüşümünden geliyor. */
+  const gy=golge?golge.y:H*.83, gx=golge?golge.x:W/2, rx=golge?golge.rx:W*.36, ry=golge?golge.ry:H*.07;
+  const sg=g.createRadialGradient(gx,gy,10,gx,gy,rx);
+  sg.addColorStop(0,"rgba(0,0,0,.46)"); sg.addColorStop(1,"rgba(0,0,0,0)");
+  g.fillStyle=sg; g.beginPath(); g.ellipse(gx,gy,rx,ry,0,0,Math.PI*2); g.fill();
 }
 /** Kadrajı çeker, dataURL döndürür. WebGL yoksa 2B çizime düşer (null). */
 function ilanFotoCek(c, s){
@@ -139,9 +142,17 @@ function ilanFotoCek(c, s){
   const poz={ on:[d*.66,1.25,-d*.75], yan:[d,1.05,0.0001], arka:[d*.66,1.35,d*.75] }[s.aci]||[d*.66,1.25,-d*.75];
   cam.position.set(...poz); cam.lookAt(0,.62,0);
   r.render(sc, cam);
+  // zemin izdüşümü: aracın tabanındaki dört köşe ekranda nereye düşüyor
+  cam.updateMatrixWorld();
+  const gen=(car.userData.size&&car.userData.size.w)||1.8, kose=[];
+  for(const x of [-gen/2,gen/2]) for(const z of [-L/2,L/2]){
+    const v=new THREE.Vector3(x,0,z).project(cam); kose.push([(v.x+1)/2*W, (1-v.y)/2*H]); }
+  const xs=kose.map(k=>k[0]), ys=kose.map(k=>k[1]);
+  const golge={x:(Math.min(...xs)+Math.max(...xs))/2, y:(Math.min(...ys)+Math.max(...ys))/2,
+    rx:(Math.max(...xs)-Math.min(...xs))*.58, ry:Math.max(8,(Math.max(...ys)-Math.min(...ys))*.62)};
   const tuval=document.createElement("canvas"); tuval.width=W; tuval.height=H;
   const g=tuval.getContext("2d");
-  _ifZemin(g, s, W, H);
+  _ifZemin(g, s, W, H, golge);
   g.drawImage(r.domElement, 0, 0, W, H);
   car.traverse(o=>{
     if(o.geometry && !(o.geometry.userData&&o.geometry.userData.paylasimli)) o.geometry.dispose();

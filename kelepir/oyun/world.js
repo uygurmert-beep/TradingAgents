@@ -219,7 +219,7 @@ const W3D=(()=>{
 
     const fiyat = kind==="own" ? (car.listPrice||valueOf(car,!car.inspected)) : car.ask;
     g.fillStyle="#F2A007"; g.font="600 54px ui-monospace,SFMono-Regular,Menlo,monospace";
-    g.fillText("$"+new Intl.NumberFormat(EN()?"en-US":"tr-TR").format(Math.round(fiyat)), 26, 236);
+    g.fillText("₺"+new Intl.NumberFormat(EN()?"en-US":"tr-TR").format(Math.round(fiyat)), 26, 236);
 
     // plaka
     g.fillStyle="#F4F2EC"; g.fillRect(26,254,190,32);
@@ -713,32 +713,24 @@ const W3D=(()=>{
       g.fillStyle=p; g.fillRect(4,4,W-8,H*.45);
     });
   }
-  const PLAKA_EYALET=["CALIFORNIA","TEXAS","FLORIDA","ARIZONA","NEVADA","OREGON","GEORGIA","OHIO"];
+  /* Türk plakası: beyaz zemin, solda mavi şerit ve "TR", siyah harf. Eskiden
+     ABD plakasıydı (eyalet adı, "THE USED CAR STATE"). */
   function plakaTex(txt){
-    return tex("plaka"+txt,256,128,(g)=>{
-      // zemin: hafif degrade beyaz
-      const gr=g.createLinearGradient(0,0,0,128);
-      gr.addColorStop(0,"#FBFCFD"); gr.addColorStop(.55,"#F1F4F7"); gr.addColorStop(1,"#E4E9EE");
-      g.fillStyle=gr; g.fillRect(0,0,256,128);
-      // eyalet adı (üstte, mavi)
-      let h=0; const t=txt||"7ABC123";
-      for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))>>>0;
-      g.fillStyle="#1B4C8C"; g.textAlign="center";
-      g.font="700 19px ui-sans-serif,system-ui,Helvetica,Arial";
-      g.fillText(PLAKA_EYALET[h%PLAKA_EYALET.length], 128, 24);
-      // numara
-      g.fillStyle="#17325C";
-      g.font="700 56px ui-monospace,SFMono-Regular,Menlo,monospace";
-      g.fillText(t, 128, 86);
-      // alt yazı + tescil pulu
-      g.fillStyle="#6A7684"; g.font="600 13px ui-sans-serif,system-ui,Helvetica,Arial";
-      g.fillText("THE USED CAR STATE", 128, 110);
-      g.fillStyle="#D9B526"; g.fillRect(210,96,30,22);
-      g.fillStyle="#2A3340"; g.font="700 13px ui-sans-serif,system-ui,Helvetica,Arial";
-      g.fillText(String(26+(h%3)), 225, 112);
-      // kenar
-      g.strokeStyle="#9AA3AD"; g.lineWidth=4; g.strokeRect(2,2,252,124);
-      g.strokeStyle="#C8D0D8"; g.lineWidth=2; g.strokeRect(9,9,238,110);
+    // 52×11 cm gerçek oran (4,7:1); eski ABD plakası 30×15'ti
+    return tex("plakaTR"+txt,512,112,(g)=>{
+      g.fillStyle="#FAFAF7"; g.fillRect(0,0,512,112);
+      g.fillStyle="#1E4FA3"; g.fillRect(0,0,52,112);
+      g.fillStyle="#F5D33A";
+      for(let i=0;i<12;i++){ const a=i/12*Math.PI*2; g.beginPath(); g.arc(26+Math.cos(a)*13, 38+Math.sin(a)*13, 2, 0, 7); g.fill(); }
+      g.fillStyle="#FFFFFF"; g.textAlign="center"; g.textBaseline="alphabetic";
+      g.font="700 26px ui-sans-serif,system-ui,Helvetica,Arial";
+      g.fillText("TR", 26, 96);
+      const t=txt||"34 ABC 123";
+      g.fillStyle="#111418";
+      let fs=84; g.font=`700 ${fs}px ui-sans-serif,system-ui,Helvetica,Arial`;
+      while(g.measureText(t).width>430 && fs>40){ fs-=2; g.font=`700 ${fs}px ui-sans-serif,system-ui,Helvetica,Arial`; }
+      g.fillText(t, 282, 56+fs*.36);
+      g.strokeStyle="#20242A"; g.lineWidth=5; g.strokeRect(2.5,2.5,507,107);
     });
   }
 
@@ -1502,7 +1494,16 @@ const W3D=(()=>{
     const g=loft(kesitler, true, camBolge);
     /** Ön camın z'deki orta yüksekliği (silecek ve iç parçalar için). */
     const onCamY=(z)=>{ const t=tepe(z); return t<0?ustHat(z):t; };
-    g.userData={genislik, ustHat, altHat, xAt, ustY, zOn, zArka, onCamY, bz, xCam:(z)=>Math.min(HWg*.915, genislik(z)*.93)};
+    /** Yan camın z kesitindeki doğrusu: kuşaktaki alt kenar (xg,yb) ile üst
+        fitil (xr,yUst). xAt kuşağın üstünde camı değil gövde kenarını verir;
+        cama yapışan şey (SATILIK kâğıdı) bunu kullanır. Formüller kesitlerle aynı. */
+    const camYan=(z)=>{
+      const H=camEvi(z); if(H<=0) return null;
+      const yT=ustHat(z), hw=genislik(z), yb=yT-.012, top=yb+H, kv=kavis*Math.min(1,H/.30);
+      const xg=Math.min(HWg*.915, hw*.93), xr=Math.min(HWg*.862, xg-.02);
+      return {xg, yb, xr, yUst:top-kv-.022*Math.min(1,H/.2)};
+    };
+    g.userData={genislik, ustHat, altHat, xAt, ustY, zOn, zArka, onCamY, bz, camYan, xCam:(z)=>Math.min(HWg*.915, genislik(z)*.93)};
     geoCache[anahtar]=g; g.userData.paylasimli=true;
     return g;
   }
@@ -2468,8 +2469,8 @@ const W3D=(()=>{
         arkaPanel("koyuP", i*.11, pr.sill+.07, .018,.06, .020, 1,1);
     }
     // krom tamponlu araçta ön plaka tamponun önünde; eskiden ızgaranın arkasında kalıyordu
-    if(imza.tampon) EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.17, zF-.030-.040], [0,Math.PI,0]);
-    else EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
+    if(imza.tampon) EK("plaka", new THREE.PlaneGeometry(.50,.110), [0, pr.sill+.17, zF-.030-.040], [0,Math.PI,0]);
+    else EK("plaka", new THREE.PlaneGeometry(.50,.110), [0, pr.sill+.20, zOn(0,pr.sill+.20)-.020], [0,Math.PI,0]);
     if(!imza.tampon){
       onPanel("cizgi", 0, pr.sill+.33, hwAlt*1.86, .006, .004, 14,1);
       arkaPanel("cizgi", 0, pr.sill+.33, xAt(yarim-.06, pr.sill+.33)*1.86, .006, .004, 14,1);
@@ -2489,7 +2490,7 @@ const W3D=(()=>{
       arkaPanel("stop", 0, stopY+.005, hwArka*1.35,.030, .016, 8,1);
     // krom tamponlu araçta plaka tamponun ÜSTÜNDE: eskiden tampon plakanın önünü kapatıyordu
     const plakaY = imza.tampon ? pr.sill+.30 : pr.sill+.20;
-    EK("plaka", new THREE.PlaneGeometry(.30,.150), [0, plakaY, zArka(0,plakaY)+.020]);
+    EK("plaka", new THREE.PlaneGeometry(.50,.110), [0, plakaY, zArka(0,plakaY)+.020]);
     /* Arka amblem eskiden stop hizasının 15 cm üstündeydi; bu, arka yüzün üst
        kenarını (pr.kuyruk) aşıyor, düz disk bagaj kapağının kavisine gömülüp
        yarım ay gibi kesik görünüyordu. Artık arka yüzün dik bölgesinde, stop
@@ -2757,8 +2758,102 @@ const W3D=(()=>{
     g.userData.size={l:L,w:s.W,h:s.roof};
     g.userData.ipucu=ipucu;
     for(const q of ipucu) if((car.goz||[]).includes(q.k)) g.add(gozIsaretObj(q.poz));
+    g.userData.camYan=gGeo.userData.camYan;
     g.userData.xAt=xAt; g.userData.genislik=genislik; g.userData.spec=s; g.userData.pr=pr; g.userData.zOn=zOn; g.userData.zArka=zArka; g.userData.ustHat=gGeo.userData.ustHat; g.userData.altHat=gGeo.userData.altHat;
     return g;
+  }
+
+  /* ---------- camda SATILIK kâğıdı (1.4, test grubu V2) ----------
+     Türk galericisinin en tanıdık görüntüsü: arka yan camda beyaz kâğıt,
+     kırmızı "SATILIK", keçeli kalemle fiyat, yarısı silik telefon. İlan dili
+     yazıya yansır (abartılıda "SIFIR GİBİ!!"); fiyat kırıldıysa eski rakam
+     karalanır. Kâğıt cam yüzeyine `xAt(z,y)` ile oturur (cam evi gövde
+     loft'unun parçası): düz bir levha cam eğimiyle kesişip yarı gömülüyordu.
+     El yazısı web fontu olmadan: harf başına tohumlu eğim ve kayma. */
+  function satilikBilgi(car){
+    if(car.owned){
+      if(!car.listPrice) return null;
+      const dil=car.ilanDili||"muglak";
+      const not = dil==="abartili" ? "SIFIR GİBİ!!" :
+        (dil==="durust" && car.inspected) ? (car.degisen?"Ekspertizli":"Ekspertizli · Değişensiz") : "Bakımlı · Temiz";
+      return {fiyat:car.listPrice, eski:(car.ilkIlan&&car.ilkIlan>car.listPrice)?car.ilkIlan:null, not, abart:dil==="abartili"};
+    }
+    if(!car.ask) return null;
+    const yalan=(car.claims||[]).some(x=>typeof CLAIMS_LIE!=="undefined" && CLAIMS_LIE.includes(x));
+    return {fiyat:car.ask, eski:(car.ilkAsk&&car.ilkAsk>car.ask)?car.ilkAsk:null,
+      not: yalan ? "SIFIR GİBİ!!" : (car.kelepir ? "ACİL SATILIK" : "Sahibinden"), abart:yalan};
+  }
+  function _kgBin(v){ return v>=1e6 ? (Math.round(v/1e5)/10).toString().replace(".",",")+" milyon" : Math.round(v/1000)+" bin"; }
+  function _kgElYazi(g, metin, x, y, boy, renk, tohum, egim){
+    let h=tohum>>>0; const r=()=>{ h=(h*1664525+1013904223)>>>0; return h/4294967296; };
+    g.save(); g.fillStyle=renk; g.textBaseline="alphabetic";
+    g.font=`italic 700 ${boy}px "Comic Sans MS","Chalkboard SE","Segoe Print",ui-sans-serif,sans-serif`;
+    const gen=g.measureText(metin).width; let cx=x-gen/2;
+    for(const ch of metin){
+      const w=g.measureText(ch).width;
+      g.save(); g.translate(cx+w/2, y+(r()-.5)*boy*.10); g.rotate((egim||-.04)+(r()-.5)*.14);
+      g.fillText(ch, -w/2, 0); g.restore(); cx+=w*(.94+r()*.08);
+    }
+    g.restore(); return gen;
+  }
+  function satilikTex(car, b){
+    const k=HAFIF_CIZIM?.5:1, W=Math.round(256*k), H=Math.round(200*k);
+    const anahtar=`satilik${car.id}|${b.fiyat}|${b.eski||0}|${b.not}|${k}`;
+    return tex(anahtar, W, H, (g)=>{
+      g.scale(k,k);
+      g.fillStyle="#FBFAF4"; g.fillRect(0,0,256,200);
+      g.fillStyle="rgba(0,0,0,.05)"; g.fillRect(0,192,256,8);              // kâğıt alt gölgesi
+      g.fillStyle="#D3242C"; g.textAlign="left";
+      g.font="900 46px ui-sans-serif,system-ui,Helvetica,Arial";
+      g.textAlign="center"; g.fillText("SATILIK", 128, 50);
+      g.fillRect(24,60,208,3);
+      const t=(car.id||1)*7919;
+      if(b.eski){
+        const gw=_kgElYazi(g, _kgBin(b.eski), 128, 96, 30, "#1A2A6C", t, -.03);
+        g.strokeStyle="#1A2A6C"; g.lineWidth=3;                                     // karalama
+        g.beginPath(); for(let i=0;i<5;i++){ g.moveTo(128-gw/2-4, 86+i*3); g.lineTo(128+gw/2+4, 80+i*3+(i%2?4:-2)); } g.stroke();
+        _kgElYazi(g, _kgBin(b.fiyat), 128, 136, 38, "#1A2A6C", t+3, -.05);
+      }else _kgElYazi(g, _kgBin(b.fiyat), 128, 116, 46, "#1A2A6C", t, -.05);
+      _kgElYazi(g, b.not, 128, 164, b.abart?26:21, b.abart?"#C0141C":"#1A2A6C", t+11, -.02);
+      // telefon asla tam ve gerçek biçimde yazılmaz
+      g.fillStyle="rgba(26,42,108,.45)"; g.font="600 15px ui-monospace,monospace"; g.textAlign="center";
+      g.fillText("0 5•• ••• •• ••", 128, 189);
+    });
+  }
+  /* Ön yüzü dışa bakan sargıda uv'nin u ekseni dışarıdan bakana ters düşüyor:
+     doku yatayda çevrilir (kâğıda özel doku, başka yerde kullanılmıyor). */
+  function satilikDoku(car, b){
+    const t=satilikTex(car,b);
+    if(!t.userData.cevrildi){ t.userData.cevrildi=true; t.wrapS=THREE.RepeatWrapping; t.repeat.x=-1; t.offset.x=1; t.needsUpdate=true; }
+    return t;
+  }
+  function satilikKagidi(obj, car){
+    const b=satilikBilgi(car); if(!b) return;
+    const ud=obj.userData, pr=ud.pr, camYan=ud.camYan;
+    if(!pr||!camYan) return;
+    const s=ud.spec;
+    // arka kapı camının ortası: B direği ~%62'de, C direği tavanArka'da eğimle iner
+    const oran={van:.24, hatch:.76, suv:.80}[s.cls]||.80;
+    const z=pr.camUst+(pr.tavanArka-pr.camUst)*oran;
+    const c0=camYan(z); if(!c0) return;
+    const camH=c0.yUst-c0.yb; if(camH<.16) return;
+    const h=Math.min(.22, camH*.56), w=h*1.28;
+    const yOrt=c0.yb+camH*.40;
+    /* Saydam geçişte, camdan sonra çizilir: opak geçişte kalınca %86 füme
+       cam kâğıdın üstüne biniyor, kâğıt camın arkasında kalmış gibi sönük
+       görünüyordu. Tek yüz: karşı camdaki kâğıt içeriden ters görünmesin. */
+    const mat=new THREE.MeshBasicMaterial({map:satilikDoku(car,b), side:THREE.FrontSide, transparent:true,
+      polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4});
+    for(const sx of [-1,1]){
+      const geo=yuzey(6,4,(u,v)=>{
+        // dışarıdan bakana soldan sağa okunur; bu sargıda ön yüz dışa bakar
+        const zz=z+(sx>0?(u-.5):(.5-u))*w, yy=yOrt-h/2+h*v;
+        const c=camYan(zz)||c0, t=(yy-c.yb)/Math.max(.05,c.yUst-c.yb);
+        return [sx*(c.xg+(c.xr-c.xg)*t+.010), yy, zz];
+      });
+      const m=new THREE.Mesh(geo, mat); m.name="satilik"; m.renderOrder=6;
+      obj.add(m);
+    }
   }
 
   /* ---------- kapalı otopark iskeleti ---------- */
@@ -3401,6 +3496,7 @@ const W3D=(()=>{
       parkYeri(x,z,ry,i+1,!car);
       if(!car) return;
       const obj=buildCar(car);
+      try{ satilikKagidi(obj, car); }catch(e){}
       obj.position.set(x,0,z);
       obj.rotation.y=ry;
       golgeAyarla(obj);
@@ -3512,8 +3608,14 @@ const W3D=(()=>{
     const yon=VT.T.clone().sub(cam.position); const uz=yon.length(); yon.normalize();
     if(!_engelRc) _engelRc=new THREE.Raycaster();
     _engelRc.set(cam.position, yon); _engelRc.far=Math.max(.1, uz-.4);
+    /* Sprite ışın testi kamerayı ister. Komşu araçtaki gözle bulgu işareti
+       (gozIsaret, Sprite) ışına girince Raycaster.camera atanmadığı için her
+       kamera hareketinde "matrixWorld of null" hatası çıkıyor, o karenin
+       saydamlaştırması yarıda kalıyordu (1.3 testi, H1). */
+    _engelRc.camera=cam;
     const vurulan=new Set();
     for(const h of _engelRc.intersectObjects(adaylar, true)){
+      if(h.object.isSprite) continue;
       let o=h.object; while(o.parent && !adaylar.includes(o)) o=o.parent;
       vurulan.add(o);
     }
@@ -3803,7 +3905,7 @@ const W3D=(()=>{
       <div class="w3dcar">
         <button class="w3dok${tek}" data-act="w3donce" aria-label="Önceki araç">&lsaquo;</button>
         <div style="min-width:0;flex:1">
-          <div class="w3dname">${c.model.n} <span style="color:var(--muted)">${c.year}</span></div>
+          <div class="w3dname">${c.model.n} <span style="color:var(--label-2)">${c.year}</span></div>
           <div class="w3dsub">${typeof mesafe==="function"?mesafe(c.km):c.km+" km"} · ${c.gear} · ${c.fuel}
             <span class="w3dsira">${VT.i+1}/${items.length}</span></div>
         </div>
@@ -3977,5 +4079,6 @@ const W3D=(()=>{
           onKey, pointerDown, pointerMove, pointerUp, tekerlek,
           sonraki:()=>sec(VT.i+1), onceki:()=>sec(VT.i-1), sec:(i)=>sec(i), yanaBak, isabet, dokun:(x,y)=>tapAt(x,y),
           aciAyarla:(a)=>{ VT.hAci=a; VT.aci=a; VT.son=performance.now()+4000; },
+          uzaklik:(u)=>{ VT.hUzak=u; VT.son=performance.now()+4000; },
           get vitrin(){ return {i:VT.i, aci:VT.aci, uzak:VT.uzak, adet:items.length}; }};
 })();

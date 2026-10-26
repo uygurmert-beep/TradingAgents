@@ -7,7 +7,7 @@
    sec bir dizi olabilir: sırayla ilk bulunan vurgulanır. Sayfa (sheet) açıksa
    önce onun içindeki hedef aranır; rehber görünürken vurgusuz an kalmasın. */
 const OGRET=[
- {k:"ac",      sekme:"pazar", sec:'#screen [data-act="open"]',
+ {k:"ac",      sekme:"pazar", sec:['#screen .ogret-oneri[data-act="open"]','#screen [data-act="open"]'],
   bas:"Pazardan bir ilan aç",
   alt:"Vitrindeki araçlardan birine dokun. Künyesi, iddiaları ve istenen fiyatı içeride.",
   tamam:()=>!!(S.ogretIz&&S.ogretIz.open)},
@@ -19,9 +19,13 @@ const OGRET=[
   bas:"Pazarlığı başlat",
   alt:"Raporda çıkan kusurları masaya koy, fiyatı aşağı çek. Satıcının sabrı sınırlı.",
   tamam:()=>!!(S.ogretIz&&S.ogretIz.negotiate)||S.cars.length>0},
- {k:"al", sec:['[data-act="acceptcounter"]','[data-act="offer"]'],
+ /* "Kabul et" yalnız karşı teklif önerilen tavanın içindeyse vurgulanır.
+    Eskiden ilk bulunan kabul düğmesi yanıyordu: oyun aynı ekranda
+    "Vazgeçmek mantıklı" derken rehber kabulü gösteriyor, rehberi izleyen
+    oyuncunun ilk satışı zararına oluyordu (1.3 testi, H4). */
+ {k:"al", sec:['[data-act="acceptcounter"].karli','[data-act="offer"]'],
   bas:"Aracı al",
-  alt:"Teklif ver; satıcı karşı teklif verirse \"Kabul et\" ile al. Fazla zorlarsan masadan kalkar.",
+  alt:"Teklif ver; satıcının sözü önerilen tavanın içine inince \"Kabul et\" yanar. Fazla zorlarsan masadan kalkar.",
   tamam:()=>S.cars.length>0},
  {k:"hazirla", sekme:"garaj",
   sec:['[data-act="alimgit"]','[data-act="onayevet"]','.garaj-ipucu [data-act="hazirla"]','[data-act="hazirla"]'],
@@ -32,11 +36,20 @@ const OGRET=[
   bas:"Günü bitir",
   alt:"Alıcılar gece gelir. Otopark ve sabit giderler de her gün işler.",
   tamam:()=>S.day>=2},
- {k:"sat",     sekme:"garaj", sec:['[data-act="saleaccept"]','[data-act="saleoffer"]','[data-act="salenego"]','[data-act="dealdone"]'],
+ {k:"sat",     sekme:"garaj", sec:['[data-act="saleaccept"].karli','[data-act="saleoffer"]','[data-act="salenego"]','[data-act="dealdone"]'],
   bas:"Gelen teklifi değerlendir",
   alt:"Maliyetinin üstündeki ilk ciddi teklifi kaçırma; beklemek her gün paraya mal olur.",
   tamam:()=>(S.stats.sold||0)>0}
 ];
+/** Rehberin ilk ilan önerisi: kasanın yarısına sığan, görünen değerine göre
+    en ucuz ilan. Eskiden listenin ilk kartı açtırılıyordu; bir koşuda kasa
+    ₺2,6M iken ₺1,24M'lik, marjı olmayan bir araçtı (1.3 testi). */
+function ogretOneriId(){
+  const ad=(S.market||[]).filter(c=>c.ask && c.ask<=S.cash*.55);
+  if(!ad.length) return null;
+  const pay=c=>(valueOf(c,true)-c.ask)/c.ask + (c.gunun||c.kelepir?.08:0);
+  return ad.reduce((a,c)=>pay(c)>pay(a)?c:a).id;
+}
 let _ogretIsik=null;
 function ogretIsikTemizle(){
   if(_ogretIsik){ _ogretIsik.classList.remove("ogret-isik"); _ogretIsik=null; }

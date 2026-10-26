@@ -549,6 +549,9 @@ body.ogret-ac.sheetacik #toasts{top:calc(var(--sat,0px) + var(--ogret-h,0px) + 1
   background:linear-gradient(180deg,#FBFCFD 0%,#ECF0F4 100%);
   font-family:var(--mono);font-weight:700}
 .plate .no{color:#17325C;padding:1px 6px;font-size:11px;letter-spacing:.08em;line-height:1.35}
+.plate.tr{border-top:1px solid rgba(0,0,0,.5);background:#FAFAF7}
+.plate.tr .trs{background:#1E4FA3;color:#fff;font-size:8px;font-weight:700;display:flex;align-items:flex-end;padding:0 3px 1px;font-family:var(--sf)}
+.plate.tr .no{color:#111418;letter-spacing:.04em}
 
 /* ---------- çipler ---------- */
 .topbar{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);
@@ -880,7 +883,10 @@ main>.actionbar{margin:4px -16px -108px;bottom:calc(68px + var(--sab));
 /* 3B saha gece değil ama koyu bir sahne; üstündeki şeritler açık paletin
    koyu altın/yeşilini okutmuyordu. Saha kendi parlak tonlarını taşıyor. */
 #world{--gold:#F4C35A;--green:#3FD99A;--red:#FF7B84;--tint-soft:rgba(63,217,154,.16);
-  --label:#F3F5F4;--label-2:#B4BCB9;--label-3:#87908D;--sep:rgba(255,255,255,.16);--sep-soft:rgba(255,255,255,.09);--fill:rgba(255,255,255,.10);}
+  --label:#F3F5F4;--label-2:#B4BCB9;--label-3:#87908D;
+  /* --muted kökte --label-2'den çözülüp miras kalıyordu; sahada koyu gri
+     kalıyor, alt karttaki model yılı okunmuyordu (1.3 testi, H2) */
+  --muted:#B4BCB9;--muted-2:#87908D;--sep:rgba(255,255,255,.16);--sep-soft:rgba(255,255,255,.09);--fill:rgba(255,255,255,.10);}
 #world{position:fixed;inset:0;z-index:35;display:flex;flex-direction:column;
   background:linear-gradient(180deg,#3B7CC0,#AFD6EE 72%,#CFE3D6);
   touch-action:none;overscroll-behavior:none}
@@ -1007,6 +1013,7 @@ html.azhareket *,html.azhareket *:before,html.azhareket *:after{animation:none!i
 .olcum-perde span{font-size:14px}.olcum-perde small{font-size:12px;opacity:.7}
 .olcum-metin{white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,monospace;background:var(--fill);color:var(--label-2);
   border-radius:12px;padding:10px;margin:0 0 10px}
+.nb-tahmin{font-size:12.5px;color:var(--label-2);margin:-2px 0 6px}
 .ajkart.yeni{box-shadow:0 0 0 1.5px var(--tint),var(--shadow)}
 .ajkart.yeni .aj-roz{background:var(--tint);color:var(--tint-ink,#fff)}
 .bosgun-satir{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:.5px solid var(--sep-soft)}

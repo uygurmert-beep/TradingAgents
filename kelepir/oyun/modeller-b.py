@@ -170,7 +170,7 @@ ek("Bavera X5 3.0 Dizel",           "lux",  7800000, [2014,2022], .73, 1.14, "Di
 ek("Hessler GLE 2.9 Dizel",         "lux",  8200000, [2015,2023], .76, 1.12, "Dizel", 1.0)
 ek("Vernon Highland 3.0 Dizel",     "lux", 16400000, [2016,2023], .58, 1.08, "Dizel", 1.0)
 ek("Vernon Sporta 3.0 Dizel",       "lux", 10800000, [2014,2022], .58, 1.06, "Dizel", 1.0)
-ek("Halloway Warden 3.0 Dizel",     "lux",  9200000, [2016,2023], .60, .98,  "Dizel", 1.0)
+ek("Halloway Warden 3.0 Dizel",     "suv",  9200000, [2016,2023], .60, .98,  "Dizel", 1.0)
 ek("Nordahl XC90 2.0 Hibrit",       "lux",  7400000, [2017,2024], .81, 1.02, "Hibrit", 1.0)
 ek("Calvetti Stelvo 2.2 Dizel",     "lux",  6200000, [2018,2024], .64, .96,  "Dizel", 1.0)
 ek("Brickley Contin 3.0 Benzin",    "lux", 26800000, [2016,2023], .56, .82,  "Benzin", 1.0)

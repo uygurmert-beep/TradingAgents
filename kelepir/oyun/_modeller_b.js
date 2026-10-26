@@ -134,7 +134,7 @@ const MODELS=[
  {n:"Hessler GLE 2.9 Dizel",              seg:"lux",      np:  8200000, dem:1.12, rel:0.76, f:"Dizel", g:1.00, y:[2015,2023], zf:["turbo","beyin"], km:210},
  {n:"Vernon Highland 3.0 Dizel",          seg:"lux",      np: 16400000, dem:1.08, rel:0.58, f:"Dizel", g:1.00, y:[2013,2021], zf:["suspansiyon","beyin"], km:170},
  {n:"Vernon Sporta 3.0 Dizel",            seg:"lux",      np: 10800000, dem:1.06, rel:0.58, f:"Dizel", g:1.00, y:[2014,2022], zf:["multimedya","turbo"], km:170},
- {n:"Halloway Warden 3.0 Dizel",          seg:"lux",      np:  9200000, dem:0.98, rel:0.60, f:"Dizel", g:1.00, y:[2016,2023], zf:["klima","otosanziman"], km:180},
+ {n:"Halloway Warden 3.0 Dizel",          seg:"suv",      np:  9200000, dem:0.98, rel:0.60, f:"Dizel", g:1.00, y:[2016,2023], zf:["klima","otosanziman"], km:210},
  {n:"Nordahl XC90 2.0 Hibrit",            seg:"lux",      np:  7400000, dem:1.02, rel:0.81, f:"Hibrit", g:1.00, y:[2017,2024], zf:["multimedya","aku"], km:220},
  {n:"Calvetti Stelvo 2.2 Dizel",          seg:"lux",      np:  6200000, dem:0.96, rel:0.64, f:"Dizel", g:1.00, y:[2018,2024], zf:["multimedya","turbo"], km:190},
  {n:"Brickley Contin 3.0 Benzin",         seg:"lux",      np: 26800000, dem:0.82, rel:0.56, f:"Benzin", g:1.00, y:[2016,2023], zf:["yagkacak","suspansiyon"], km:170},

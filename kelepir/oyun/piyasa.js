@@ -99,7 +99,11 @@ function openNabiz(){
       return `<div class="block nb-kutu">
         <div class="nb-bas"><b>${SEGLBL[seg]}</b>
           <span class="nb-deger">${_nbYuzde(simdi)}</span>
-          <span class="nb-ok ${ch>0.05?"yukari":ch<-0.05?"asagi":""}">${ch>0.05?"&#9650;":ch<-0.05?"&#9660;":"&#9644;"} ${_nbYuzde(ch)} &middot; 7 g&uuml;n</span></div>
+          <span class="nb-ok ${ch>0.05?"yukari":ch<-0.05?"asagi":""}">${ch>0.05?"&#9650;":ch<-0.05?"&#9660;":"&#9644;"} ${_nbYuzde(ch)} &middot; son 7 g&uuml;n</span></div>
+        ${(()=>{ /* Geçmiş değişim tahmin çizgisinin üstünde tahmin gibi okunuyordu
+             (1.3 testi, H5): tahmin ayrı satırda, adıyla. */
+          const t=nabizTahmin(seg), tc=(t[t.length-1]-g[g.length-1])/g[g.length-1]*100;
+          return `<div class="nb-tahmin">Takvime göre önümüzdeki ${t.length} gün: ${tc>0.05?"&#9650;":tc<-0.05?"&#9660;":"&#9644;"} ${_nbYuzde(tc)}</div>`; })()}
         ${nabizGrafik(seg)}
       </div>`;}).join("")}
     <div class="sec-note" style="margin:4px 2px 0">Ucuzken al, y&uuml;kselirken sat. Sezon değişimi kesikli &ccedil;izgide g&ouml;r&uuml;n&uuml;r — kışın SUV, yazın hatchback &ouml;ne &ccedil;ıkar.</div>`);
@@ -109,7 +113,7 @@ function openNabiz(){
 function nabizSatir(seg){
   const ch=nabizDegisim(seg);
   return `<div class="kv"><span>Piyasa (${SEGLBL[seg]})</span>
-    <b><button class="nb-link" data-act="nabizac">${ch>0.05?"&#9650;":ch<-0.05?"&#9660;":"&#9644;"} ${_nbYuzde(ch)} &middot; 7 g&uuml;n</button></b></div>`;
+    <b><button class="nb-link" data-act="nabizac">${ch>0.05?"&#9650;":ch<-0.05?"&#9660;":"&#9644;"} ${_nbYuzde(ch)} &middot; son 7 g&uuml;n</button></b></div>`;
 }
 
 KANCA.ikon.nabiz='<path d="M3 13h4l2-5 4 10 2-5h6"/>';

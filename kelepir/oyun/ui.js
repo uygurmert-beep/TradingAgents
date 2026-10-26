@@ -238,8 +238,11 @@ function contactListings(rep){
       }
       if(c){
         c.fromSelim=true;
-        c.ask=Math.round(c.ask*rnd(.62,.76)/250)*250;
-        c.reserve=Math.round(c.reserve*.72);
+        /* Eskiden istenenin %62–76'sı: 1.3 testinde Selim'den alınan araçlar
+           %31–42 kâr bıraktı, normal alımlar %1–12 (STR, GLR). Hurdadan çıkma
+           ucuz ama arızalı; indirim tamir payını karşılayacak kadar. */
+        c.ask=Math.round(c.ask*rnd(.80,.90)/250)*250;
+        c.reserve=Math.round(c.reserve*.84);
         S.market.unshift(c);
         if(rep&&chance(.5)) rep.events.push({t:`&Ccedil;ekici Selim haber verdi: ${c.model.n} ${c.year}, hurdadan &ccedil;ıkma, ${tl(c.ask)}.`});
       }
@@ -277,6 +280,7 @@ function ageMarket(rep){
       continue;
     }
     if(c.age>3 && chance(.22)){
+      c.ilkAsk=c.ilkAsk||c.ask;      // camdaki kâğıtta eski fiyat karalanır
       c.ask=Math.round(c.ask*.97/250)*250;
       c.reserve=Math.round(c.reserve*.985);
       c.cutDay=S.day;
@@ -451,7 +455,7 @@ function nextDay(){
       }else{
         const teklif={oid:S.oidSeq++, carId:c.id, amount:b.offer, caught:b.caught, issues:b.issues,
                       inspects:b.inspects, type:b.type, takas:b.takas||null, taksit:b.taksit||null,
-                      day:S.day, expires:S.day+2};
+                      il:sehirDisiIl(b.type), day:S.day, expires:S.day+2};
         S.offers.push(teklif); rep.offers.push(teklif.oid);
       }
     }
@@ -910,8 +914,13 @@ function aracGorsel(c, ayrinti){
   try{ if(typeof aracCiz==="function"){ const g=aracCiz(c, ayrinti); if(g) return g; } }catch(e){}
   return carSvg(c && c.model ? c.model.seg : "sedan");
 }
+/** "Şehir dışından" alıcı nereden geliyor: plaka ile aynı il tablosundan
+    (1.3 test grubu V3: şehir hikâyesi plakayla tutarlı). */
+function sehirDisiIl(tip){ return tip && tip.k==="uzak" ? ilCek()[1] : null; }
 function plateHtml(p){
-  return `<span class="plate"><span class="no">${p}</span></span>`;
+  // il kodlu plakada solda mavi TR şeridi; eski kayıttaki yabancı biçimde şerit yok
+  const tr=/^\d{2} /.test(p||"");
+  return `<span class="plate${tr?" tr":""}">${tr?`<span class="trs">TR</span>`:""}<span class="no">${p}</span></span>`;
 }
 const ICONS={
   pazar:'<svg viewBox="0 0 24 24"><path d="M3 9l2-5h14l2 5"/><path d="M3 9h18v8H3z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>',
@@ -1243,7 +1252,8 @@ function cardHtml(c, mode){
      altında tek satır ad, sağda fiyat. Dört katman ikiye indi. */
   const ab=adBol(c.model.n);
   const kompakt = mode==="market" && (S.listeMod||"kompakt")==="kompakt";
-  return `<button class="card kart2${kompakt?" kompakt":""}" data-act="open" data-id="${c.id}" data-mode="${mode}">
+  const oneri = mode==="market" && S.tutorial && typeof ogretOneriId==="function" && c.id===ogretOneriId();
+  return `<button class="card kart2${kompakt?" kompakt":""}${oneri?" ogret-oneri":""}" data-act="open" data-id="${c.id}" data-mode="${mode}">
     <div class="kart-sahne">
       ${aracFoto(c,"tam")}
       <span class="kart-plaka">${plateHtml(c.plate)}</span>
@@ -1684,7 +1694,7 @@ function viewGaraj(){
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
           <div style="min-width:0">
             <b style="font-size:14px">${cc.model.n} ${cc.year}</b>
-            <div style="margin-top:5px">${o.type?`<span class="chip">${o.type.n}</span>`:""}
+            <div style="margin-top:5px">${o.type?`<span class="chip">${o.type.n}${o.il?` &middot; ${o.il}`:""}</span>`:""}
               <span class="chip ${kalan<=0?"warn":""}">${kalan<=0?"bug&uuml;n son g&uuml;n":kalan+" g&uuml;n ge&ccedil;erli"}</span>
               ${o.takas?`<span class="chip gold">takaslı</span>`:""}${o.taksit?`<span class="chip gold">taksitli</span>`:""}</div>
           </div>
@@ -2946,7 +2956,7 @@ function renderNeg(){
           if(o>=son) return `<div class="oneri-not iyi">Satıcının ${n.tabanSoz?"son sözü":"teklifi"} ${tl(son)} &mdash; &ouml;nerilen tavanının i&ccedil;inde. Kabul etmek mantıklı.</div>`;
           const pay=Math.round((deger-son)/son*100);
           return `<div class="oneri-not">Satıcı ${tl(son)}'${n.tabanSoz?"in altına inmiyor":" istiyor"}. &Ouml;nerilen tavanın ${tl(o)}: bu fiyatta k&acirc;r payı ~%${pay}.${pay<5?" <b>Vazge&ccedil;mek mantıklı.</b>":""}</div>`; })()}
-        ${n.counter?`<button class="btn primary full" data-act="acceptcounter">Kabul et &middot; ${tl(n.counter)}</button>`:""}
+        ${n.counter?`<button class="btn primary full${n.counter<=onerilenTeklif(c)?" karli":""}" data-act="acceptcounter">Kabul et &middot; ${tl(n.counter)}</button>`:""}
         <details class="hizli"><summary>Hızlı ayar &middot; &minus;%10 &hellip; tavan</summary><div class="quick">
           <button data-act="q" data-p="-10">&minus;%10</button>
           <button data-act="q" data-p="-5">&minus;%5</button>
@@ -3022,7 +3032,7 @@ function offerCard(o){
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">
         <b style="font-size:14px">${c.model.n} ${c.year}</b>
-        <div style="margin-top:5px">${o.type?`<span class="chip">${o.type.n}</span>`:""}
+        <div style="margin-top:5px">${o.type?`<span class="chip">${o.type.n}${o.il?` &middot; ${o.il}`:""}</span>`:""}
           <span class="chip ${kalan<=0?"warn":""}">${kalan<=0?"bug&uuml;n son g&uuml;n":kalan+" g&uuml;n ge&ccedil;erli"}</span></div>
       </div>
     </div>
@@ -3043,7 +3053,15 @@ function offerCard(o){
    kez düğmeye basıyordu ve teklifi görmek için özeti geçmek zorundaydı.
    Artık tek kaydırma: ne kaybettim, ne oldu, kim teklif verdi.
    ================================================================== */
+/** Ekrandaki ve kuyruktaki eski bildirimleri at: rapor başlığının üstüne
+    önceki eylemin bildirimi düşüyordu (1.3 testi, H6). */
+function toastTemizle(){
+  TOAST_Q.length=0;
+  const k=document.getElementById("toasts"); if(k) k.innerHTML="";
+  TOAST_AKTIF=false;
+}
 function openReport(){
+  toastTemizle();
   const r=S.report;
   const ofs=reportOffers();
   if(r.season && !r.seasonSeen){ openSeasonSummary(); return; }
@@ -3642,7 +3660,7 @@ function renderSaleNeg(){
           <span class="lab" style="right:0;top:2px;color:var(--sodium)">ilan ${tlk(s.list)}</span>
         </div>
         ${s.takas?`<div class="takas-cip">TAKASLI: nakit + ${s.takas.car.model.n} (bi&ccedil;ilen ${tlk(s.takas.claim)})</div>`:""}
-        ${s.counter?`<button class="btn primary full" data-act="saleaccept">
+        ${s.counter?`<button class="btn primary full${kar>=0?" karli":""}" data-act="saleaccept">
           Kabul et &middot; ${s.takas?`${tlk(s.counter-s.takas.claim)} nakit + ${s.takas.car.model.n.split(" ").slice(0,2).join(" ")}`:tl(s.counter)} <span style="opacity:.75;font-weight:400">(${kar>=0?"+":""}${tlk(kar)})</span></button>`:""}
         <details class="hizli"><summary>Hızlı ayar &middot; &plusmn;%2 / %5</summary><div class="quick">
           <button data-act="sq" data-p="-5">&minus;%5</button>
@@ -4062,7 +4080,7 @@ document.addEventListener("click",e=>{
     if(b2.walk){ toast("Yılmaz&#39;ın bulduğu alıcı ekspertizde kusuru g&ouml;rd&uuml; ve vazge&ccedil;ti.","bad"); save(); openOwnCar(car); return; }
     const teklif={oid:S.oidSeq++, carId:car.id, amount:b2.offer, caught:b2.caught, issues:b2.issues,
                   inspects:b2.inspects, type:b2.type, takas:b2.takas||null, taksit:b2.taksit||null,
-                  day:S.day, expires:S.day+2};
+                  il:sehirDisiIl(b2.type), day:S.day, expires:S.day+2};
     S.offers.push(teklif);
     toast("Yılmaz bir alıcı buldu.","good");
     save(); closeSheet(); S.tab="garaj"; render(); return;
@@ -4290,7 +4308,7 @@ document.addEventListener("click",e=>{
     if(fark>0){ S.cash-=fark; car.spent+=fark; kasaNot(-fark, `Sunum: ${car.model.n}`); if(i===2) car.cosmetic=true; }
     car.sunum=i; save(); renderHud(); openOwnCar(car); return;
   }
-  if(a==="unlist"){ car.listPrice=null; save(); closeSheet(); render(); return; }
+  if(a==="unlist"){ car.listPrice=null; car.ilkIlan=null; save(); closeSheet(); render(); return; }
   if(a==="araac"){ ARA_ACIK=!ARA_ACIK; render(); if(ARA_ACIK){ const i=document.getElementById("araInput"); if(i) i.focus(); } return; }
   if(a==="alimgit"){ S.neg=null; closeSheet(); S.tab="garaj"; S.garajTab="hazir"; render(); return; }
   if(a==="ustapazar"){ S.report=null; S.reportStep=0; closeSheet(); S.tab="pazar"; S.filter="butce"; render(); return; }
@@ -4301,11 +4319,11 @@ document.addEventListener("click",e=>{
   if(a==="rayhepsi"){ RAY_HEPSI=true; render(); return; }
   if(a==="listemod"){ S.listeMod=(S.listeMod||"kompakt")==="kompakt"?"foto":"kompakt"; save(); render(); return; }
   if(a==="cutto"){ const v=+b.dataset.v; if(!car||!v) return;
-    car.listPrice=v; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
+    car.ilkIlan=car.ilkIlan||car.listPrice; car.listPrice=v; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
     toast(`${car.model.n}: yeni fiyat ${tl(v)}`,"good"); save();
     if(S.report && document.getElementById("modal") && !document.getElementById("modal").classList.contains("hidden")) openReport(); else render(); return; }
   if(a==="closereportpazar"){ S.report=null; S.reportStep=0; closeSheet(); S.tab="pazar"; render(); return; }
-  if(a==="cut"){ car.listPrice=Math.round(car.listPrice*0.97/500)*500; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
+  if(a==="cut"){ car.ilkIlan=car.ilkIlan||car.listPrice; car.listPrice=Math.round(car.listPrice*0.97/500)*500; car.priceCuts=(car.priceCuts||0)+1; gorevIlerle("kir");
     toast(`Yeni fiyat ${tl(car.listPrice)}`); save(); openOwnCar(car); return; }
   if(a==="wholesale"){
     /* Toptan satış geri dönüşsüz ve çoğu zaman zararlı; eskiden tek
