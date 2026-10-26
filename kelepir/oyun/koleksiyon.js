@@ -121,12 +121,19 @@ function ligKarti(){
    sessizce alıp sessizce satıyorlardı. Artık ne aldıklarını ve kaça
    istediklerini görüyorsun — kendi fiyatını ona göre koyuyorsun. */
 function rakipVitrin(){
-  const r=(S.rivals||[]).filter(x=>x.stock&&x.stock.length);
+  const hepsi=S.rivals||[];
+  const r=hepsi.filter(x=>x.stock&&x.stock.length);
+  const debug=typeof location!=="undefined" && /rakipdebug/.test(location.search||"");
+  const kis=x=>{ const i=hepsi.indexOf(x), k=rakipKisilik(x,i); return `<small class="rk-kis">${k.ad} &middot; ${k.d}</small>`; };
+  const dbg=x=>{ if(!debug) return ""; const i=hepsi.indexOf(x);
+    const l=S.market.map(c=>({n:c.model.n, s:rakipSkor(x,i,c)})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s).slice(0,3);
+    return `<small style="font-family:var(--mono)">${l.map(o=>`${o.n.slice(0,16)} ${o.s.toFixed(2)}`).join(" · ")||"skor yok"}</small>`; };
   if(!r.length) return `<div class="block"><h4>RAKİP VİTRİNLERİ</h4>
+    ${hepsi.map(x=>`<div class="vitrin"><div class="vitrin-bas">${x.n}${kis(x)}${dbg(x)}</div></div>`).join("")}
     <div class="sec-note">Şu an rakiplerin vitrininde ara&ccedil; yok.</div></div>`;
   return `<div class="block"><h4>RAKİP VİTRİNLERİ</h4>
     ${r.map(x=>`<div class="vitrin">
-      <div class="vitrin-bas">${x.n}<small>${x.d}</small></div>
+      <div class="vitrin-bas">${x.n}<small>${x.d}</small>${kis(x)}${dbg(x)}</div>
       ${x.stock.map(it=>`<div class="vitrin-sat">
         <span class="vs-ad">${it.name}</span>
         <span class="vs-gun">${it.days} g&uuml;n</span>

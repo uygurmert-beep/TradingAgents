@@ -299,6 +299,7 @@ function rivalPressure(seg){
 }
 function rivalsDay(rep){
   if(!S.rivals) S.rivals=newRivals();
+  for(const c of S.market) delete c.rakipGoz;      // "baktı" etiketi her gece yeniden
   S.rivals.forEach((st,i)=>{
     const def=rivalDef(st,i);
     // stoğunu satmaya çalışır
@@ -311,16 +312,8 @@ function rivalsDay(rep){
         st.stock=st.stock.filter(x=>x!==it);
       }
     }
-    // pazardan araç kapar
-    if(st.stock.length<def.cap && Math.random()<def.aggr){
-      let best=null,bs=0;
-      for(const c of S.market){
-        if(!def.segs.includes(c.model.seg)) continue;
-        if(c.ask>st.cash*.55) continue;
-        const score=rivalValue(c)*def.target-c.ask*.88;
-        if(score>bs){ bs=score; best=c; }
-      }
-      if(best){
+    // pazardan araç kapar: kişilik ve puanlamalı karar (rakip.js, M5)
+    const al=(best)=>{
         const price=Math.round(best.ask*rnd(.87,.96)/500)*500;
         st.cash-=price;
         const val=valueOf(best,false);
@@ -336,12 +329,12 @@ function rivalsDay(rep){
           rep.events.push({bad:true, t:`${st.n}, ekspertiz ettirdiğin <b>${ad}</b>'i kaptı — ${tl(price)}. Rapor parası boşa gitti.`});
         else if((best.bakilan||[]).length)
           rep.events.push({bad:true, t:`${st.n}, hızlı baktırdığın <b>${ad}</b>'i senden önce aldı — ${tl(price)}.`});
-        else if(best.gorulen)
-          rep.events.push({bad:true, t:`${st.n}, incelediğin <b>${ad}</b>'i kaptı — ${tl(price)}. Vitrinine ${tl(ister)} koydu.`});
+        else if(best.gorulen || best.rakipGoz)
+          rep.events.push({bad:true, t:`${st.n}, ${best.rakipGoz?"dün baktığı":"incelediğin"} <b>${ad}</b>'i kaptı — ${tl(price)}. Vitrinine ${tl(ister)} koydu.`});
         else if(chance(.45))
           rep.events.push({t:`${st.n}, ${ad} ilanını kapattı.`});
-      }
-    }
+    };
+    rakipGece(st, i, rep, al);
   });
 }
 function creditLimit(){
@@ -1211,6 +1204,7 @@ function cardHtml(c, mode){
     // künye tek satır: plaka + en fazla iki çip. Önem sırası önde.
     const aday=[];
     if(c.kelepir) aday.push(`<span class="chip kelepir">Kelepir &middot; ${c.age?"son gün":"2 gün"}</span>`);
+    if(c.rakipGoz) aday.push(`<span class="chip warn">Rakip baktı &middot; akşama kadar</span>`);
     if(c.gunun) aday.push(`<span class="chip firsat">Günün fırsatı</span>`);
     if((S.orders||[]).some(o=>orderMatches(o,c))) aday.push(`<span class="chip solid">Siparişe uyuyor</span>`);
     if(c.story) aday.push(`<span class="chip gold">${STORIES.find(s=>s.k===c.story).t}</span>`);
@@ -2367,6 +2361,7 @@ function openMarketCar(c){
       ${st.riskli?`<div class="sec-note" style="color:var(--red);margin-top:7px">Bu hik&acirc;ye riskli — g&ouml;r&uuml;nmeyeni ekspertizsiz anlayamazsın.</div>`
                  :`<div class="sec-note" style="margin-top:7px">Meraklı alıcılar b&ouml;yle ara&ccedil;lara prim &ouml;der.</div>`}
     </div>`;})() : "";
+  const rakipBlok = c.rakipGoz ? `<div class="oneri-not"><b>${c.rakipGoz.n}</b> (${c.rakipGoz.kis.toLocaleLowerCase("tr")}) bu araca baktı. Akşama kadar karar vermezsen büyük olasılıkla o alır.</div>` : "";
   const kelepirBlok = c.kelepir ? `<div class="block kelepir-blok"><h4>KELEPİR &middot; ${c.age?"BUGÜN SON GÜN":"2 GÜN İÇİNDE KAPILIR"}</h4>
       <div style="font-size:13.5px;line-height:1.5">${c.kelepirNeden}. Fiyat piyasanın belirgin altında; galericiler duyunca kapar.</div></div>` : "";
   const claims=`<div class="block"><h4>İLAN METNİ</h4>
@@ -2381,7 +2376,7 @@ function openMarketCar(c){
      <div class="kv"><span>Vites / yakıt</span><b>${c.gear} &middot; ${c.fuel}</b></div>
      <div class="kv"><span>Renk</span><b>${c.color}</b></div>
      <div class="kv"><span>İstenen fiyat</span><b style="color:var(--sodium)">${tl(c.ask)}</b></div></div>`;
-  openSheet(sheetHead(c)+kelepirBlok+hikaye+valueBlock(c)+bilinenDert(c.model,c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
+  openSheet(sheetHead(c)+rakipBlok+kelepirBlok+hikaye+valueBlock(c)+bilinenDert(c.model,c)+gozBlok(c)+condBlock(c,c.inspected)+bakisBlok(c)+
     (c.inspected?notSatiri(c.model):"")+faultBlock(c,false)+historyBlock(c)+claims+specs+
     `<div class="actionbar">
        <div class="btn-row">
@@ -3846,7 +3841,7 @@ function rakipZarflari(c){
   (S.rivals||[]).forEach((st,i)=>{
     const def=rivalDef(st,i);
     const fits=def.segs.includes(c.model.seg);
-    const bid=Math.round(rv*clamp(def.bid*rnd(.95,1.08),.80,1.02)*(fits?1:.85)/500)*500;
+    const bid=Math.round(rv*clamp(def.bid*rnd(.95,1.08),.80,1.02)*(fits?1:.85)*rakipZarfKat(st,i,c)/500)*500;
     if(bid<=(st.cash||def.cash)*.6) out.push({n:def.n, bid});
   });
   c.rz=out.sort((a,b)=>b.bid-a.bid);
