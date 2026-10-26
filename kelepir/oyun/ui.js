@@ -2259,6 +2259,43 @@ function faultBlock(c, canRepair){
     </div>`).join("")}
   </div>`;
 }
+/* ---- KAPORTA ŞEMASI (1.4, test grubu V6) ----
+   Türk ekspertiz raporundaki üstten bakış şema: 13 parça, renk kodlu.
+   Sayı ("boyalı 3") neyin boyalı olduğunu söylemiyordu; galerici kapının mı
+   kaputun mu boyalı olduğuna bakar. Ekspertiz yeni yapıldıysa şemanın
+   üstünden bir süpürme çizgisi geçer (3B taramanın 2B karşılığı). */
+let EKSP_YENI=null;   // {id,t} son ekspertiz — geçici, kayda yazılmaz
+const SEMA_YOL={
+  onTampon:"M38 14 Q70 4 102 14 L102 24 L38 24 Z",
+  kaput:"M38 26 L102 26 L100 82 L40 82 Z",
+  tavan:"M44 122 L96 122 L96 186 L44 186 Z",
+  bagaj:"M40 214 L100 214 L102 254 L38 254 Z",
+  arkaTampon:"M38 256 L102 256 L102 266 Q70 276 38 266 Z",
+  sol0:"M22 30 L36 26 L36 92 L20 92 Z", sol1:"M20 94 L36 94 L36 152 L20 152 Z",
+  sol2:"M20 154 L36 154 L36 206 L20 206 Z", sol3:"M20 208 L36 208 L36 256 L22 252 Z",
+  sag0:"M104 26 L118 30 L120 92 L104 92 Z", sag1:"M104 94 L120 94 L120 152 L104 152 Z",
+  sag2:"M104 154 L120 154 L120 206 L104 206 Z", sag3:"M104 208 L120 208 L118 252 L104 256 Z"
+};
+const SEMA_RENK2B={orijinal:"var(--fill)", lokal:"#F7E08A", boyali:"#F2C230", degisen:"#D9443B"};
+function semaSvg(c){
+  const s=ekspSema(c);
+  const yeni=EKSP_YENI && EKSP_YENI.id===c.id && Date.now()-EKSP_YENI.t<4000;
+  const say=d=>Object.values(s).filter(x=>x===d).length;
+  return `<div class="sema${yeni?" tara":""}">
+    <svg viewBox="0 0 140 280" role="img" aria-label="Kaporta şeması">
+      <path d="M40 84 L100 84 L94 120 L46 120 Z" class="sema-cam"/>
+      <path d="M46 188 L94 188 L100 212 L40 212 Z" class="sema-cam"/>
+      ${SEMA_PANEL.map(([k,n])=>`<path d="${SEMA_YOL[k]}" fill="${SEMA_RENK2B[s[k]]}" class="sema-p ${s[k]}"><title>${n}: ${({orijinal:"orijinal",lokal:"lokal boyalı",boyali:"boyalı",degisen:"değişen"})[s[k]]}</title></path>`).join("")}
+      <text x="70" y="46" class="sema-yon">ÖN</text>
+      ${yeni?`<rect class="sema-cizgi" x="10" y="0" width="120" height="3"/>`:""}
+    </svg>
+    <div class="sema-lej">
+      <span><i style="background:#D9443B"></i>Değişen <b>${say("degisen")}</b></span>
+      <span><i style="background:#F2C230"></i>Boyalı <b>${say("boyali")}</b></span>
+      <span><i style="background:#F7E08A"></i>Lokal boyalı <b>${say("lokal")}</b></span>
+      <span><i style="background:var(--fill);border:1px solid var(--sep)"></i>Orijinal</span>
+    </div></div>`;
+}
 function historyBlock(c){
   if(!seesHistory(c)) return `<div class="block"><h4>HASAR GEÇMİŞİ</h4>
     <div class="sec-note">Tramer sorgusu yapılmadı.</div></div>`;
@@ -2267,6 +2304,7 @@ function historyBlock(c){
     <div class="kv"><span>Değişen parça</span><b class="${c.degisen?"neg":""}">${c.degisen}</b></div>
     <div class="kv"><span>Boyalı parça</span><b class="${c.boyali>2?"neg":""}">${c.boyali}</b></div>
     <div class="kv"><span>Km tutarlılığı</span><b class="${c.kmOynama?"neg":"pos"}">${c.kmOynama?"Şüpheli":"Tutarlı"}</b></div>
+    ${c.inspected?semaSvg(c):""}
   </div>`;
 }
 function valueBlock(c){
@@ -4189,6 +4227,10 @@ document.addEventListener("click",e=>{
     else { S.cash-=ep; car.ekspBedel=ep; kasaNot(-ep, `Ekspertiz: ${car.model.n}`); }
     car.inspected=true; cGain("hakan"); gorevIlerle("eksper");
     notAl(car, true);                      // tam ekspertiz → defter dolar
+    // tarama: 3B'de düzlem + şema renkleri, 2B şemada süpürme çizgisi (V6)
+    EKSP_YENI={id:car.id, t:Date.now()};
+    try{ if(typeof W3D!=="undefined" && W3D.ekspertizTara) W3D.ekspertizTara(car.id); }catch(e){}
+    try{ cal("anahtar"); titre(HAPTIK.cift); }catch(e){}
     save();
     const iss=hiddenIssues(car);
     /* "temiz çıktı" yalnız gerçekten açık arıza, tramer ve km oyunu yoksa:

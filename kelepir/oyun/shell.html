@@ -1014,6 +1014,20 @@ html.azhareket *,html.azhareket *:before,html.azhareket *:after{animation:none!i
 .olcum-metin{white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,monospace;background:var(--fill);color:var(--label-2);
   border-radius:12px;padding:10px;margin:0 0 10px}
 .nb-tahmin{font-size:12.5px;color:var(--label-2);margin:-2px 0 6px}
+.sema{display:flex;gap:14px;align-items:center;margin-top:10px;padding-top:10px;border-top:.5px solid var(--sep)}
+.sema svg{width:96px;flex:none;overflow:hidden}
+.sema-cam{fill:var(--label-3);opacity:.35}
+.sema-p{stroke:var(--surface);stroke-width:1.5}
+.sema-yon{font-size:9px;font-weight:700;fill:var(--label-3);text-anchor:middle;letter-spacing:.1em}
+.sema-lej{display:grid;gap:5px;font-size:13px;color:var(--label-2)}
+.sema-lej span{display:flex;align-items:center;gap:7px}
+.sema-lej i{width:12px;height:12px;border-radius:3px;flex:none}
+.sema-lej b{color:var(--label);margin-left:auto;padding-left:6px}
+.sema-cizgi{fill:#3FD99A;opacity:.9;animation:semaTara 1.1s ease-in-out both}
+.sema.tara .sema-p:not(.orijinal){animation:semaYan 1.6s ease-out both}
+@keyframes semaTara{from{transform:translateY(0)}to{transform:translateY(278px);opacity:0}}
+@keyframes semaYan{0%{opacity:0}40%{opacity:0}60%{opacity:1;filter:brightness(1.3)}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sema-cizgi{display:none}.sema.tara .sema-p{animation:none}}
 .ajkart.yeni{box-shadow:0 0 0 1.5px var(--tint),var(--shadow)}
 .ajkart.yeni .aj-roz{background:var(--tint);color:var(--tint-ink,#fff)}
 .bosgun-satir{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:.5px solid var(--sep-soft)}

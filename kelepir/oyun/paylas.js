@@ -135,6 +135,26 @@ function _kartDurum(ctx, c, x, y, genislik){
   return cy;
 }
 
+/** Kaporta şeması (oyundaki raporun aynısı): sonuç kartında aracın kimliği. */
+function _kartSema(ctx, c, x, y, yuk){
+  if(typeof ekspSema!=="function" || typeof SEMA_YOL==="undefined") return;
+  const s=ekspSema(c), k=yuk/280, renk={orijinal:"rgba(20,24,28,.08)", lokal:"#F7E08A", boyali:"#F2C230", degisen:"#D9443B"};
+  ctx.save(); ctx.translate(x,y); ctx.scale(k,k);
+  ctx.fillStyle="rgba(20,24,28,.22)";
+  ctx.fill(new Path2D("M40 84 L100 84 L94 120 L46 120 Z")); ctx.fill(new Path2D("M46 188 L94 188 L100 212 L40 212 Z"));
+  ctx.strokeStyle="#FFFFFF"; ctx.lineWidth=2;
+  for(const [kk] of SEMA_PANEL){ const p=new Path2D(SEMA_YOL[kk]); ctx.fillStyle=renk[s[kk]]; ctx.fill(p); ctx.stroke(p); }
+  ctx.restore();
+  // lejant
+  const say=d=>Object.values(s).filter(v=>v===d).length;
+  let ly=y+yuk*.28;
+  for(const [d,ad] of [["degisen","Değişen"],["boyali","Boyalı"],["lokal","Lokal boyalı"]]){
+    ctx.fillStyle=renk[d]; _yuvarlakYol(ctx, x+140*k+40, ly-26, 30, 30, 6); ctx.fill();
+    ctx.fillStyle=KART_RENK.yazi2; ctx.font=_kf(32,500); ctx.textAlign="left";
+    ctx.fillText(`${ad}  ${say(d)}`, x+140*k+86, ly); ly+=50;
+  }
+}
+
 /** SORU KARTI — cevap yok, yorum için. */
 /** Ekspertiz mührü — oyundaki kâğıt raporun üstündeki damganın aynısı.
     Paylaşılan kart ile oyunun içindeki belge aynı dili konuşsun diye. */
@@ -276,6 +296,8 @@ function kartSonuc(s, gun){
   // seri
   ctx.textAlign="center"; ctx.fillStyle=KART_RENK.petrol; ctx.font=_kf(36,600);
   ctx.fillText(s.seri+" günlük seri", KART.G/2, ky+92);
+  // sonuçta aracın kaporta şeması (cevap verildi, artık ipucu değil)
+  try{ const car=(typeof meydanArac==="function")?meydanArac(gun):null; if(car) _kartSema(ctx, car, 300, ky+128, 200); }catch(e){}
 
   // davet: izleyen de denesin
   const dy=KART.Y-330;

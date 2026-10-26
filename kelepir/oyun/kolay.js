@@ -48,6 +48,8 @@ function hazirlaYap(c){
     if(S.cash<ep){ toast("Ekspertize nakit yetmiyor.","bad"); return null; }
     S.cash-=ep; sonuc.ep=ep; c.ekspBedel=ep; kasaNot(-ep, `Ekspertiz: ${c.model.n}`);
     c.inspected=true; cGain("hakan"); gorevIlerle("eksper"); notAl(c,true);
+    EKSP_YENI={id:c.id, t:Date.now()};
+    try{ if(typeof W3D!=="undefined" && W3D.ekspertizTara) W3D.ekspertizTara(c.id); }catch(e){}
   }
   // Nakit yettiği kadar, en kârlı tamirden başla. Kasa hiç sıfırlanmasın:
   // bir sonraki alım için bir yastık bırak.

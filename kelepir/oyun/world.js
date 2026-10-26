@@ -2637,6 +2637,7 @@ const W3D=(()=>{
       g.add(m); return m;
     };
     const boyaliSay=Math.min(6, car.boyali||0), degisenSay=Math.min(5, car.degisen||0);
+    const semaYama=[];   // ekspertiz taramasında şema rengine boyanacak yamalar
     if(boyaliSay+degisenSay>0){
       const hsl={}; c0.getHSL(hsl);
       const yon = hsl.l>.5 ? -1 : 1;
@@ -2646,28 +2647,39 @@ const W3D=(()=>{
       const fark = (car.inspected ? .060 : .028)*yon;
       const sinir=[-yarim+L*.07, onZ+.52, (onZ+arkaZ)/2+.10, arkaZ-.30,
                    Math.min(pr.camAlt, yarim-L*.05)];
-      const secim=[];
+      /* Hangi panelin boyalı/değişen olduğu ekspSema'dan: 2B şema, tarama ve
+         buradaki yamalar aynı paneli göstersin (eskiden kendi kör çekilişi). */
+      const yanSlot={};
       for(const sx of [-1,1]) for(let i=0;i<sinir.length-1;i++){
         const a=sinir[i], b=sinir[i+1];
-        if(b-a>.35) secim.push({sx, z:(a+b)/2, uz:b-a-.05});
+        if(b-a>.35) yanSlot[(sx<0?"sol":"sag")+i]={sx, z:(a+b)/2, uz:b-a-.05};
       }
-      secim.push({ust:"kaput"}, {ust:"bagaj"});
-      for(let i=secim.length-1;i>0;i--){ const j=Math.floor(rr()*(i+1)); [secim[i],secim[j]]=[secim[j],secim[i]]; }
-      const n=Math.min(secim.length, boyaliSay+degisenSay);
+      const sema=(typeof ekspSema==="function") ? ekspSema(car) : {};
+      const secim=[];
+      for(const [k,d] of Object.entries(sema)){
+        if(d==="orijinal") continue;
+        const yer = k==="kaput"?{ust:"kaput"} : k==="bagaj"?{ust:"bagaj"} : yanSlot[k];
+        if(yer) secim.push({...yer, k, d});
+      }
+      const n=secim.length;
       for(let i=0;i<n;i++){
-        const agir=i<degisenSay;
+        const agir=secim[i].d==="degisen";
         const c2=c0.clone().offsetHSL(agir?.006:.003, agir?-.025:-.012, agir?fark*1.30:fark);
         const pm=matBoya(c2.getHex(), 60);
         const it=secim[i];
-        if(it.ust==="kaput") ustKaplama((pr.kaputZ+(-yarim+L*.09))/2, s.W*.66,
+        // lokal boya panelin bir kısmı: yama daha kısa
+        const uzY=(it.uz||.78)*(it.d==="lokal"?.55:1);
+        let ym=null;
+        if(it.ust==="kaput") ym=ustKaplama((pr.kaputZ+(-yarim+L*.09))/2, s.W*.66,
           Math.max(.3,(pr.kaputZ-(-yarim+L*.09))*.86), s.hood, pm);
         else if(it.ust==="bagaj"){
-          if(s.cls==="sedan") ustKaplama((pr.camAlt+pr.bagajZ)/2, s.W*.64,
+          if(s.cls==="sedan") ym=ustKaplama((pr.camAlt+pr.bagajZ)/2, s.W*.64,
             Math.max(.25,pr.bagajZ-pr.camAlt), pr.beltR, pm);
-          else ustKaplama((pr.camUst+pr.tavanArka)/2, s.W*.72,
+          else ym=ustKaplama((pr.camUst+pr.tavanArka)/2, s.W*.72,
             Math.max(.3,(pr.tavanArka-pr.camUst)*.75), s.roof+.02, pm);
         }
-        else yanKaplama(it.sx, it.z, it.uz||.78, yanH+.10, pm, .03);
+        else ym=yanKaplama(it.sx, it.z, uzY, yanH+.10, pm, .03);
+        if(ym) semaYama.push({mesh:ym, d:it.d});
         if(!car.inspected){
           const ip = it.ust==="kaput" ? [0, s.hood+.02, (pr.kaputZ+(-yarim+L*.09))/2]
                    : it.ust==="bagaj" ? [0, (s.cls==="sedan"?pr.beltR:s.roof)+.02, s.cls==="sedan"?(pr.camAlt+pr.bagajZ)/2:(pr.camUst+pr.tavanArka)/2]
@@ -2758,9 +2770,57 @@ const W3D=(()=>{
     g.userData.size={l:L,w:s.W,h:s.roof};
     g.userData.ipucu=ipucu;
     for(const q of ipucu) if((car.goz||[]).includes(q.k)) g.add(gozIsaretObj(q.poz));
+    try{ ekspertizTaramasi(g, car, semaYama, s, L, yarim); }catch(e){}
     g.userData.camYan=gGeo.userData.camYan;
     g.userData.xAt=xAt; g.userData.genislik=genislik; g.userData.spec=s; g.userData.pr=pr; g.userData.zOn=zOn; g.userData.zArka=zArka; g.userData.ustHat=gGeo.userData.ustHat; g.userData.altHat=gGeo.userData.altHat;
     return g;
+  }
+
+  /* ---------- ekspertiz taraması (1.4, test grubu V6) ----------
+     "Ekspertize ver" anında boya kalınlık ölçeri gibi ince bir düzlem
+     burundan kuyruğa geçer; geçtiği boyalı/değişen yamalar şema rengine
+     (boyalı sarı, lokal açık sarı, değişen kırmızı) boyanıp yavaşça söner.
+     Oyun hissi kademesi orta; ağır hasarda (≥2 değişen) kısa kamera
+     sarsıntısı, şiddet travma² ile azalır. Yeni ışık, gölge yok; Hafif
+     çizimde düzlem yok, renkler anlık. Hareket azaltmada hiçbiri. */
+  let TARA=null, TRAVMA=0;
+  const SEMA_RENK={degisen:0xE0453B, boyali:0xF2C230, lokal:0xF7E08A};
+  function ekspertizTaramasi(g, car, yamalar, s, L, yarim){
+    if(!TARA || TARA.id!==car.id || performance.now()-TARA.t>3000) return;
+    if(typeof CILA!=="undefined" && CILA.azHareket){ TARA=null; return; }
+    TARA=null;
+    const katlar=yamalar.map(y=>{
+      const geo=y.mesh.geometry; geo.computeBoundingBox();
+      const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:SEMA_RENK[y.d]||0xF2C230, transparent:true,
+        opacity:0, side:THREE.DoubleSide, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-3, polygonOffsetUnits:-3}));
+      m.renderOrder=5; m.name="semaKat"; m.userData.z=(geo.boundingBox.min.z+geo.boundingBox.max.z)/2;
+      g.add(m); return m;
+    });
+    let duz=null;
+    if(!HAFIF_CIZIM){
+      duz=new THREE.Mesh(new THREE.PlaneGeometry(s.W*1.18, s.roof*1.12),
+        new THREE.MeshBasicMaterial({color:0x7CF5C8, transparent:true, opacity:.32, side:THREE.DoubleSide,
+          depthWrite:false, blending:THREE.AdditiveBlending}));
+      duz.position.set(0, s.roof*.54, -yarim); duz.renderOrder=7; g.add(duz);
+    }
+    if(yamalar.filter(y=>y.d==="degisen").length>=2) TRAVMA=.7;
+    const SURE=2.8, GECIS=.38;          // saniye; düzlem ilk %38'de geçer
+    let gecen=0;
+    const adim=(dt)=>{
+      gecen+=dt; const u=Math.min(1, gecen/SURE);
+      const tz=-yarim+L*Math.min(1, u/GECIS);
+      if(duz){ duz.position.z=tz; duz.material.opacity = u<GECIS ? .32 : Math.max(0, .32*(1-(u-GECIS)/.08)); }
+      for(const k of katlar){
+        const yandi = HAFIF_CIZIM || tz>=k.userData.z;
+        k.material.opacity = !yandi ? 0 : (u<.55 ? .78 : .78*Math.max(0, 1-(u-.55)/.45));
+      }
+      if(u>=1){
+        for(const k of katlar){ g.remove(k); k.material.dispose(); }
+        if(duz){ g.remove(duz); duz.geometry.dispose(); duz.material.dispose(); }
+        const i=CANLI.indexOf(adim); if(i>=0) CANLI.splice(i,1);
+      }
+    };
+    CANLI.push(adim);
   }
 
   /* ---------- camda SATILIK kâğıdı (1.4, test grubu V2) ----------
@@ -3884,7 +3944,13 @@ const W3D=(()=>{
       if(++engelSayac%3===0) engelleriGuncelle();
     }
 
-    for(const f of CANLI){ try{ f(dt,t); }catch(e){} }
+    for(const f of [...CANLI]){ try{ f(dt,t); }catch(e){} }
+    // ekspertiz sarsıntısı: şiddet travma², sabit titreme değil azalan (game-feel)
+    if(TRAVMA>0){
+      const k=TRAVMA*TRAVMA*.05;
+      cam.position.x+=(Math.random()-.5)*k; cam.position.y+=(Math.random()-.5)*k;
+      TRAVMA=Math.max(0, TRAVMA-dt*1.6);
+    }
     ren.render(scene,cam);
   }
 
@@ -4080,5 +4146,6 @@ const W3D=(()=>{
           sonraki:()=>sec(VT.i+1), onceki:()=>sec(VT.i-1), sec:(i)=>sec(i), yanaBak, isabet, dokun:(x,y)=>tapAt(x,y),
           aciAyarla:(a)=>{ VT.hAci=a; VT.aci=a; VT.son=performance.now()+4000; },
           uzaklik:(u)=>{ VT.hUzak=u; VT.son=performance.now()+4000; },
+          ekspertizTara:(id)=>{ TARA={id, t:performance.now()}; },
           get vitrin(){ return {i:VT.i, aci:VT.aci, uzak:VT.uzak, adet:items.length}; }};
 })();

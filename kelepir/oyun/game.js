@@ -424,6 +424,30 @@ function genCar(opt={}){
   }
   return car;
 }
+/* ================= KAPORTA ŞEMASI (1.4, test grubu V6) =================
+   Türkiye'de ikinci el aracın kimlik kâğıdı ekspertiz şeması: 13 parça,
+   orijinal / lokal boyalı / boyalı / değişen. Eskiden yalnız "boyalı 3,
+   değişen 1" sayısı vardı ve 3B'deki boyalı yamalar kendi kör çekilişiyle
+   seçiliyordu. Şema araç kimliğinden tohumla çıkar (kayda yazılmaz, hep
+   aynı): 2B rapor, 3B yamalar ve tarama aynı paneli gösterir. */
+const SEMA_PANEL=[["onTampon","Ön tampon"],["kaput","Kaput"],["tavan","Tavan"],["bagaj","Bagaj"],["arkaTampon","Arka tampon"],
+  ["sol0","Sol ön çamurluk"],["sol1","Sol ön kapı"],["sol2","Sol arka kapı"],["sol3","Sol arka çamurluk"],
+  ["sag0","Sağ ön çamurluk"],["sag1","Sağ ön kapı"],["sag2","Sağ arka kapı"],["sag3","Sağ arka çamurluk"]];
+function ekspSema(c){
+  let h=(((c&&c.id)||1)*2654435761)>>>0;
+  const r=()=>{ h^=h<<13; h>>>=0; h^=h>>>17; h^=h<<5; h>>>=0; return h/4294967296; };
+  // önce yan paneller ve kaput/bagaj (3B'de yaması olanlar), tamponlar ve tavan sonra
+  const on=["kaput","bagaj","sol0","sol1","sol2","sol3","sag0","sag1","sag2","sag3"];
+  for(let i=on.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [on[i],on[j]]=[on[j],on[i]]; }
+  const sira=[...on,"onTampon","arkaTampon","tavan"];
+  const out={}; for(const [k] of SEMA_PANEL) out[k]="orijinal";
+  const deg=Math.min(sira.length, (c&&c.degisen)||0);
+  const boy=Math.min(sira.length-deg, (c&&c.boyali)||0);
+  for(let i=0;i<deg;i++) out[sira[i]]="degisen";
+  for(let i=deg;i<deg+boy;i++) out[sira[i]] = r()<.3 ? "lokal" : "boyali";
+  return out;
+}
+
 /* ================= NADİR İLAN (1.3, procedural-gen) =================
    Pazar her gün aynı dokudaydı: ilanların hepsi piyasanın %90–110'unda.
    Gerçek galericiyi sabah erkenden sahibinden'e baktıran şey arada bir
