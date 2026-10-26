@@ -48,7 +48,9 @@ const ACILIS=[
   {k:"emanet",  sold:1, gun:3, ad:"Emanet araç",         d:"Sahibi net bir rakam ister, üstü senin. Nakit bağlamazsın ama park yeri kaplar."},
   {k:"nabiz",   sold:1, gun:3, ad:"Piyasa nabzı",        d:"Segmentlerin değeri dalgalanır. Yükselen segmentte al, zirvede sat."},
   {k:"grup",    sold:2, gun:0, ad:"Galericiler grubu",   d:"Diğer galericiler ihbar ve söylenti paylaşır. Kimin doğru çıktığı sicilde yazar."},
-  {k:"parti",   sold:2, gun:0, ad:"Toptan parti",        d:"Birkaç aracı tek fiyata alırsın: tek tek almaktan ucuz, ama park yeri ister."}
+  {k:"parti",   sold:2, gun:0, ad:"Toptan parti",        d:"Birkaç aracı tek fiyata alırsın: tek tek almaktan ucuz, ama park yeri ister."},
+  {k:"kapora",  sold:2, gun:0, ad:"Kapora",              d:"Bazı alıcılar kapora bırakıp birkaç gün sonra gelir. Sözünü bozarsan kaporanın iki katını ödersin."},
+  {k:"sikayet", sold:3, gun:0, ad:"Hakem heyeti",        d:"Kusuru söylenmeden satılan araç aylar sonra değil, günler sonra şikâyetle döner. Ekspertiz raporu seni korur."}
 ];
 function _acilisHepsi(){ const o={}; for(const a of ACILIS) o[a.k]=1; return o; }
 function acikMi(k){

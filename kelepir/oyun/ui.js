@@ -109,7 +109,9 @@ function serialize(){
           /* Bekleyen teklifteki takas aracı da araç taşıyor; eskiden düz
              kopyalanıyordu ve yeniden açınca model bağı kopuyordu. */
           offers:(S.offers||[]).map(o=>o.takas?{...o, takas:{...o.takas, car:carOut(o.takas.car)}}:o),
-          canli:S.canli&&S.canli.car?{...S.canli, car:carOut(S.canli.car)}:(S.canli||null)};
+          canli:S.canli&&S.canli.car?{...S.canli, car:carOut(S.canli.car)}:(S.canli||null),
+          // hakem heyeti dosyası satılmış aracı tutar: geri alınabilsin (M1)
+          sikayet:(S.sikayet||[]).map(x=>({...x, car:carOut(x.car)}))};
 }
 function deserialize(d){
   const carIn=c=>({...c, model:MODELS[c.model]||MODELS[0], seller:c.seller>=0?SELLERS[c.seller]:null});
@@ -118,6 +120,7 @@ function deserialize(d){
   if(d.parti) d.parti.cars=(d.parti.cars||[]).map(carIn);
   (d.offers||[]).forEach(o=>{ if(o.takas&&o.takas.car) o.takas.car=carIn(o.takas.car); });
   if(d.canli&&d.canli.car) d.canli.car=carIn(d.canli.car);
+  (d.sikayet||[]).forEach(x=>{ if(x.car) x.car=carIn(x.car); });
   /* Filo kaldırıldı (yerine konsinye geldi). Kiradaki araç sözleşmesi
      bitmiş sayılır ve normal stoğa döner — alan bırakılsaydı hiçbir
      ekran onu göstermeyeceği için araç görünmez bir kilitte kalırdı. */
@@ -432,6 +435,7 @@ function nextDay(){
   for(const c of S.cars){
     if(!c.listPrice) continue;
     c.daysListed++;
+    if(c.kapora && Math.random()<.5) continue;     // kaporalı: ilan yarı alıcı çeker (M10)
     if(Math.random()<leadChance(c,S)){
       c.leadsSeen++;
       const b=makeBuyer(c,S);
@@ -728,6 +732,10 @@ function buyCar(car, price, via, senetli){
    bozuluyordu (v3 testi, 40 yaş ve galerici). Ödenmeyen taksit kârdan
    gün sonunda düşülür (taksitKaybi). */
 function sellCar(car, price, note, alacak){
+  // kaporalı araç başka alıcıya (ya da toptana): sözden dönmenin bedeli (M10)
+  if(car && car.kapora && typeof kaporaBoz==="function") kaporaBoz(car);
+  // gizli kusurla satıldıysa hakem heyeti dosyası takvime yazılır (M1)
+  try{ if(typeof sikayetKaydet==="function") sikayetKaydet(car, price+(alacak||0), S.sale&&S.sale.bt); }catch(e){}
   const kat=prestijSatisCarpani();
   price=Math.round(price*kat); alacak=Math.round((alacak||0)*kat);
   kasaHareket(price, `Satış${alacak?" (peşinat)":""}: ${car.model.n}`);
@@ -1132,6 +1140,7 @@ function takvimHesap(bugun){
   const eksik=Math.max(0, kira+vergi-gece);
   const vadeler=new Set();
   for(const r of (S.receivables||[])){ const g=r.due-S.day; if(g>=0 && g<kalan) vadeler.add(i+g); }
+  for(const c of (S.cars||[])) if(c.kapora){ const g=c.kapora.gelis-S.day; if(g>=0 && g<kalan) vadeler.add(i+g); }
   return {i, kalan, kira, vergi, gece, eksik, vadeler};
 }
 function takvimHtml(buyuk, tk){
@@ -1239,6 +1248,7 @@ function cardHtml(c, mode){
   }else{
     // Kartın ilk çipi aracın şu an beklediği adım: oyuncu ne yapacağını aramasın.
     const ad=siradakiAdim(c);
+    if(c.kapora) chips.push(`<span class="chip kaporali">Kaporalı &middot; ${c.kapora.gelis<=S.day?"bu akşam":(c.kapora.gelis-S.day)+" gün"}</span>`);
     chips.push(`<span class="chip adim ${ad.tip}">${ad.t}</span>`);
     const of=openFaults(c).filter(f=>known(c,f)).length;
     if(of) chips.push(`<span class="chip warn">${of} açık arıza</span>`);
@@ -3110,18 +3120,19 @@ function openReport(){
   const netGider=r.total;
   // Teklif getiren olaylar rapordan doğrudan kendi sayfasına açılıyor:
   // raporu kapatıp Pazar'da kartı aramak bir adım fazlaydı.
-  const git={parti:S.parti?["partiac","Partiye bak"]:null, emanet:S.konsTeklif?["konsac","Teklife bak"]:null};
+  const git={parti:S.parti?["partiac","Partiye bak"]:null, emanet:S.konsTeklif?["konsac","Teklife bak"]:null,
+    sikayet:sikayetAcik().length?["sikayetac","Dosyaya bak"]:null};
   /* Rapor kısa: teklif getiren ve kötü haberler öne, en fazla üç olay açık,
      gerisi katlı. Uzun günlerde oyuncu raporu kaydırmadan geçebilsin. */
-  const sirali=[...r.events].sort((x,y)=>((y.parti||y.emanet||y.siparis)?2:y.bad?1:0)-((x.parti||x.emanet||x.siparis)?2:x.bad?1:0));
+  const sirali=[...r.events].sort((x,y)=>((y.parti||y.emanet||y.siparis||y.sikayet)?2:y.bad?1:0)-((x.parti||x.emanet||x.siparis||x.sikayet)?2:x.bad?1:0));
   const olaySatir=e=>{
-    const g=(e.parti&&git.parti)||(e.emanet&&git.emanet);
+    const g=(e.parti&&git.parti)||(e.emanet&&git.emanet)||(e.sikayet&&git.sikayet);
     return `<div class="olaysat ${e.bad?"kotu":""}">${e.t}${g?`<button class="olaygit" data-act="${g[0]}">${g[1]} &rsaquo;</button>`:""}</div>`;
   };
   const olayKisa=sirali.slice(0,3).map(olaySatir).join(""), olayKalan=sirali.slice(3).map(olaySatir).join("");
   const olayFazla=Math.max(0,sirali.length-3);
   const olay=r.events.map(e=>{
-    const g=(e.parti&&git.parti)||(e.emanet&&git.emanet);
+    const g=(e.parti&&git.parti)||(e.emanet&&git.emanet)||(e.sikayet&&git.sikayet);
     return `<div class="olaysat ${e.bad?"kotu":""}">${e.t}${g?`<button class="olaygit" data-act="${g[0]}">${g[1]} &rsaquo;</button>`:""}</div>`;
   }).join("");
 
@@ -3568,6 +3579,24 @@ function doSaleOffer(){
 
 function finishSale(price){
   const s=S.sale, car=S.cars.find(x=>x.id===s.carId);
+  /* Kapora (M10): bazı alıcılar hemen ödemez, kapora bırakıp 2–3 gün sonra gelir. */
+  if(car && kaporaAday(s, car)){
+    const k=kaporaAl(car, price, s.bt);
+    s.done=true; s.counter=null; s.sonuc="kapora";
+    dropOffer(s.oid); S.sale=null; save(); render();
+    try{ cal("para"); dokun("al"); }catch(e){}
+    openSheet(`<div class="sheet-head"><div><div class="sheet-title">Kapora alındı</div>
+        <div class="sheet-sub">${car.model.n} &middot; ${k.alici}</div></div>
+        <button class="x" data-act="closesheet" aria-label="Kapat">&times;</button></div>
+      <div class="block">
+        <div class="kv"><span>Anlaşılan fiyat</span><b>${tl(k.fiyat)}</b></div>
+        <div class="kv"><span>Kapora (kasaya girdi)</span><b style="color:var(--gold)">${tl(k.tutar)}</b></div>
+        <div class="kv"><span>Alıcı gelecek</span><b>${k.gelis}. gün</b></div>
+        <div class="sec-note" style="margin-top:8px">"${k.k==="uzak"?"Yoldayım, cumartesi gelip alırım.":"Maaş yatınca gelip kalanını veriyorum."}" Araç bu sürede kaporalı: ilan yarı alıcı çeker. Daha iyi teklif gelirse satabilirsin ama kaporanın <b>iki katını</b> iade edersin, itibar −2. İlan dürüstse alıcı büyük olasılıkla gelir.</div>
+      </div>
+      <button class="btn primary full" data-act="closesheet">Tamam</button>`);
+    return;
+  }
   s.done=true; s.counter=null; s.sonuc="satildi"; s.finalPrice=price;
   save(); renderSaleNeg();
   setTimeout(()=>{
@@ -3698,6 +3727,7 @@ function renderSaleNeg(){
           <span class="lab" style="right:0;top:2px;color:var(--sodium)">ilan ${tlk(s.list)}</span>
         </div>
         ${s.takas?`<div class="takas-cip">TAKASLI: nakit + ${s.takas.car.model.n} (bi&ccedil;ilen ${tlk(s.takas.claim)})</div>`:""}
+        ${car.kapora?`<div class="oneri-not">Bu araç kaporalı (${car.kapora.alici}, ${tl(car.kapora.tutar)}). Bu alıcıya satarsan kaporanın <b>iki katı ${tl(car.kapora.tutar*2)}</b> iade edilir, itibar −2.</div>`:""}
         ${s.counter?`<button class="btn primary full${kar>=0?" karli":""}" data-act="saleaccept">
           Kabul et &middot; ${s.takas?`${tlk(s.counter-s.takas.claim)} nakit + ${s.takas.car.model.n.split(" ").slice(0,2).join(" ")}`:tl(s.counter)} <span style="opacity:.75;font-weight:400">(${kar>=0?"+":""}${tlk(kar)})</span></button>`:""}
         <details class="hizli"><summary>Hızlı ayar &middot; &plusmn;%2 / %5</summary><div class="quick">
