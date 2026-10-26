@@ -32,7 +32,7 @@ const PARA={
 };
 
 /* Oyuncuya görünen sürüm. Kayıt şeması ayrı: kayit.js SURUM (göç numarası). */
-const OYUN_SURUM="1.3";
+const OYUN_SURUM="1.4";
 const XP_LEVELS=[0,120,280,700,1200,1900,2800,4000];
 /* Kayıt biçimi sürümü.
    3 = dolar ekonomisi (ABD sürümü)

@@ -26,7 +26,8 @@ ilanı kur → alıcıyla pazarlık et → sat.** Yan katmanlar: sezonlar, günl
 görevler, tanıdıklar, rakip galericiler, lig, koleksiyon, 3B vitrin (gözle ekspertiz),
 günün vakası, galeri kirası ve büyütme, konsinye (emanet araç), toptan parti,
 dönen müşteri, sanayi günü ve sezon hedefi, takas (ekspertiz + değer kırma),
-parça kalitesi, ilan fotoğrafı, piyasa nabzı, galericiler grubu, canlı açık artırma.
+parça kalitesi, ilan fotoğrafı, piyasa nabzı, galericiler grubu, canlı açık artırma,
+kapora, hakem heyeti (ayıplı mal şikâyeti), rakip kişilikleri, haftalık oto pazarı.
 
 ---
 
@@ -37,9 +38,9 @@ birleştirip `shell.html` içindeki `/*BUNDLE*/` işaretinin yerine koyuyor.
 
 ```
 hata.js → olcum.js → aracciz.js → kayit.js → i18n.js → ses.js → game.js → kanca.js → world.js
-→ rehber.js → gunlukritim.js → koleksiyon.js → galeri.js → konsinye.js
+→ rehber.js → gunlukritim.js → koleksiyon.js → galeri.js → konsinye.js → kapora.js → sikayet.js
 → yangorev.js → kolay.js → foto.js → parca.js → takas.js → ilanfoto.js → piyasa.js
-→ grup.js → canli.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
+→ grup.js → canli.js → rakip.js → sirala.js → cila.js → yuz.js → kisisel.js → karne.js → meydan.js
 → paylas.js → demo.js → ui.js → app.js
 ```
 
@@ -64,7 +65,8 @@ başlıyor (`_acRenk`, `_acTohum`, `AC_ISKELET`).
 
 Gün geçişi, BUGÜN rayı ve düğme yönlendirmesi için `ui.js`'e satır ekleme.
 Modül kendini kaydeder: `KANCA.gun.push(rep=>…)`, `KANCA.ray.push(()=>[kart…])`,
-`KANCA.eylem.ad=(b,car)=>…`, ray simgesi `KANCA.ikon.ad`. Kancalar korumalı
+`KANCA.eylem.ad=(b,car)=>…`, ray simgesi `KANCA.ikon.ad`. `KANCA.gun` `S.day++`'tan
+sonra çalışır: işlenen gece `S.day-1`. Kancalar korumalı
 çağrılır; biri hata verirse gün durmaz. `ux-test.js` 13. bölüm (ölü düğme)
 `KANCA.eylem.x=` kayıtlarını da karşılık sayıyor.
 
@@ -93,6 +95,7 @@ node test/uzun.js          # uzun oyun, prestij
 node test/goc-test.js      # eski kayıttan göç
 node test/vitrin-test.js   # 3B vitrin + gözle ekspertiz + teker kemeri + tek araçta oklar (30 kontrol, birkaç dk)
 node test/v13-test.js      # 1.3: satış anı, kayıt yedeği, ses grupları, ölçüm, nadir kelepir (29 kontrol)
+node test/v14-test.js      # 1.4: Türk plakası, kaporta şeması, kapora, hakem heyeti, rakip kişilikleri, galeri kademesi, oto pazarı, SATILIK kâğıdı, tarama (31 kontrol)
 node test/v3-test.js       # v3 kararları + 1.1 + 1.2: araç karakteri, taksit, pazarlık/satış/müzayede, yeni ekranlar, kademeli açılış, usta notu, duvar takvimi, gün notları (62 kontrol)
 
 node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, assert yok)
@@ -170,13 +173,15 @@ iş listesine yaz.
 | `kayit.js` | 260 | localStorage + IndexedDB + cihaz deposu, günlük yedek, bozuk kayıttan dönüş, servis çalışanı |
 | `i18n.js` | 216 | dil katmanı (tek dil kilidi burada) |
 | `ses.js` | 354 | WebAudio ses ve müzik |
-| `game.js` | 910 | **kural motoru** — model tablosu, değerleme, arızalar, alıcı/satıcı |
-| `world.js` | 3407 | 3B vitrin (three.js) — gövde profili `profil3B()` 2B kimlikten |
+| `game.js` | 1214 | **kural motoru** — model tablosu, değerleme, arızalar, alıcı/satıcı |
+| `world.js` | 4235 | 3B vitrin (three.js) — gövde profili `profil3B()` 2B kimlikten |
 | `rehber.js` | 99 | ilk oyun rehberi |
 | `gunlukritim.js` | 95 | günlük görevler ve seri |
 | `koleksiyon.js` | 170 | koleksiyon, lig tablosu, rakip vitrini, prestij |
 | `galeri.js` | 127 | **galerinin yeri** — kaçan kelepir, yandaki dükkân, sezon hedefi kutusu |
 | `konsinye.js` | 178 | **emanet araç** — sahibi net ister, üstü senin, yer kaplar (filonun yerine) |
+| `kapora.js` | 71 | kapora: alıcı %3–5 bırakır, 2–3 gün sonra gelir; bozarsan iki katı |
+| `sikayet.js` | 117 | hakem heyeti: söylenmemiş kusur satıştan 4–12 gün sonra döner; galeri kademesi olayı |
 | `yangorev.js` | 212 | toptan parti, dönen müşteri, sanayi günü, sezon hedefi |
 | `kolay.js` | 102 | Hazırla (tek dokunuşla satışa), sıradaki adım rozeti, önerilen teklif |
 | `foto.js` | 125 | listede/sayfada 3B stüdyo fotoğrafı (ayrı çizici, boşta kuyruk, 2B yedek) |
@@ -187,6 +192,7 @@ iş listesine yaz.
 | `piyasa.js` | 123 | segment dalgası (değeri oynatır) + 30 günlük nabız grafiği |
 | `grup.js` | 156 | galericiler grubu: ihbar, söylenti, müzayede kulisi, gönderen sicili |
 | `canli.js` | 190 | canlı açık artırma (geri sayım, rakip tavanları, son saniye) |
+| `rakip.js` | 86 | rakip kişilikleri: puanlamalı ilan seçimi, "baktı" etiketi, zarf katsayısı |
 | `sirala.js` | 74 | Türkiye sıralaması (60 sanal galeri) |
 | `cila.js` | 125 | mikro animasyon, haptik, onay kutusu |
 | `yuz.js` | 129 | satıcı/alıcı/tanıdık/emanet sahibi yüz çizimi (ruh hâline göre) |
@@ -195,7 +201,7 @@ iş listesine yaz.
 | `meydan.js` | 176 | günün vakası (günlük bilmece) |
 | `paylas.js` | 377 | 1080×1920 paylaşım kartları (canvas) |
 | `demo.js` | 213 | otomatik tanıtım turu |
-| `ui.js` | 4012 | **bütün ekranlar ve olay yönlendirme** (BUGÜN rayı, gözle ekspertiz kuralları) |
+| `ui.js` | 4826 | **bütün ekranlar ve olay yönlendirme** (BUGÜN rayı, gözle ekspertiz kuralları) |
 | `app.js` | 171 | Capacitor köprüsü, güvenli alan, geri tuşu |
 | `shell.html` | 1786 | bütün CSS + belge iskeleti |
 
@@ -464,6 +470,36 @@ Testler kırmızıyken iş bitmiş sayılmaz.
   (normal 91 / uygun 6 / kelepir 3) + günlük %12 zar; kelepir `kelepirSaglam` ile
   doğrulanır (gizli ağır kusur, büyük hasar, km oynaması yok), aynı anda en çok bir
   tane, 2 günde kapılır. Simülasyon: günlerin ~%21'inde pazarda bir kelepir.
+- **Türk plakası** (`game.js IL_PLAKA`, `plate(il)`, 1.4): "34 ABC 123" biçimleri, il
+  ağırlıklı. 2B `plateHtml` mavi TR bandını `/^\d{2} /` ile tanır; 3B `plakaTex` 512×112.
+  Şehir dışı alıcının ili teklifte `il` alanında.
+- **Kaporta şeması tek kaynak** (`ekspSema(c)`, 1.4): araç id'sinden tohumlu, kayda yazılmaz.
+  2B SVG (`semaSvg`), 3B boyalı/değişen yamaları (`yanSlot`) ve ekspertiz taraması aynı
+  tabloyu okur. Değişen önce dağıtılır; sayı `c.degisen`/`c.boyali` ile birebir (v14-test).
+  Tarama `W3D.ekspertizTara(id)` + yeniden kurulumla başlar (`TARA`, 3 sn içinde kurulmalı).
+- **Camdaki SATILIK kâğıdı** (`satilikKagidi`, 1.4): yan cam çizgisi `govdeGeo` userData'daki
+  `camYan(z)`'den gelir. `xAt` kuşak üstünde camı değil gövde kenarını verir; `ustHat` kuşak
+  hattıdır, tavan `s.roof`. Kâğıt tek yüz + ters doku (`satilikDoku`); DoubleSide karşı
+  camdan ayna yazı gösteriyordu. Saydam geçişte, `renderOrder` 6: opakta füme cam örtüyordu.
+- **Kapora** (`kapora.js`, 1.4): `finishSale` başında `kaporaAday`; kaporalı aracı başkasına
+  satmak `sellCar` başında `kaporaBoz` (iki katı, itibar −2). Gün kancası `S.day-1`'i işler
+  (kanca `S.day++`'tan sonra çalışır). Kapora kasaya girdiği için gelişte satış tamdan
+  sayılır, kapora kasadan düşülür.
+- **Hakem heyeti** (`sikayet.js`, 1.4): `sellCar` her satışta `sikayetKaydet` çağırır;
+  dürüst (`disclosed`) satış şikâyet almaz. `S.sikayet[].car` kayıtta model indeksine
+  çevrilir (serialize). Oranlar yorumdaki simülasyonla ayarlı; muğlak ilanın taban cezası
+  şikâyetten bağımsız, ±%5 hedefi şikâyetle tutturulamaz.
+- **Rakip kişilikleri** (`rakip.js`, 1.4): rakip ilanı önce "baktı" der (`c.rakipGoz`, her gece
+  silinip yeniden konur), ertesi gece `kapma` olasılığıyla alır; geçerse o ilandan vazgeçer
+  (`c.rakipPas`). Olmasa aynı ilana her gece zar atılıyor, oran ilan ömrüyle büyüyordu.
+  Müzayede/canlı tavanı `rakipZarfKat`. Ayar sonrası oyuncusuz koşuyla ölç (≤%25).
+- **Sabah en az bir yeni ilan** (`nextDay`): gece hiçbir ilan kalkmadıysa oyuncunun açmadığı
+  en eski ilan düşer. Testler "pazar değişti"ye dayanıyor.
+- **Oto pazarı** (`pazarGunu(gun)`, her 7. gün): `marketSize` +3, 3B `PAZAR_SABAH` ışığı ve
+  `pazarDekoru` (Hafif çizimde yalnız ışık). **Galeri kademesi** `galeriKademe()` 0/1/2
+  (park yeri, seviye, prestij): 3B bina `galeriBinasi(...,kademe)`. Showroom içi aydınlığı
+  bina kutusunun ÖNÜNDE (kutunun içinde kalınca ön yüz örtüyordu).
+- **Rehber 7. adımı** ilk gece teklif gelmezse rapor kapat → günü bitir'i vurgular.
 - **Yazı boyutu** `S.yazi` → `html.yk` + `--yk`; `zoom` kullanma (3B tuval bozulur).
 - **`openSheet` kaydırmayı koruyor.** Aynı sayfa yeniden çizilirse (tamir,
   pazarlık hamlesi) konum korunuyor; anahtar başlık + alt başlık. Yeni bir

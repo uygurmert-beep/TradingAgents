@@ -117,7 +117,7 @@ const t=(ad,kos,ek)=>{ if(kos){ok++;console.log('  ok   '+ad);} else {fail++;con
   console.log('6) galeri büyümesi, oto pazarı, kelepir');
   const gk=await p.evaluate(()=>{
     const yedek={slots:S.slots, prestij:S.prestij, xp:S.xp};
-    S.slots=3; S.prestij=0; const k0=galeriKademe();
+    S.slots=3; S.prestij=0; S.xp=0; const k0=galeriKademe();
     S.slots=5; const k1=galeriKademe(); S.slots=8; const k2=galeriKademe();
     Object.assign(S,yedek);
     const g6=pazarGunu(6), g7=pazarGunu(7), g14=pazarGunu(14);

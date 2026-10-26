@@ -8,12 +8,12 @@ söylüyor; bu dosya **ne yapılacağını**.
 
 ## 1. Tek cümlede durum
 
-Oyun mağazaya yüklenebilir durumda ve önceki brief'teki derinlik eksikleri
-kapandı: filo konsinyeye çevrildi, toptan parti, dönen müşteri, sanayi günü ve
-sezon hedefi eklendi; Pazar ekranı yeniden düzenlendi (BUGÜN rayı). 3B
-onarıldı (150 model kendi gövdesiyle, gerçekçi far/ızgara), yürüme yerine
-vitrin ve gözle ekspertiz geldi. 326 otomatik kontrol geçiyor. Sırada **yalanın uzun vadeli faturası**
-(tüketici şikâyeti) ve **satış sonrası evrak** (noter) var.
+Sürüm **1.4**: test grubunun (8 rol) oylamasındaki her şey uygulandı.
+Satış artık bitiş değil (kapora, hakem heyeti), rakiplerin kişiliği var,
+ekspertiz Türkiye'deki kaporta şemasıyla okunuyor, 3B sahada Türk plakası,
+camda SATILIK kâğıdı, galeri büyüdükçe değişen bina ve haftalık oto pazarı
+sabahı var. Testler yeşil (v14-test 31 kontrol dahil). Sırada **satış
+sonrası evrak** (noter) ve diyalog verisinin tabloya taşınması var.
 
 ---
 
@@ -152,13 +152,28 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   canlı açık artırma (12 sn saat, 7 sn uzatma, rakip tavanları, son saniye).
   Nuri'nin bedava tamirinin yine de masraf yazılması düzeldi.
 
+### Yapıldı (1.4 — test grubu oylaması, `OYLAMA-1.3.md`)
+
+- **Hatalar H1–H8:** göz işareti komşusunda 3B ışın hatası (sprite kamera),
+  koyu sahnede yıl okunmuyordu, Selim indirimi sömürülüyordu (%80–90, taban ×.84),
+  rapor açılırken eski bildirim üstte kalıyordu, rehberin önerdiği kart ve
+  kârlı düğme vurgusu, fiyat kırma geçmişi, şehir dışı alıcıda il, kelepir kasaya göre.
+- **V3 Türk plakası** (`IL_PLAKA`, il ağırlıklı, mavi TR bandı 2B ve 3B).
+- **V2 SATILIK kâğıdı** arka kapı camında, el yazısı fiyat, kırılan fiyat karalanır.
+- **V6 kaporta şeması** (`ekspSema`, 13 parça; 2B SVG, 3B yamalar ve tarama aynı kaynaktan).
+- **M10 kapora**, **M1 hakem heyeti**, **M5 rakip kişilikleri** (aşağıdaki ayar notları).
+- **V9 galeri büyümesi** (konteyner → dükkân → showroom), **V1 oto pazarı sabahı** (her 7. gün).
+- **Ölçülen değerler:** rakibe giden ilan oyuncusuz 200 günlük koşuda %17–24
+  (STR şartı ≤%25), kapışların %80–90'ı önceden "baktı" etiketli. Şikâyet
+  muğlak ilanın getirisini dürüste göre ~9 puan daha düşürüyor; ancak muğlak ilan
+  şikâyetten önce de dürüstün ~%49 gerisindeydi (yakalanma cezası), STR'nin
+  "±%5" şartı bu yüzden tutmuyor — taban ceza 1.4 öncesinden. Günlerin ~%21'inde
+  pazarda kelepir. Denge (121 gün): 106. gün net ₺21,5–26,3M (1.3: ₺14,8–25,5M),
+  ilk 30 gün yavaşlamadı.
+
 ### Sırada
 
 - **Yayın sonrası ilk güncelleme (1.3 kararı, gamedev-skills taraması):**
-  - *Rakip kişilikleri* — 4 rakip galeri kural tabanlı. Her rakibe puanlamalı
-    (utility) karar: fiyat avantajı, araç durumu, nakit, risk iştahı 0..1'e
-    normalize, kişilik ağırlıkları (agresif teklifçi, yalnız temiz araç alan,
-    taksitçi), eşitlikte küçük histerezis. Kararların skorları debug'da görünsün.
   - *Diyalog verisi* — alıcı ve satıcı replikleri kodun içinde. Satır kimlikli
     tabloya (id → {tr, en}) taşınmalı; seçenekler arketip, sabır ve teklif
     farkıyla koşullu. Her dal bir bitişe ulaşmalı (yürüyen test).
@@ -166,9 +181,8 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   metni toplanmalı. Sandbox'ta GPU yazılımsal (SwiftShader); 3B rakamı ancak
   cihazdan gelir. 3B saha "zayıf" çıkarsa Otomatik kalite eşiği (şu an ≤2 GB
   bellek ya da ≤2 çekirdek) cihaz verisine göre ayarlanmalı.
-- **Tüketici şikâyeti** — üst üste yakalanırsan dosya açılıyor: tazminat ya da
-  bir sezon itibar kaybı. Yalanın uzun vadeli faturası. Dönen müşterinin
-  karşılığı: itibar artık hem kazandırıyor hem de kaybettiriyor olmalı.
+- **Muğlak ilanın taban cezası** — şikâyetsiz de dürüstün ~%49 gerisinde; STR
+  "muğlak dil ölmesin" diyor. Yakalanma cezası (`ui.js` satış teklifi) gözden geçirilmeli.
 - **Noterde iş** — satış sonrası evrak N gün içinde bitmezse ceza; Noter Yılmaz
   tanıdığı hızlandırıyor. BUGÜN rayına bir kart olarak oturur.
 - **Çerçeveli mağaza görselleri yeniden üretilmeli.** Ham ekranlar

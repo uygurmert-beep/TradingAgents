@@ -256,6 +256,9 @@ I18N.DESEN.push(
 
 /* ---- cümle içi atomik terimler (uzundan kısaya) ---- */
 I18N.PARCA.push(
+  ["Rakip baktı","Rival is eyeing it"],["akşama kadar","until tonight"],["Kaporalı","Deposit paid"],
+  ["son gün","last day"],["bu akşam","tonight"],["Arkanda kalan","Behind you"],
+  ["son 7 gün","last 7 days"],["Takvime göre önümüzdeki","By the calendar, the next"],
  ["stokta","in stock"],
  ["Kumaş döşeme","cloth trim"],["Deri döşeme","leather trim"],
  ["Suni deri döşeme","faux-leather trim"],["Kadife döşeme","velour trim"],
@@ -302,6 +305,17 @@ Object.assign(I18N.TAM, {
 "tuzaktı":"was a trap","yanlış çıktı":"turned out false","sonuç bekleniyor":"pending",
 "Canlı açık artırma":"Live auction","Masaya otur · başlat":"Take a seat · start","Çekil":"Walk away",
 "Tokmak indi":"Hammer down","Senin oldu":"It's yours","SENDE":"YOU LEAD","TEKLİF BEKLENİYOR":"AWAITING BIDS",
+
+/* --- 1.4: kapora, hakem heyeti, şema, rakip, oto pazarı --- */
+"Kapora alındı":"Deposit taken","Anlaşılan fiyat":"Agreed price","Kapora (kasaya girdi)":"Deposit (in the till)",
+"Alıcı gelecek":"Buyer arrives","Hakem heyeti":"Consumer arbitration","BAŞVURU":"COMPLAINT",
+"Talep edilen":"Claimed","Ekspertiz raporu dosyada":"Inspection report on file","Var":"Yes","Yok":"None",
+"Değişen":"Replaced","Boyalı":"Repainted","Lokal boyalı":"Spot repaint",
+"Kaporta şeması":"Body panel map","ÖN":"FRONT",
+"Bugün oto pazarı kurulu: sahada üç ilan fazla, erken gelen kapar.":"Car market day: three extra listings on the lot, early birds win.",
+"Yarın oto pazarı kuruluyor: nakit ayır.":"Car market tomorrow: keep some cash ready.",
+"<b>Galerin büyüdü:</b> konteyner ofisten cam cepheli dükkâna taşındın.":"<b>Your lot grew:</b> from a container office to a glass-front shop.",
+"<b>Galerin büyüdü:</b> yüksek camlı showroom, kırmızı halı, bayraklar. Sahaya bir bak.":"<b>Your lot grew:</b> a tall glass showroom, red carpet and flags. Take a look outside.",
 });
 
 /* ---- çoğul eki: |s| işaretçisi, metindeki ilk sayıya bakar ---- */
