@@ -15,18 +15,40 @@ from PIL import Image, ImageDraw, ImageFilter
 from PIL import ImageFont
 import cairosvg
 
-F = "/usr/share/fonts/truetype/google-fonts/Poppins-%s.ttf"
-def yazi(boy, agirlik="Bold"):
-    return ImageFont.truetype(F % agirlik, boy)
-
-ZEMIN  = (11, 16, 18)
-ZEMIN2 = (22, 37, 42)
-PETROL = (22, 184, 174)
-ALTIN  = (240, 180, 82)
-BEYAZ  = (236, 242, 241)
-GRI    = (147, 165, 164)
-
 KOK    = os.path.dirname(os.path.abspath(__file__))
+
+# Yazı tipi oyunun kendisi: oyun/font altındaki Space Grotesk woff2'leri
+# (latin + latin-ext, Türkçe harfler ikincisinde) tek TTF'e birleştirilir.
+# Eskiden sistemde kurulu Poppins isteniyordu; font olmayan makinede
+# çerçeveler hiç üretilemiyor, mağazada eski arayüz kalıyordu (1.4).
+_FONT = {}
+AGIRLIK = {"Bold": 700, "SemiBold": 600, "Medium": 500, "Regular": 400}
+def _font_yolu(agirlik):
+    if agirlik in _FONT: return _FONT[agirlik]
+    import tempfile
+    from fontTools.ttLib import TTFont
+    from fontTools.merge import Merger
+    w, kl = AGIRLIK[agirlik], tempfile.mkdtemp(prefix="kelepir-font-")
+    parca = []
+    for alt in ("latin", "latin-ext"):
+        f = TTFont(f"{KOK}/font/space-grotesk-{alt}-{w}-normal.woff2"); f.flavor = None
+        yol = f"{kl}/{alt}.ttf"; f.save(yol); parca.append(yol)
+    _FONT[agirlik] = f"{kl}/SpaceGrotesk-{agirlik}.ttf"
+    Merger().merge(parca).save(_FONT[agirlik])
+    return _FONT[agirlik]
+def yazi(boy, agirlik="Bold"):
+    return ImageFont.truetype(_font_yolu(agirlik), boy)
+
+# Showroom paleti (ikon ve açılış ekranıyla aynı): koyu yarış yeşili zemin,
+# açık yeşil vurgu, altın yalnız sayılarda. Eski petrol/siyah palet ikonla
+# yan yana uyumsuz duruyordu.
+ZEMIN  = (8, 36, 29)
+ZEMIN2 = (14, 94, 75)
+PETROL = (120, 214, 176)     # vurgu (ad tarihsel: önceki palette petroldü)
+ALTIN  = (244, 195, 90)
+BEYAZ  = (243, 241, 236)
+GRI    = (176, 199, 190)
+
 # Mağaza klasörü oyun/'un bir üstünde; eskiden KOK altında aranıyordu.
 UST    = os.path.dirname(KOK)
 SS     = UST + "/magaza/ss"
@@ -45,7 +67,7 @@ def degrade(w, h):
     # sol üstte petrol ışıması
     hale = Image.new("RGB", (w, h), (0, 0, 0))
     hd = ImageDraw.Draw(hale)
-    hd.ellipse([-w * .25, -h * .9, w * .55, h * .75], fill=(10, 70, 66))
+    hd.ellipse([-w * .25, -h * .9, w * .55, h * .75], fill=(24, 120, 94))
     hale = hale.filter(ImageFilter.GaussianBlur(w // 7))
     return Image.blend(t, Image.blend(t, hale, .55), .75)
 
@@ -135,7 +157,7 @@ BASLIK = {
   "05-garaj":    ("Kârını gör, sonra sat", "Maliyet, tamir, başabaş — hepsi kartın üstünde."),
   "06-emanet":   ("Cebinden para çıkmadan", "Emanet aracı sat, netin üstü senin."),
   "07-sirala":   ("Türkiye sıralaması", "61 galeri arasında kaçıncısın?"),
-  "08-3b":       ("Galerini gez", "Listeden çık, mekânı yürüyerek dolaş."),
+  "08-3b":       ("Aracı gözünle incele", "3B sahada döndür, yaklaş; kusuru gören pazarlıkta koz alır."),
 }
 
 def cerceve(kaynak, hedef, W, H):
@@ -178,7 +200,7 @@ def cerceve(kaynak, hedef, W, H):
         # petrol hairline çerçeve
         ImageDraw.Draw(im).rounded_rectangle(
             [kenar, ustAlan, kenar + ss.size[0] - 1, ustAlan + ss.size[1] - 1],
-            radius=int(W * 0.045), outline=(22, 184, 174, 90), width=2)
+            radius=int(W * 0.045), outline=(120, 214, 176, 90), width=2)
 
         im.convert("RGB").save(f"{hedef}/{ad}.png")
     print(f"  çerçeveler {W}×{H} → {hedef.split('/')[-1]}")

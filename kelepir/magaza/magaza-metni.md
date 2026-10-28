@@ -44,14 +44,25 @@ Biri aracını galerine emanet bırakıyor: sahibi net bir rakam istiyor,
 Galericiler toptan parti teklif ediyor, memnun müşterin daha büyük
 bütçeyle geri dönüyor, mal sahibi her sezon bir hedef koyuyor.
 
+SATIŞ BİTİŞ DEĞİL
+Alıcı kapora bırakıp "maaş yatınca gelirim" diyor; arada daha iyi teklif
+gelirse sözünü tutacak mısın? İlanda söylemediğin kusur günler sonra hakem
+heyetine dosya olarak dönüyor. Ekspertiz raporun dosyadaysa haklı çıkarsın.
+
 TÜRKİYE PİYASASI
 40 marka, 150 model. Fiyatlar Türkiye ikinci el piyasasına göre normalize
 edildi: 300 binlik hatchback'ten 20 milyonluk SUV'a kadar. Amortisman
 eğrisi de buraya göre — Türkiye'de araç ABD'deki gibi değer kaybetmiyor.
 
 GALERİNİ GEZ
-Listeden çıkıp galerini üç boyutta dolaşabilirsin. Tabelanı, zeminini,
-renklerini kendin seçersin.
+Sahada aracın etrafında dön, yaklaş: boyalı kapıyı gözünle yakalarsan
+pazarlıkta koz olur. Ekspertiz kaporta şemasını aracın üstünde gösterir.
+Türk plakaları, camda el yazısı SATILIK kâğıdı, haftada bir kurulan oto
+pazarı. Galerin büyüdükçe konteyner ofis cam cepheli showroom'a dönüşür.
+
+RAKİPLERİN KİŞİLİĞİ VAR
+Dört rakip galeri: biri ucuz gördüğüne atlar, biri yalnız temiz araç alır.
+Gözüne kestirdikleri ilanda "rakip baktı" yazar — bir gecen var.
 
 TÜRKİYE SIRALAMASI
 60 rakip galeriyle aynı merdivendesin. Özsermayen seni nereye koyuyor?
@@ -104,8 +115,8 @@ araba,araç,ikinciel,alımsatım,pazarlık,galerici,tamir,ekspertiz,ticaret,iş,
 
 ### Tanıtım metni — 170 karakter sınırı (incelemeye girmeden değiştirilebilir)
 ```
-Sürüm 1.0 yayında: 40 marka, 150 model, Türkiye fiyatlarıyla. Filo kiralama
-ve Türkiye sıralaması dahil. Reklam yok, uygulama içi satın alma yok.
+Kapora, hakem heyeti, rakip kişilikleri ve haftalık oto pazarı geldi.
+40 marka, 150 model, Türkiye fiyatlarıyla. Reklam yok, satın alma yok.
 ```
 (146/170)
 
@@ -131,13 +142,23 @@ Birincil: Oyunlar → Simülasyon
 ## SÜRÜM NOTU (ikisinde de — "Yenilikler")
 
 İlk sürümde Play "Yenilikler" alanını boş bırakmana izin veriyor, App Store
-istiyor. İkisine de aynısını yaz:
+istiyor. İkisine de aynısını yaz (Play sınırı 500 karakter).
 
+Mağazaya ilk çıkış 1.4 ile olacaksa:
 ```
 İlk sürüm. 40 marka, 150 model, Türkiye ikinci el fiyatlarıyla.
-Pazarlık, ekspertiz, tamir, ilan, emanet satış, 3B galeri ve
-Türkiye sıralaması. Reklam yok, uygulama içi satın alma yok,
-internet gerekmiyor.
+Pazarlık, ekspertiz, tamir, ilan, emanet satış, kapora, hakem heyeti,
+3B galeri ve Türkiye sıralaması. Reklam yok, uygulama içi satın alma
+yok, internet gerekmiyor.
+```
+
+Daha önce yayında bir sürüm varsa (1.4 güncellemesi):
+```
+• Kapora: alıcı kapora bırakıp birkaç gün sonra gelir.
+• Hakem heyeti: söylemediğin kusur sonradan dosya olarak döner.
+• Rakip galerilerin kişiliği var; ilana "rakip baktı" düşer.
+• Ekspertizde kaporta şeması, Türk plakaları, camda SATILIK kâğıdı.
+• Haftada bir oto pazarı; galerin büyüdükçe binan değişir.
 ```
 
 ---

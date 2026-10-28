@@ -59,6 +59,9 @@ const cek=async(p, ad, klasor)=>{
   // Bildirimler ve rehber kartı ekranın üstünü kapatıyor; mağaza görselinde
   // uygulamanın kendisi görünmeli, geçici katmanlar değil.
   await p.evaluate(()=>{
+    // Kuyruk da boşalmalı: yalnız kabı silince sıradaki bildirim çekimden
+    // hemen önce geri geliyordu (1.4 garaj karesi).
+    if(typeof toastTemizle==='function') toastTemizle();
     const t=document.getElementById('toasts'); if(t) t.innerHTML='';
     const o=document.getElementById('ogret'); if(o) o.innerHTML='';
   });

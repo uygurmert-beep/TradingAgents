@@ -162,6 +162,11 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
 - **V2 SATILIK kâğıdı** arka kapı camında, el yazısı fiyat, kırılan fiyat karalanır.
 - **V6 kaporta şeması** (`ekspSema`, 13 parça; 2B SVG, 3B yamalar ve tarama aynı kaynaktan).
 - **M10 kapora**, **M1 hakem heyeti**, **M5 rakip kişilikleri** (aşağıdaki ayar notları).
+- **Mağaza görselleri 1.4 ile yeniden üretildi** (ham + çerçeveli, Play ve iOS, özellik
+  grafiği). `magaza-gorsel.py` artık oyunun Space Grotesk'ini kullanıyor (Poppins
+  gerekmiyor) ve Showroom yeşilinde; eski `06-filo` çerçeveleri silindi. Mağaza
+  metni 1.4'e göre (kapora, hakem heyeti, rakip, oto pazarı; sürüm notu iki seçenek).
+  Garajdaki "Hazırla ve ilana koy" düğmesi 360 px'te taşıyordu: model adı ikinci satırda.
 - **V9 galeri büyümesi** (konteyner → dükkân → showroom), **V1 oto pazarı sabahı** (her 7. gün).
 - **Ölçülen değerler:** rakibe giden ilan oyuncusuz 200 günlük koşuda %17–24
   (STR şartı ≤%25), kapışların %80–90'ı önceden "baktı" etiketli. Şikâyet
@@ -185,14 +190,6 @@ imzalı `.aab` üretiliyor, `aapt2` ve `apksigner` ile doğrulandı.
   "muğlak dil ölmesin" diyor. Yakalanma cezası (`ui.js` satış teklifi) gözden geçirilmeli.
 - **Noterde iş** — satış sonrası evrak N gün içinde bitmezse ceza; Noter Yılmaz
   tanıdığı hızlandırıyor. BUGÜN rayına bir kart olarak oturur.
-- **Çerçeveli mağaza görselleri yeniden üretilmeli.** Ham ekranlar
-  (`magaza/ss/{play,ios}`) yeni arayüzle üretildi, `06-filo` yerine `06-emanet`.
-  Yeni palette `node ss-magaza.js` ile ham ekranlar da yeniden çekilmeli.
-  Çerçeveli olanlar (`magaza/ss-cerceve`) ve özellik grafiği Poppins fontu
-  gerektiriyor; bu ortamda font yoktu. Fontun olduğu makinede
-  `pip install cairosvg && python3 magaza-gorsel.py`. Eski `ss-cerceve/*/06-filo.png`
-  o zaman silinmeli. (İki üreticideki `magaza/` yol hatası düzeltildi: görseller
-  `oyun/magaza` altına düşüyordu.)
 - **Android/iOS paketi yeniden üretilmeli.** Kabuktaki `public/` klasörleri
   git'e girmiyor; `python3 appbuild.py && cd ../kabuk && npx cap sync` ve
   `./gradlew bundleRelease` imza anahtarının olduğu makinede çalıştırılmalı.

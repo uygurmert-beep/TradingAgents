@@ -1746,7 +1746,7 @@ function viewGaraj(){
          ilk araç için doğrudan Hazırla düğmesi verir. */
       g==="hazir"&&grup.hazir.length?`<div class="garaj-ipucu">
         <b>Satmak i&ccedil;in:</b> araca dokun &rarr; <i>Hazırla ve ilana koy</i>. Ekspertiz, k&acirc;rlı tamir ve ilan tek dokunuşta.
-        <button class="btn primary full" data-act="hazirla" data-id="${grup.hazir[0].id}" style="margin-top:8px">${grup.hazir[0].model.n} &middot; Hazırla ve ilana koy</button></div>`:""}
+        <button class="btn primary full" data-act="hazirla" data-id="${grup.hazir[0].id}" style="margin-top:8px">Hazırla ve ilana koy<span class="gi-ad">${grup.hazir[0].model.n}</span></button></div>`:""}
     <div id="listeKap">${garajListesi(grup[g], g)}</div>
     <button class="btn primary full" data-act="endday" style="margin-top:4px">G&uuml;n&uuml; bitir &rarr;</button>`;
 }

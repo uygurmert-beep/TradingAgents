@@ -103,7 +103,7 @@ node test/denge.js         # 121 günlük denge simülasyonu (sayı basar, asser
 # mağaza görselleri
 node ss-magaza.js          # Play 1080×1920 + iOS 1290×2796 ekran görüntüleri
 node ozellik-araclar.js    # özellik grafiği için araç çizimleri
-python3 magaza-gorsel.py   # özellik grafiği + başlıklı çerçeveler
+python3 magaza-gorsel.py   # özellik grafiği + başlıklı çerçeveler (yazı tipi oyun/font'tan, fontTools + cairosvg ister)
 
 # Android sürüm
 cd ../kabuk && npx cap sync
